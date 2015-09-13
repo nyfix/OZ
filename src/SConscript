@@ -1,0 +1,79 @@
+lib_env = Environment (
+    WITH_MAMA_SOURCE = GetOption('with_mamasource'),
+    WITH_MAMA        = GetOption('with_mamainstall'),
+    LIBS     =  [
+                    'mama',
+                    'uuid',
+                    'zmq',
+                    'event',
+                    'wombatcommon',
+                ],
+    LIBPATH  =  [
+                    '$WITH_MAMA/lib',
+                    '.',
+                ],
+    CPPPATH  =  [
+                    './src',
+                    '$WITH_MAMA_SOURCE/mama/c_cpp/src/c',
+                    '$WITH_MAMA_SOURCE/mama/c_cpp/src/c/bridge/qpid',
+                    '$WITH_MAMA/include',
+                ],
+    CPPFLAGS =  [
+                    '-g',
+                    '-O2',
+                    '-Werror',
+                    '-Wno-unused-function',
+                    '-Wall',
+                ]
+)
+
+if not lib_env.GetOption('clean') and not lib_env.GetOption('help'):
+    conf = Configure (lib_env)
+
+    if not conf.CheckCHeader ('mamainternal.h'):
+        print 'Cannot find MAMA Source code - check --with-mamasource'
+        Exit(1)
+
+    if not conf.CheckCHeader ('uuid/uuid.h'):
+        print 'Cannot find uuid - ensure uuid devel is installed'
+        Exit(1)
+
+    if not conf.CheckCHeader ('event.h'):
+        print 'Cannot find libevent - ensure libevent devel is installed'
+        Exit(1)
+
+    if not conf.CheckLib ('mama'):
+        print 'Cannot find MAMA install directory - check --with-mamainstall'
+        Exit(1)
+
+lib_env.Command ("endpointpool.c",
+                 "$WITH_MAMA_SOURCE/mama/c_cpp/src/c/bridge/qpid/endpointpool.c",
+                 [
+                     Copy("$TARGET", "$SOURCE"),
+                 ]
+)
+
+lib_env.SharedLibrary (
+    'mamazmqimpl',
+    [
+        'bridge.c',
+        'endpointpool.c',
+        'inbox.c',
+        'io.c',
+        'msg.c',
+        'publisher.c',
+        'queue.c',
+        'subscription.c',
+        'timer.c',
+        'transport.c'
+    ]
+)
+
+# Install the library to the top directory
+lib_env.Command ("../libmamazmqimpl.so",
+                 'libmamazmqimpl.so',
+                 [
+                     Copy("$TARGET", "$SOURCE"),
+                 ]
+)
+
