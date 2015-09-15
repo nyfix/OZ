@@ -91,3 +91,8 @@ project comes online, it will also be linked here.
 * [OpenMAMA](http://openmama.org)
 * [ZeroMQ](http://zeromq.org)
 * *OMNM (OpenMAMA Native Message) - coming soon*
+
+## Blog
+
+If you're interested in the thought process behind this or the ramblings of the
+author, you can shoot on over to [my blog page](http://fquinner.github.io).
