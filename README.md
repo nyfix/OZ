@@ -90,7 +90,7 @@ project comes online, it will also be linked here.
 
 * [OpenMAMA](http://openmama.org)
 * [ZeroMQ](http://zeromq.org)
-* *OMNM (OpenMAMA Native Message) - coming soon*
+* [OpenMAMA Native Message (OMNM)](https://github.com/fquinner/OpenMAMA-omnm)
 
 ## Blog
 
