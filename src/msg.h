@@ -31,7 +31,6 @@
   =========================================================================*/
 
 #include <bridge.h>
-#include <proton/message.h>
 #include "zmqdefs.h"
 
 

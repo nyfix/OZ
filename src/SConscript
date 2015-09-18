@@ -1,59 +1,96 @@
-lib_env = Environment (
+env = Environment (
     WITH_MAMA_SOURCE = GetOption('with_mamasource'),
     WITH_MAMA        = GetOption('with_mamainstall'),
-    LIBS     =  [
-                    'mama',
-                    'uuid',
-                    'zmq',
-                    'event',
-                    'wombatcommon',
-                ],
-    LIBPATH  =  [
-                    '$WITH_MAMA/lib',
-                    '.',
-                ],
+    WITH_LIBEVENT    = GetOption('with_libevent'),
+    WITH_ZMQ         = GetOption('with_zmq'),
+    TARGET_ARCH      = GetOption('target_arch'),
     CPPPATH  =  [
                     './src',
+                    '$WITH_MAMA_SOURCE/common/c_cpp/src/c',
                     '$WITH_MAMA_SOURCE/mama/c_cpp/src/c',
                     '$WITH_MAMA_SOURCE/mama/c_cpp/src/c/bridge/qpid',
                     '$WITH_MAMA/include',
+                    '$WITH_ZMQ/include',
                 ],
-    CPPFLAGS =  [
-                    '-g',
-                    '-O2',
-                    '-Werror',
-                    '-Wno-unused-function',
-                    '-Wall',
-                ]
 )
 
-if not lib_env.GetOption('clean') and not lib_env.GetOption('help'):
-    conf = Configure (lib_env)
+# Windows has a few differences
+if env['PLATFORM'] == "win32":
+    env.Append (
+        LIBS     =  [
+                        'libmamacmd',
+                        'uuid',
+                        'Ws2_32',
+                        'libzmq-v120-mt-gd-4_0_4',
+                        'libevent_core',
+                        'libwombatcommonmd',
+                    ],
+        LIBPATH  =  [
+                        '$WITH_MAMA/lib/dynamic',
+                        '$WITH_LIBEVENT/',
+                        '$WITH_PROTON/build/proton-c/Release',
+                        '$WITH_ZMQ/lib',
+                        '.',
+                    ],
+        CPPFLAGS =  [
+                        '/DMAMA_DLL',
+                    ],
+    )
+    env['CPPPATH'].append([
+                              '$WITH_LIBEVENT/WIN32-Code',
+                              '$WITH_LIBEVENT/',
+                          ])
+elif env['PLATFORM'] == "linux":
+    libdir = 'lib'
+    if env['TARGET_ARCH'].endswith("64"):
+        libdir = 'lib64'
+    env.Append (
+        LIBS     =  [
+                        'mama',
+                        'uuid',
+                        'zmq',
+                        'event',
+                        'wombatcommon',
+                    ],
+        LIBPATH  =  [
+                        '$WITH_MAMA/' + libdir,
+                        '$WITH_LIBEVENT/' + libdir,
+                        '$WITH_PROTON/' + libdir,
+                        '$WITH_ZMQ/' + libdir,
+                        '.',
+                    ],
+    )
+else:
+    print "Unsupported platform: %s", env['PLATFORM']
+    exit (1)
 
-    if not conf.CheckCHeader ('mamainternal.h'):
+if not env.GetOption('clean') and not env.GetOption('help'):
+    conf = Configure (env)
+
+    if not conf.CheckCHeader ('bridge.h'):
         print 'Cannot find MAMA Source code - check --with-mamasource'
         Exit(1)
 
-    if not conf.CheckCHeader ('uuid/uuid.h'):
-        print 'Cannot find uuid - ensure uuid devel is installed'
-        Exit(1)
+    #if not conf.CheckCHeader ('uuid/uuid.h'):
+    #    print 'Cannot find uuid - ensure uuid devel is installed'
+    #    Exit(1)
 
-    if not conf.CheckCHeader ('event.h'):
-        print 'Cannot find libevent - ensure libevent devel is installed'
-        Exit(1)
+    #if not conf.CheckCHeader ('event.h'):
+    #    print 'Cannot find libevent - ensure libevent devel is installed'
+    #    Exit(1)
 
-    if not conf.CheckLib ('mama'):
-        print 'Cannot find MAMA install directory - check --with-mamainstall'
-        Exit(1)
+    #if not conf.CheckLib ('mama'):
+    #    print 'Cannot find MAMA install directory - check --with-mamainstall'
+    #    Exit(1)
 
-lib_env.Command ("endpointpool.c",
+env.Command ("endpointpool.c",
                  "$WITH_MAMA_SOURCE/mama/c_cpp/src/c/bridge/qpid/endpointpool.c",
                  [
                      Copy("$TARGET", "$SOURCE"),
                  ]
 )
 
-lib_env.SharedLibrary (
+libs = env.SharedLibrary (
     'mamazmqimpl',
     [
         'bridge.c',
@@ -70,10 +107,11 @@ lib_env.SharedLibrary (
 )
 
 # Install the library to the top directory
-lib_env.Command ("../libmamazmqimpl.so",
-                 'libmamazmqimpl.so',
+for lib in libs:
+    env.Command ("../" + str(lib),
+                 str(lib),
                  [
                      Copy("$TARGET", "$SOURCE"),
                  ]
-)
+    )
 
