@@ -26,11 +26,10 @@
   =                             Includes                                  =
   =========================================================================*/
 
+#include <mama/mama.h>
 #include <string.h>
 #include <wombat/wUuid.h>
 #include <wombat/port.h>
-#include <mama/mama.h>
-#include <bridge.h>
 #include "zmqdefs.h"
 #include "inbox.h"
 #include "zmqbridgefunctions.h"

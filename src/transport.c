@@ -26,7 +26,6 @@
   =                             Includes                                  =
   =========================================================================*/
 
-#include <wombat/port.h>
 #include <property.h>
 #include <mama/mama.h>
 #include <queueimpl.h>
