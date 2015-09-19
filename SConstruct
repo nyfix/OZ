@@ -43,4 +43,13 @@ AddOption('--target-arch',
           metavar='ARCH',
           help='Target architecture (x86 or x86_64)')
 
-SConscript('src/SConscript', variant_dir='objects', duplicate=0)
+AddOption('--build-type',
+          default='dynamic',
+          dest='build_type',
+          type='string',
+          nargs=1,
+          action='store',
+          metavar='TYPE',
+          help='Build type [dynamic|dynamic-debug] (windows only)')
+
+SConscript('src/SConscript', variant_dir='objects/' + GetOption('build_type'), duplicate=0)
