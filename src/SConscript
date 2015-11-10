@@ -16,6 +16,7 @@ env = Environment (
                     '$WITH_MAMA_SOURCE/mama/c_cpp/src/c',
                     '$WITH_MAMA_SOURCE/mama/c_cpp/src/c/bridge/qpid',
                     '$WITH_MAMA/include',
+                    '$WITH_LIBEVENT/include',
                     '$WITH_ZMQ/include',
                 ],
 )
@@ -111,7 +112,7 @@ elif env['PLATFORM'] == "posix":
                         '$WITH_MAMA/lib',
                         '$WITH_MAMA/lib64',
                         '$WITH_LIBEVENT/lib',
-                        '$WITH_LIBEVENT/lib64'
+                        '$WITH_LIBEVENT/lib64',
                         '$WITH_ZMQ/lib',
                         '$WITH_ZMQ/lib64',
                         '.',
