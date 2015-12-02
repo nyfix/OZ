@@ -543,11 +543,44 @@ zmqBridgeMamaTransportImpl_getTransportBridge (mamaTransport transport)
 /*=========================================================================
   =                  Private implementation functions                     =
   =========================================================================*/
+int
+zmqBridgeMamaTransportImpl_setupSocket (void* socket, const char* uri)
+{
+	int rc = 0;
+
+	// If the URI contains an asterisk, assume binding port
+	if (strchr(uri, '*'))
+	{
+		rc = zmq_bind (socket, uri);
+		if (0 != rc)
+		{
+			mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
+					  "zmq_bind returned %d trying to bind to '%s' (%s)",
+					  rc,
+					  uri,
+					  strerror(errno));
+		}
+		return rc;
+	}
+	else
+	{
+	    rc = zmq_connect (socket, uri);
+	    if (0 != rc)
+	    {
+	        mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
+	                  "zmq_connect returned %d trying to bind to '%s' (%s)",
+	                  rc,
+	                  uri,
+	                  strerror(errno));
+	        return rc;
+	    }
+	}
+}
 
 mama_status
 zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
 {
-    int             rc;
+    int rc = 0;
 
     if (NULL == impl)
     {
@@ -566,26 +599,15 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVHWM, &hwm, sizeof(int));
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(int));
 
-    rc = zmq_bind (impl->mZmqSocketPublisher, impl->mOutgoingAddress);
-    //rc = zmq_bind (impl->mZmqSocketPublisher, "tcp://*:5557");
-    if (0 != rc)
+    if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketPublisher,
+                                                     impl->mOutgoingAddress))
     {
-        mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
-                  "zmq_bind returned %d trying to bind to '%s' (%s)",
-                  rc,
-                  impl->mOutgoingAddress,
-                  strerror(errno));
         return MAMA_STATUS_PLATFORM;
     }
 
-    rc = zmq_connect (impl->mZmqSocketSubscriber, impl->mIncomingAddress);
-    if (0 != rc)
+    if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketSubscriber,
+                                                     impl->mIncomingAddress))
     {
-        mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
-                  "zmq_connect returned %d trying to bind to '%s' (%s)",
-                  rc,
-                  impl->mIncomingAddress,
-                  strerror(errno));
         return MAMA_STATUS_PLATFORM;
     }
 
