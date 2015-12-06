@@ -67,8 +67,8 @@
 
 /* Non configurable runtime defaults */
 #define     PARAM_NAME_MAX_LENGTH           1024L
-#define     ZMQ_MEMPOOL_SIZE              16384
-#define     ZMQ_MEMNODE_SIZE              4096
+#define     ZMQ_MEMPOOL_SIZE                1024
+#define     ZMQ_MEMNODE_SIZE                4096
 
 
 /*=========================================================================
@@ -226,8 +226,17 @@ zmqBridgeMamaTransport_destroy (transportBridge transport)
 
     status = zmqBridgeMamaTransportImpl_stop (impl);
 
+    zmq_close (impl->mZmqSocketDispatcher);
+    zmq_close (impl->mZmqSocketPublisher);
+    zmq_close (impl->mZmqSocketSubscriber);
+
+    zmq_ctx_destroy(impl->mZmqContext);
+
+
     endpointPool_destroy (impl->mSubEndpoints);
     endpointPool_destroy (impl->mPubEndpoints);
+
+    memoryPool_destroy (impl->mMemoryNodePool, NULL);
 
     free (impl);
 
@@ -266,15 +275,15 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
               "zmqBridgeMamaTransport_create(): Initializing Transport %s",
               name);
 
-    if (0 == strcmp(impl->mName, "sub"))
-    {
-        mDefIncoming = DEFAULT_SUB_INCOMING_URL;
-        mDefOutgoing = DEFAULT_SUB_OUTGOING_URL;
-    }
-    else if (0 == strcmp(impl->mName, "pub"))
+    if (0 == strcmp(impl->mName, "pub"))
     {
         mDefIncoming = DEFAULT_PUB_INCOMING_URL;
         mDefOutgoing = DEFAULT_PUB_OUTGOING_URL;
+    }
+    else
+    {
+        mDefIncoming = DEFAULT_SUB_INCOMING_URL;
+        mDefOutgoing = DEFAULT_SUB_OUTGOING_URL;
     }
 
     /* Set the incoming address */
