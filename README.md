@@ -56,14 +56,15 @@ The bridge depends on:
 * Libuuid (Linux only)
 * Scons
 
-Until dynamic bridge loading is supported, you will also need to build against
-my github fork of OpenMAMA (https://github.com/fquinner/OpenMAMA) on the
-`feature-omzmq` branch which contains the middleware name and enum as well as
-a couple of submitted-but-not-merged-yet openmama patches to allow the qpid
-proton payload to work with other middlewares.
-I will add the enum upstream at some point in the future too, but I plan on
-using this bridge to help test the dynamic loading, so I'll not add the enum
-to OpenMAMA master until that is ready.
+As of the latest version of OpenMAMA, there is no longer a requirement to
+build this library off my own special fork of OpenMAMA. Instead thanks to
+dynamic bridge loading support, you can now build this off:
+
+* The next branch of OpenMAMA
+* The OpenMAMA-2.4.0 branch of OpenMAMA
+
+The master branch will also contain the correct changes once the next OpenMAMA
+GA release is issued which is expected within the next couple of weeks.
 
 ### Building
 
@@ -79,6 +80,10 @@ directory containing this library to your `LD_LIBRARY_PATH` and run your
 applications with `-m zmq` to use the bridge. Example mama.properties
 transport configuration parameters are included in the code in the `config`
 folder.
+
+If you want to use the omnm payload, you can have a look at
+[the omnm github page](https://github.com/fquinner/OpenMAMA-omnm) to find
+out how.
 
 ## Related Projects
 
