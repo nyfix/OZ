@@ -381,18 +381,7 @@ zmqBridgeMamaPublisher_createByIndex (
                               const char*       topic,
                               const char*       source,
                               const char*       root,
-                              void*             nativeQueueHandle,
                               mamaPublisher     parent);
-
-MAMAExpDLL
-extern mama_status
-zmqBridgeMamaPublisher_create (publisherBridge*  result,
-                               mamaTransport     tport,
-                               const char*       topic,
-                               const char*       source,
-                               const char*       root,
-                               void*             nativeQueueHandle,
-                               mamaPublisher     parent);
 
 MAMAExpDLL
 extern mama_status
@@ -426,6 +415,13 @@ extern mama_status
 zmqBridgeMamaPublisher_sendFromInbox (publisherBridge publisher,
                                       mamaInbox       inbox,
                                       mamaMsg         msg);
+
+MAMAExpDLL
+extern mama_status
+zmqBridgeMamaPublisher_setUserCallbacks (publisherBridge         publisher,
+                                         mamaQueue               queue,
+                                         mamaPublisherCallbacks* cb,
+                                         void*                   closure);
 
 MAMAExpDLL
 extern mama_status

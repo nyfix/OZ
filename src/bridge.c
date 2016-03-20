@@ -163,12 +163,6 @@ zmqBridge_close (mamaBridge bridgeImpl)
     /* Stop and destroy the io thread */
     zmqBridgeMamaIoImpl_stop ();
 
-    /* Wait for zmqBridge_start to finish before destroying implementation */
-    if (NULL != bridgeImpl)
-    {
-        free (bridgeImpl);
-    }
-
     return status;
 }
 

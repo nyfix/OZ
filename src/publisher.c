@@ -56,6 +56,9 @@ typedef struct zmqPublisherBridge
     const char*             mRoot;
     const char*             mSubject;
     msgBridge               mMamaBridgeMsg;
+    mamaPublisher           mParent;
+    mamaPublisherCallbacks  mCallbacks;
+    void*                   mCallbackClosure;
 } zmqPublisherBridge;
 
 /*=========================================================================
@@ -89,7 +92,6 @@ zmqBridgeMamaPublisher_createByIndex (publisherBridge*     result,
                                       const char*          topic,
                                       const char*          source,
                                       const char*          root,
-                                      void*                nativeQueueHandle,
                                       mamaPublisher        parent)
 {
     zmqPublisherBridge*    impl        = NULL;
@@ -123,6 +125,7 @@ zmqBridgeMamaPublisher_createByIndex (publisherBridge*     result,
 
     /* Initialize the publisher members */
     impl->mTransport = transport;
+    impl->mParent    = parent;
 
     /* Create an underlying bridge message with no parent to be used in sends */
     status = zmqBridgeMamaMsgImpl_createMsgOnly (&impl->mMamaBridgeMsg);
@@ -161,33 +164,25 @@ zmqBridgeMamaPublisher_createByIndex (publisherBridge*     result,
 }
 
 mama_status
-zmqBridgeMamaPublisher_create (publisherBridge*    result,
-                               mamaTransport       tport,
-                               const char*         topic,
-                               const char*         source,
-                               const char*         root,
-                               void*               nativeQueueHandle,
-                               mamaPublisher       parent)
-{
-    return zmqBridgeMamaPublisher_createByIndex (result,
-                                                 tport,
-                                                 0,
-                                                 topic,
-                                                 source,
-                                                 root,
-                                                 nativeQueueHandle,
-                                                 parent);
-}
-
-mama_status
 zmqBridgeMamaPublisher_destroy (publisherBridge publisher)
 {
+    zmqPublisherBridge*    impl    = (zmqPublisherBridge*) publisher;
 
-    zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
+    /* Take a copy of the callbacks - we'll need those */
+    mamaPublisherCallbacks callbacks;
+    mamaPublisher          parent  = NULL;
+    void*                  closure = NULL;
+
     if (NULL == impl)
     {
         return MAMA_STATUS_NULL_ARG;
     }
+
+    /* Take a copy of the callbacks - we'll need those */
+    callbacks = impl->mCallbacks;
+    parent    = impl->mParent;
+    closure   = impl->mCallbackClosure;
+
     if (NULL != impl->mSubject)
     {
         free ((void*) impl->mSubject);
@@ -198,6 +193,12 @@ zmqBridgeMamaPublisher_destroy (publisherBridge publisher)
     }
 
     free (impl);
+
+    if (NULL != callbacks.onDestroy)
+    {
+        (*callbacks.onDestroy)(parent, closure);
+    }
+
     return MAMA_STATUS_OK;
 }
 
@@ -511,6 +512,25 @@ zmqBridgeMamaPublisher_sendFromInbox (publisherBridge  publisher,
                                                         0,
                                                         inbox,
                                                         msg);
+}
+
+mama_status
+zmqBridgeMamaPublisher_setUserCallbacks (publisherBridge         publisher,
+                                         mamaQueue               queue,
+                                         mamaPublisherCallbacks* cb,
+                                         void*                   closure)
+{
+    zmqPublisherBridge*    impl        = (zmqPublisherBridge*) publisher;
+
+    if (NULL == impl || NULL == cb)
+    {
+        return MAMA_STATUS_NULL_ARG;
+    }
+    /* Take a copy of the callbacks */
+    impl->mCallbacks = *cb;
+    impl->mCallbackClosure = closure;
+
+    return MAMA_STATUS_OK;
 }
 
 /*=========================================================================
