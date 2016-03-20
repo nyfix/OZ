@@ -13,9 +13,9 @@ before_install:
   - cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON -DBUILD_JAVA=OFF -DBUILD_PERL=OFF -DBUILD_PHP=OFF -DBUILD_PYTHON=OFF -DBUILD_RUBY=OFF
   - sudo make install
   - cd
-  - git clone https://github.com/fquinner/OpenMAMA.git
+  - git clone https://github.com/OpenMAMA/OpenMAMA.git
   - cd OpenMAMA
-  - git checkout feature-omzmq
+  - git checkout OpenMAMA-2.4.0
   - scons product=mama middleware=qpid
   - export MAMA_SOURCE=$(pwd)
   - export MAMA_INSTALL=$MAMA_SOURCE/$(ls -1 | grep "openmama_install_*")
