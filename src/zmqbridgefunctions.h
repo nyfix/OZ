@@ -33,91 +33,116 @@ extern "C" {
 #endif
 
 MAMAExpDLL
-extern void
-zmqBridge_createImpl (mamaBridge* result);
+extern mama_status
+zmqBridge_init (mamaBridge bridgeImpl);
 
+MAMAExpDLL
 extern mama_status
 zmqBridge_open (mamaBridge bridgeImpl);
 
+MAMAExpDLL
 extern mama_status
 zmqBridge_close (mamaBridge bridgeImpl);
 
+MAMAExpDLL
 extern mama_status
 zmqBridge_start (mamaQueue defaultEventQueue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridge_stop (mamaQueue defaultEventQueue);
 
+MAMAExpDLL
 extern const char*
 zmqBridge_getVersion (void);
 
+MAMAExpDLL
 extern const char*
 zmqBridge_getName (void);
 
-mama_status
+MAMAExpDLL
+extern mama_status
 zmqBridge_getDefaultPayloadId (char*** name, char** id);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_create (queueBridge *queue, mamaQueue parent);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_create_usingNative (queueBridge *queue, mamaQueue parent,
                                        void* nativeQueue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_destroy (queueBridge queue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_getEventCount (queueBridge queue, size_t* count);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_dispatch (queueBridge queue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_timedDispatch (queueBridge queue, uint64_t timeout);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_dispatchEvent (queueBridge queue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_enqueueEvent (queueBridge        queue,
                                  mamaQueueEnqueueCB callback,
                                  void*              closure);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_stopDispatch (queueBridge queue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_setEnqueueCallback (queueBridge        queue,
                                        mamaQueueEnqueueCB callback,
                                        void*              closure);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_removeEnqueueCallback (queueBridge queue);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_getNativeHandle (queueBridge queue,
                                     void**      nativeHandle);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_setHighWatermark (queueBridge queue,
                                      size_t      highWatermark);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_setLowWatermark (queueBridge queue,
                                     size_t      lowWatermark);
 
+MAMAExpDLL
 extern int
 zmqBridgeMamaTransport_isValid (transportBridge transport);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_destroy (transportBridge transport);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_create (transportBridge* result,
                                const char*      name,
                                mamaTransport    parent);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_forceClientDisconnect (
                                transportBridge* transports,
@@ -125,6 +150,7 @@ zmqBridgeMamaTransport_forceClientDisconnect (
                                const char*      ipAddress,
                                uint16_t         port);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_findConnection (transportBridge* transports,
                                        int              numTransports,
@@ -132,12 +158,14 @@ zmqBridgeMamaTransport_findConnection (transportBridge* transports,
                                        const char*      ipAddress,
                                        uint16_t         port);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getAllConnections (transportBridge* transports,
                                           int              numTransports,
                                           mamaConnection** result,
                                           uint32_t*        len);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getAllConnectionsForTopic (transportBridge* transports,
                                                   int              numTransports,
@@ -145,14 +173,17 @@ zmqBridgeMamaTransport_getAllConnectionsForTopic (transportBridge* transports,
                                                   mamaConnection** result,
                                                   uint32_t*        len);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_requestConflation (transportBridge* transports,
                                           int              numTransports);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_requestEndConflation (transportBridge* transports,
                                              int              numTransports);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getAllServerConnections (
                                transportBridge*       transports,
@@ -160,6 +191,7 @@ zmqBridgeMamaTransport_getAllServerConnections (
                                mamaServerConnection** result,
                                uint32_t*              len);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_freeAllServerConnections (
                                transportBridge*        transports,
@@ -167,27 +199,32 @@ zmqBridgeMamaTransport_freeAllServerConnections (
                                mamaServerConnection*   connections,
                                uint32_t                len);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_freeAllConnections (transportBridge* transports,
                                            int              numTransports,
                                            mamaConnection*  connections,
                                            uint32_t         len);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getNumLoadBalanceAttributes (
                                const char* name,
                                int*        numLoadBalanceAttributes);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getLoadBalanceSharedObjectName (
                                const char*  name,
                                const char** loadBalanceSharedObjectName);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getLoadBalanceScheme (
                                const char*    name,
                                tportLbScheme* scheme);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_sendMsgToConnection (
                                transportBridge transport,
@@ -195,11 +232,13 @@ zmqBridgeMamaTransport_sendMsgToConnection (
                                mamaMsg         msg,
                                const char*     topic);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_isConnectionIntercepted (
                                mamaConnection connection,
                                uint8_t* result);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_installConnectConflateMgr (
                                transportBridge       transport,
@@ -208,26 +247,31 @@ zmqBridgeMamaTransport_installConnectConflateMgr (
                                conflateProcessCb     processCb,
                                conflateGetMsgCb      msgCb);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_uninstallConnectConflateMgr (
                                transportBridge       transport,
                                mamaConflationManager mgr,
                                mamaConnection        connection);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_startConnectionConflation (
                                transportBridge        transport,
                                mamaConflationManager  mgr,
                                mamaConnection         connection);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getNativeTransport (transportBridge transport,
                                            void**          result);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTransport_getNativeTransportNamingCtx (transportBridge transport,
                                                     void**          result);
 
+MAMAExpDLL
 extern mama_status zmqBridgeMamaSubscription_create
                               (subscriptionBridge* subscriber,
                                const char*         source,
@@ -238,6 +282,7 @@ extern mama_status zmqBridgeMamaSubscription_create
                                mamaSubscription    subscription,
                                void*               closure );
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaSubscription_createWildCard (
                                subscriptionBridge* subsc_,
@@ -249,32 +294,41 @@ zmqBridgeMamaSubscription_createWildCard (
                                mamaSubscription    subscription,
                                void*               closure );
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaSubscription_mute (subscriptionBridge subscriber);
 
+MAMAExpDLL
 extern  mama_status
 zmqBridgeMamaSubscription_destroy (subscriptionBridge subscriber);
 
+MAMAExpDLL
 extern int
 zmqBridgeMamaSubscription_isValid (subscriptionBridge bridge);
 
+MAMAExpDLL
 extern int
 zmqBridgeMamaSubscription_hasWildcards (subscriptionBridge subscriber);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaSubscription_getPlatformError (subscriptionBridge subsc,
                                             void** error);
 
+MAMAExpDLL
 extern int
 zmqBridgeMamaSubscription_isTportDisconnected (subscriptionBridge subsc);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaSubscription_setTopicClosure (subscriptionBridge subsc,
                                            void* closure);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaSubscription_muteCurrentTopic (subscriptionBridge subsc);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTimer_create (timerBridge* timer,
                            void*        nativeQueueHandle,
@@ -284,18 +338,23 @@ zmqBridgeMamaTimer_create (timerBridge* timer,
                            mamaTimer    parent,
                            void*        closure);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTimer_destroy (timerBridge timer);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTimer_reset (timerBridge timer);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTimer_setInterval (timerBridge timer, mama_f64_t interval);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTimer_getInterval (timerBridge timer, mama_f64_t* interval);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaIo_create (ioBridge*       result,
                         void*           nativeQueueHandle,
@@ -305,12 +364,15 @@ zmqBridgeMamaIo_create (ioBridge*       result,
                         mamaIo          parent,
                         void*           closure);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaIo_getDescriptor (ioBridge io, uint32_t* result);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaIo_destroy (ioBridge io);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_createByIndex (
                               publisherBridge*  result,
@@ -322,6 +384,7 @@ zmqBridgeMamaPublisher_createByIndex (
                               void*             nativeQueueHandle,
                               mamaPublisher     parent);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_create (publisherBridge*  result,
                                mamaTransport     tport,
@@ -331,33 +394,40 @@ zmqBridgeMamaPublisher_create (publisherBridge*  result,
                                void*             nativeQueueHandle,
                                mamaPublisher     parent);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_destroy (publisherBridge publisher);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_send (publisherBridge publisher, mamaMsg msg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_sendReplyToInbox (publisherBridge publisher,
                                          void*           request,
                                          mamaMsg         reply);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_sendReplyToInboxHandle (publisherBridge publisher,
                                                void*           wmwReply,
                                                mamaMsg         reply);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
                                              int               tportIndex,
                                              mamaInbox         inbox,
                                              mamaMsg           msg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaPublisher_sendFromInbox (publisherBridge publisher,
                                       mamaInbox       inbox,
                                       mamaMsg         msg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaInbox_create (
             inboxBridge*                bridge,
@@ -369,6 +439,7 @@ zmqBridgeMamaInbox_create (
             void*                       closure,
             mamaInbox                   parent);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaInbox_createByIndex (
             inboxBridge*                bridge,
@@ -381,47 +452,61 @@ zmqBridgeMamaInbox_createByIndex (
             void*                       closure,
             mamaInbox                   parent);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaInbox_destroy (inboxBridge inbox);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_create (msgBridge* msg, mamaMsg parent);
 
+MAMAExpDLL
 extern int
 zmqBridgeMamaMsg_isFromInbox (msgBridge msg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_destroy (msgBridge msg, int destroyMsg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_destroyMiddlewareMsg (msgBridge msg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_detach (msgBridge msg);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_getPlatformError (msgBridge msg, void** error);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_setSendSubject (msgBridge   msg,
                                  const char* symbol,
                                  const char* subject);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_getNativeHandle (msgBridge msg, void** result);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_duplicateReplyHandle (msgBridge msg, void** result);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_copyReplyHandle (void* src, void** dest);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsgImpl_setReplyHandle (msgBridge msg, void* handle);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsgImpl_setReplyHandleAndIncrement (msgBridge msg, void* handle);
 
+MAMAExpDLL
 extern mama_status
 zmqBridgeMamaMsg_destroyReplyHandle (void* handle);
 

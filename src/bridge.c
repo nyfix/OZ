@@ -57,7 +57,7 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
 
 /* Version identifiers */
 #define             ZMQ_BRIDGE_NAME            "zmq"
-#define             ZMQ_BRIDGE_VERSION         "0.1"
+#define             ZMQ_BRIDGE_VERSION         "0.2"
 
 /* Name to be given to the default queue. Should be bridge-specific. */
 #define             ZMQ_DEFAULT_QUEUE_NAME     "ZMQ_DEFAULT_MAMA_QUEUE"
@@ -70,34 +70,13 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
   =               Public interface implementation functions               =
   =========================================================================*/
 
-void zmqBridge_createImpl (mamaBridge* result)
+mama_status zmqBridge_init (mamaBridge bridgeImpl)
 {
-    mamaBridgeImpl* bridge = NULL;
+    mama_status status = MAMA_STATUS_OK;
 
-    if (NULL == result)
-    {
-        return;
-    }
+    MAMA_SET_BRIDGE_COMPILE_TIME_VERSION("zmq");
 
-    /* Create the wrapping MAMA bridge */
-    bridge = (mamaBridgeImpl*) calloc (1, sizeof (mamaBridgeImpl));
-    if (NULL == bridge)
-    {
-        mama_log (MAMA_LOG_LEVEL_SEVERE, "zmqBridge_createImpl(): "
-                  "Could not allocate memory for MAMA bridge implementation.");
-        *result = NULL;
-        return;
-    }
-
-    /* Populate the bridge impl structure with the function pointers */
-    INITIALIZE_BRIDGE (bridge, zmq);
-
-    /* Return the newly created bridge */
-    *result = (mamaBridge) bridge;
-
-    mamaBridgeImpl_setReadOnlyProperty (
-            (mamaBridge) bridge,
-            "mama.zmq.entitlements.deferred", "false");
+    return status;
 }
 
 mama_status
