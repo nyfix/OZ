@@ -39,17 +39,9 @@
 /* Global timer heap */
 timerHeap           gOmzmqTimerHeap;
 
-//#define USE_OMNMSG 1
-
 /* Default payload names and IDs to be loaded when this bridge is loaded */
-#ifdef USE_OMNMSG
-static char*        PAYLOAD_NAMES[]         =   { "omnmmsg", NULL };
-static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_OMNM, '\0' };
-#endif
-#ifndef USE_OMNMSG
 static char*        PAYLOAD_NAMES[]         =   { "qpidmsg", NULL };
 static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
-#endif
 
 /*=========================================================================
   =                              Macros                                   =
@@ -72,7 +64,8 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
 
 mama_status zmqBridge_init (mamaBridge bridgeImpl)
 {
-    mama_status status = MAMA_STATUS_OK;
+    mama_status       status = MAMA_STATUS_OK;
+    mamaPayloadBridge omnm   = NULL;
 
     MAMA_SET_BRIDGE_COMPILE_TIME_VERSION("zmq");
 
