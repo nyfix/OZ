@@ -58,6 +58,21 @@ typedef enum zmqMsgType_
     ZMQ_MSG_SUB_REQUEST
 } zmqMsgType;
 
+typedef enum zmqTransportType_
+{
+    ZMQ_TPORT_TYPE_TCP,
+    ZMQ_TPORT_TYPE_IPC,
+    ZMQ_TPORT_TYPE_PGM,
+    ZMQ_TPORT_TYPE_EPGM,
+    ZMQ_TPORT_TYPE_UNKNOWN = 99
+} zmqTransportType;
+
+typedef enum zmqTransportDirection_
+{
+    ZMQ_TPORT_DIRECTION_INCOMING,
+    ZMQ_TPORT_DIRECTION_OUTGOING
+} zmqTransportDirection;
+
 
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =

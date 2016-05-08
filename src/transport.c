@@ -553,37 +553,120 @@ zmqBridgeMamaTransportImpl_getTransportBridge (mamaTransport transport)
   =                  Private implementation functions                     =
   =========================================================================*/
 int
-zmqBridgeMamaTransportImpl_setupSocket (void* socket, const char* uri)
+zmqBridgeMamaTransportImpl_setupSocket (void* socket, const char* uri, zmqTransportDirection direction)
 {
-	int rc = 0;
+    int rc = 0;
+    char tportTypeStr[16];
+    char* firstColon = NULL;
+    zmqTransportType tportType = ZMQ_TPORT_TYPE_UNKNOWN;
+    /* If set to non zero, will bind rather than connect */
+    int isBinding = 0;
 
-	// If the URI contains an asterisk, assume binding port
-	if (strchr(uri, '*'))
-	{
-		rc = zmq_bind (socket, uri);
-		if (0 != rc)
-		{
-			mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
-					  "zmq_bind returned %d trying to bind to '%s' (%s)",
-					  rc,
-					  uri,
-					  strerror(errno));
-		}
-		return rc;
-	}
-	else
-	{
-	    rc = zmq_connect (socket, uri);
-	    if (0 != rc)
-	    {
-	        mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
-	                  "zmq_connect returned %d trying to bind to '%s' (%s)",
-	                  rc,
-	                  uri,
-	                  strerror(errno));
-	        return rc;
-	    }
-	}
+    strncpy (tportTypeStr, uri, sizeof(tportTypeStr));
+    tportTypeStr[sizeof(tportTypeStr)-1] = '\0';
+    firstColon = strchr(tportTypeStr, ':');
+    if (NULL != firstColon)
+    {
+        *firstColon = '\0';
+    }
+
+    if (0 == strcmp(tportTypeStr, "tcp"))
+    {
+        tportType = ZMQ_TPORT_TYPE_TCP;
+    }
+    else if (0 == strcmp(tportTypeStr, "epgm"))
+    {
+        tportType = ZMQ_TPORT_TYPE_EPGM;
+    }
+    else if (0 == strcmp(tportTypeStr, "pgm"))
+    {
+        tportType = ZMQ_TPORT_TYPE_PGM;
+    }
+    else if (0 == strcmp(tportTypeStr, "ipc"))
+    {
+        tportType = ZMQ_TPORT_TYPE_IPC;
+    }
+    else
+    {
+        mama_log (MAMA_LOG_LEVEL_ERROR,
+                  "Unknown ZeroMQ transport type found: %s. Trying anyway.",
+                  tportTypeStr);
+    }
+
+    mama_log (MAMA_LOG_LEVEL_FINE, "Found ZeroMQ transport type %s (%d)",
+              tportTypeStr, tportType);
+
+    /* Get the transport type from the uri */
+    switch (direction)
+    {
+    case ZMQ_TPORT_DIRECTION_INCOMING:
+        switch (tportType)
+        {
+        case ZMQ_TPORT_TYPE_TCP:
+            if (strchr(uri, '*'))
+            {
+                isBinding = 1;
+            }
+            break;
+        case ZMQ_TPORT_TYPE_EPGM:
+        case ZMQ_TPORT_TYPE_PGM:
+        case ZMQ_TPORT_TYPE_IPC:
+        default:
+            break;
+        }
+        break;
+    case ZMQ_TPORT_DIRECTION_OUTGOING:
+        switch (tportType)
+        {
+        case ZMQ_TPORT_TYPE_TCP:
+            if (strchr(uri, '*'))
+            {
+                isBinding = 1;
+            }
+            break;
+        case ZMQ_TPORT_TYPE_IPC:
+            isBinding = 1;
+            break;
+        case ZMQ_TPORT_TYPE_EPGM:
+        case ZMQ_TPORT_TYPE_PGM:
+        default:
+            break;
+        }
+        break;
+    default:
+        mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_setupSocket(): "
+                  "Didn't recognize transport direction %d",
+                  direction);
+        break;
+    }
+
+    /* If this is a binding transport */
+    if (isBinding)
+    {
+        rc = zmq_bind (socket, uri);
+        if (0 != rc)
+        {
+            mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_setupSocket(): "
+                      "zmq_bind returned %d trying to bind to '%s' (%s)",
+                      rc,
+                      uri,
+                      strerror(errno));
+        }
+        return rc;
+    }
+    else
+    {
+        rc = zmq_connect (socket, uri);
+        if (0 != rc)
+        {
+            mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_start(): "
+                      "zmq_connect returned %d trying to connect to '%s' (%s)",
+                      rc,
+                      uri,
+                      strerror(errno));
+            return rc;
+        }
+    }
 }
 
 mama_status
@@ -609,13 +692,15 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(int));
 
     if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketPublisher,
-                                                     impl->mOutgoingAddress))
+                                                     impl->mOutgoingAddress,
+                                                     ZMQ_TPORT_DIRECTION_OUTGOING))
     {
         return MAMA_STATUS_PLATFORM;
     }
 
     if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketSubscriber,
-                                                     impl->mIncomingAddress))
+                                                     impl->mIncomingAddress,
+                                                     ZMQ_TPORT_DIRECTION_INCOMING))
     {
         return MAMA_STATUS_PLATFORM;
     }
