@@ -15,7 +15,6 @@ before_install:
   - cd
   - git clone https://github.com/OpenMAMA/OpenMAMA.git
   - cd OpenMAMA
-  - git checkout OpenMAMA-2.4.0
   - scons product=mama middleware=qpid
   - export MAMA_SOURCE=$(pwd)
   - export MAMA_INSTALL=$MAMA_SOURCE/$(ls -1 | grep "openmama_install_*")

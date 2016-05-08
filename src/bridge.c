@@ -64,12 +64,9 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
 
 mama_status zmqBridge_init (mamaBridge bridgeImpl)
 {
-    mama_status       status = MAMA_STATUS_OK;
-    mamaPayloadBridge omnm   = NULL;
+    MAMA_SET_BRIDGE_COMPILE_TIME_VERSION(ZMQ_BRIDGE_NAME);
 
-    MAMA_SET_BRIDGE_COMPILE_TIME_VERSION("zmq");
-
-    return status;
+    return MAMA_STATUS_OK;
 }
 
 mama_status
