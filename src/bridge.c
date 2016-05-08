@@ -49,7 +49,7 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
 
 /* Version identifiers */
 #define             ZMQ_BRIDGE_NAME            "zmq"
-#define             ZMQ_BRIDGE_VERSION         "0.2"
+#define             ZMQ_BRIDGE_VERSION         "0.3"
 
 /* Name to be given to the default queue. Should be bridge-specific. */
 #define             ZMQ_DEFAULT_QUEUE_NAME     "ZMQ_DEFAULT_MAMA_QUEUE"

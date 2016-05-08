@@ -1,24 +1,9 @@
 # OpenMAMA ZeroMQ Middleware Bridge
 
-## Overview
-
-This ethos of this project is to:
-
-* Create a fully functional ZeroMQ bridge which introduces minimal latency and
-  maximum throughput when compared with a native ZeroMQ implementation.
-* Create a bridge which is fully conformant with the latest OpenMAMA acceptance
-  and unit tests.
-* Give anything which would be useful for 'any old middleware bridge' back to
-  the OpenMAMA core project.
-
-*NB: This project is MIT Licensed and in no way affiliated with nor supported
-by the OpenMAMA project or SR Labs - if you find any issues, please report to
-this project via github.*
-
 ## Functionality
 
-The current version of the bridge actually has complete middleware bridge
-functionality. It passes all of the OpenMAMA middleware unit tests and it has:
+This project now has complete MAMA middleware bridge functionality.
+It passes all of the OpenMAMA middleware unit tests and provides:
 
 * Support for any serializable / deserializable MAMA Message payload bridge
 * Reasonably good performance (more details to be confirmed...)
@@ -56,7 +41,7 @@ The bridge depends on:
 * Libuuid (Linux only)
 * Scons
 
-As of the latest version of OpenMAMA, there is no longer a requirement to
+As of the 2.4.0 release of OpenMAMA, there is no longer a requirement to
 build this library off my own special fork of OpenMAMA. Instead thanks to
 dynamic bridge loading support, you can now build this off the master
 branch of OpenMAMA. I may also make binary releases available soon.
@@ -80,6 +65,21 @@ If you want to use the omnm payload (less functionality but faster than qpid),
 you can have a look at
 [the omnm github page](https://github.com/fquinner/OpenMAMA-omnm) to find
 out how.
+
+## Project Goals
+
+This ethos of this project is to:
+
+* Create a fully functional ZeroMQ bridge which introduces minimal latency and
+  maximum throughput when compared with a native ZeroMQ implementation.
+* Create a bridge which is fully conformant with the latest OpenMAMA acceptance
+  and unit tests.
+* Give anything which would be useful for 'any old middleware bridge' back to
+  the OpenMAMA core project.
+
+*NB: This project is MIT Licensed and in no way affiliated with nor supported
+by the OpenMAMA project or SR Labs - if you find any issues, please report to
+this project via github.*
 
 ## Related Projects
 
