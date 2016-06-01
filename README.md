@@ -1,5 +1,7 @@
 # OpenMAMA ZeroMQ Middleware Bridge
 
+[![Join the chat at https://gitter.im/fquinner/OpenMAMA-zmq](https://badges.gitter.im/fquinner/OpenMAMA-zmq.svg)](https://gitter.im/fquinner/OpenMAMA-zmq?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ## Functionality
 
 This project now has complete MAMA middleware bridge functionality.
