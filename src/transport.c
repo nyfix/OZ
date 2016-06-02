@@ -55,23 +55,70 @@
   =========================================================================*/
 
 /* Transport configuration parameters */
-#define     TPORT_PARAM_PREFIX              "mama.zmq.transport"
-#define     TPORT_PARAM_OUTGOING_URL        "outgoing_url"
-#define     TPORT_PARAM_INCOMING_URL        "incoming_url"
-#define     TPORT_PARAM_MSG_POOL_SIZE       "msg_pool_size"
-#define     TPORT_PARAM_MSG_NODE_SIZE       "msg_node_size"
+#define     TPORT_PARAM_PREFIX                  "mama.zmq.transport"
+#define     TPORT_PARAM_OUTGOING_URL            "outgoing_url"
+#define     TPORT_PARAM_INCOMING_URL            "incoming_url"
+#define     TPORT_PARAM_MSG_POOL_SIZE           "msg_pool_size"
+#define     TPORT_PARAM_MSG_NODE_SIZE           "msg_node_size"
+#define     TPORT_PARAM_ZMQ_SNDHWM              "zmq_sndhwm"
+#define     TPORT_PARAM_ZMQ_RCVHWM              "zmq_rcvhwm"
+#define     TPORT_PARAM_ZMQ_AFFINITY            "zmq_affinity"
+#define     TPORT_PARAM_ZMQ_IDENTITY            "zmq_identity"
+#define     TPORT_PARAM_ZMQ_SNDBUF              "zmq_sndbuf"
+#define     TPORT_PARAM_ZMQ_RCVBUF              "zmq_rcvbuf"
+#define     TPORT_PARAM_ZMQ_RECONNECT_IVL       "zmq_reconnect_ivl"
+#define     TPORT_PARAM_ZMQ_RECONNECT_IVL_MAX   "zmq_reconnect_ivl_max"
+#define     TPORT_PARAM_ZMQ_BACKLOG             "zmq_backlog"
+#define     TPORT_PARAM_ZMQ_MAXMSGSIZE          "zmq_maxmsgsize"
+#define     TPORT_PARAM_ZMQ_RCVTIMEO            "zmq_rcvtimeo"
+#define     TPORT_PARAM_ZMQ_SNDTIMEO            "zmq_sndtimeo"
+#define     TPORT_PARAM_ZMQ_RATE                "zmq_rate"
 
 /* Default values for corresponding configuration parameters */
-#define     DEFAULT_SUB_OUTGOING_URL        "tcp://*:5557"
-#define     DEFAULT_SUB_INCOMING_URL        "tcp://127.0.0.1:5556"
-#define     DEFAULT_PUB_OUTGOING_URL        "tcp://*:5556"
-#define     DEFAULT_PUB_INCOMING_URL        "tcp://127.0.0.1:5557"
-#define     DEFAULT_MEMPOOL_SIZE            "1024"
-#define     DEFAULT_MEMNODE_SIZE            "4096"
+#define     DEFAULT_SUB_OUTGOING_URL            "tcp://*:5557"
+#define     DEFAULT_SUB_INCOMING_URL            "tcp://127.0.0.1:5556"
+#define     DEFAULT_PUB_OUTGOING_URL            "tcp://*:5556"
+#define     DEFAULT_PUB_INCOMING_URL            "tcp://127.0.0.1:5557"
+#define     DEFAULT_MEMPOOL_SIZE                "1024"
+#define     DEFAULT_MEMNODE_SIZE                "4096"
+#define     DEFAULT_ZMQ_SNDHWM                  "1000"  /* int      | messages    */
+#define     DEFAULT_ZMQ_RCVHWM                  "1000"  /* int      | messages    */
+#define     DEFAULT_ZMQ_AFFINITY                "0"     /* uint64_t | thread      */
+#define     DEFAULT_ZMQ_IDENTITY                NULL    /* binary   | id          */
+#define     DEFAULT_ZMQ_SNDBUF                  "0"     /* int      | bytes       */
+#define     DEFAULT_ZMQ_RCVBUF                  "0"     /* int      | bytes       */
+#define     DEFAULT_ZMQ_RECONNECT_IVL           "100"   /* int      | ms          */
+#define     DEFAULT_ZMQ_RECONNECT_IVL_MAX       "0"     /* int      | ms          */
+#define     DEFAULT_ZMQ_BACKLOG                 "100"   /* int      | connections */
+#define     DEFAULT_ZMQ_MAXMSGSIZE              "-1"    /* int64_t  | bytes       */
+#define     DEFAULT_ZMQ_RCVTIMEO                "-1"    /* int      | ms          */
+#define     DEFAULT_ZMQ_SNDTIMEO                "-1"    /* int      | ms          */
+#define     DEFAULT_ZMQ_RATE                    "100"   /* int      | kbps        */
 
 /* Non configurable runtime defaults */
 #define     PARAM_NAME_MAX_LENGTH           1024L
 
+#define ZMQ_SET_SOCKET_OPTIONS(type,impl,opt,map)                              \
+do                                                                             \
+{                                                                              \
+    const char* valStr = zmqBridgeMamaTransportImpl_getParameter (             \
+                          DEFAULT_ZMQ_ ## opt,                                 \
+                          "%s.%s.%s",                                          \
+                          TPORT_PARAM_PREFIX,                                  \
+                          impl->mName,                                         \
+                          TPORT_PARAM_ZMQ_ ## opt);                            \
+    type value = (type) map (valStr);                                          \
+                                                                               \
+    mama_log (MAMA_LOG_LEVEL_FINE,                                             \
+              "zmqBridgeMamaTransportImpl_setSocketOptionInt(): Setting "      \
+              "ZeroMQ socket option %s=%s for transport %s",                   \
+              TPORT_PARAM_ZMQ_ ## opt,                                         \
+              valStr,                                                          \
+              impl->mName);                                                    \
+                                                                               \
+    zmq_setsockopt (impl->mZmqSocketPublisher, ZMQ_ ## opt, &value, sizeof(int));   \
+    zmq_setsockopt (impl->mZmqSocketSubscriber, ZMQ_ ## opt, &value, sizeof(int));  \
+} while (0);
 
 /*=========================================================================
   =                  Private implementation prototypes                    =
@@ -697,6 +744,8 @@ mama_status
 zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
 {
     int rc = 0;
+    int hwm = 0;
+    int rcvto = 10;
 
     if (NULL == impl)
     {
@@ -707,10 +756,23 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
 
 
     impl->mZmqContext = zmq_ctx_new ();
-    int hwm = 0;
-    int rcvto = 10;
     impl->mZmqSocketSubscriber = zmq_socket (impl->mZmqContext, ZMQ_SUB);
     impl->mZmqSocketPublisher  = zmq_socket (impl->mZmqContext, ZMQ_PUB);
+
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDHWM,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVHWM,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDBUF,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVBUF,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,RECONNECT_IVL,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,RECONNECT_IVL_MAX,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,BACKLOG,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVTIMEO,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDTIMEO,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (int,impl,RATE,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (uint64_t,impl,AFFINITY,atoll);
+    ZMQ_SET_SOCKET_OPTIONS (const char*,impl,IDENTITY,);
+    ZMQ_SET_SOCKET_OPTIONS (int64_t,impl,MAXMSGSIZE,atoll);
+
     zmq_setsockopt(impl->mZmqSocketPublisher, ZMQ_SNDHWM, &hwm, sizeof(int));
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVHWM, &hwm, sizeof(int));
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(int));
