@@ -1,5 +1,13 @@
 language: c
 
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/1165d088c0b8da252a52
+    on_success: always  # options: [always|never|change] default: always
+    on_failure: always  # options: [always|never|change] default: always
+    on_start: never     # options: [always|never|change] default: always
+
 before_install:
   - export SOURCE_DIR=`pwd`
   - sudo apt-get update -qq
