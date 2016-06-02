@@ -58,17 +58,19 @@
 #define     TPORT_PARAM_PREFIX              "mama.zmq.transport"
 #define     TPORT_PARAM_OUTGOING_URL        "outgoing_url"
 #define     TPORT_PARAM_INCOMING_URL        "incoming_url"
+#define     TPORT_PARAM_MSG_POOL_SIZE       "msg_pool_size"
+#define     TPORT_PARAM_MSG_NODE_SIZE       "msg_node_size"
 
 /* Default values for corresponding configuration parameters */
 #define     DEFAULT_SUB_OUTGOING_URL        "tcp://*:5557"
 #define     DEFAULT_SUB_INCOMING_URL        "tcp://127.0.0.1:5556"
 #define     DEFAULT_PUB_OUTGOING_URL        "tcp://*:5556"
 #define     DEFAULT_PUB_INCOMING_URL        "tcp://127.0.0.1:5557"
+#define     DEFAULT_MEMPOOL_SIZE            "1024"
+#define     DEFAULT_MEMNODE_SIZE            "4096"
 
 /* Non configurable runtime defaults */
 #define     PARAM_NAME_MAX_LENGTH           1024L
-#define     ZMQ_MEMPOOL_SIZE                1024
-#define     ZMQ_MEMNODE_SIZE                4096
 
 
 /*=========================================================================
@@ -252,6 +254,8 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
     mama_status           status          = MAMA_STATUS_OK;
     char*                 mDefIncoming    = NULL;
     char*                 mDefOutgoing    = NULL;
+    long int              poolSize        = 0;
+    long int              nodeSize        = 0;
 
     if (NULL == result || NULL == name || NULL == parent)
     {
@@ -268,12 +272,32 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
     impl->mOmzmqDispatchStatus  = MAMA_STATUS_OK;
     impl->mName                 = name;
 
-    impl->mMemoryNodePool = memoryPool_create (ZMQ_MEMPOOL_SIZE,
-                                               ZMQ_MEMNODE_SIZE);
-
     mama_log (MAMA_LOG_LEVEL_FINE,
               "zmqBridgeMamaTransport_create(): Initializing Transport %s",
               name);
+
+    poolSize = atol(zmqBridgeMamaTransportImpl_getParameter (
+                        DEFAULT_MEMPOOL_SIZE,
+                        "%s.%s.%s",
+                        TPORT_PARAM_PREFIX,
+                        name,
+                        TPORT_PARAM_MSG_POOL_SIZE));
+
+    nodeSize = atol(zmqBridgeMamaTransportImpl_getParameter (
+                        DEFAULT_MEMNODE_SIZE,
+                        "%s.%s.%s",
+                        TPORT_PARAM_PREFIX,
+                        name,
+                        TPORT_PARAM_MSG_NODE_SIZE));
+
+    mama_log (MAMA_LOG_LEVEL_FINE,
+              "zmqBridgeMamaTransport_create(): Creating a transport mempool "
+              "for %s with %lu nodes of %lu bytes.",
+              name,
+              poolSize,
+              nodeSize);
+
+    impl->mMemoryNodePool = memoryPool_create (poolSize, nodeSize);
 
     if (0 == strcmp(impl->mName, "pub"))
     {
