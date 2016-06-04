@@ -107,6 +107,7 @@ elif env['PLATFORM'] == "posix":
                         'zmq',
                         'event',
                         'wombatcommon',
+                        'pthread',
                     ],
         LIBPATH  =  [
                         '$WITH_MAMA/lib',
@@ -116,6 +117,9 @@ elif env['PLATFORM'] == "posix":
                         '$WITH_ZMQ/lib',
                         '$WITH_ZMQ/lib64',
                         '.',
+                    ],
+        CFLAGS   =  [
+                        '-g'
                     ],
     )
     if not env.GetOption('clean') and not env.GetOption('help'):
@@ -162,6 +166,9 @@ libs = env.SharedLibrary (
         'transport.c'
     ]
 )
+env.Program ('hammer', 'hammer.c')
+env.Program ('nail', 'nail.c')
+env.Program ('queuebench', 'queuebench.c')
 
 # Install the library to the top directory
 env.Command ("../../" + str(libs[0]),
