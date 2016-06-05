@@ -301,6 +301,8 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
     mama_status           status          = MAMA_STATUS_OK;
     char*                 mDefIncoming    = NULL;
     char*                 mDefOutgoing    = NULL;
+    const char*           uri             = NULL;
+    int                   uri_index       = 0;
 
     if (NULL == result || NULL == name || NULL == parent)
     {
@@ -353,22 +355,53 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
         mDefOutgoing = DEFAULT_SUB_OUTGOING_URL;
     }
 
-    /* Set the incoming address */
-    impl->mIncomingAddress = zmqBridgeMamaTransportImpl_getParameter (
-            mDefIncoming,
-            "%s.%s.%s",
-            TPORT_PARAM_PREFIX,
-            name,
-            TPORT_PARAM_INCOMING_URL);
+    /* Start with bare incoming address */
+    impl->mIncomingAddress[0] = properties_GetPropertyValueUsingFormatString (
+                mamaInternal_getProperties(),
+                mDefIncoming,
+                "%s.%s.%s",
+                TPORT_PARAM_PREFIX,
+                name,
+                TPORT_PARAM_INCOMING_URL);
 
-    /* Set the outgoing address */
-    impl->mOutgoingAddress =
-        zmqBridgeMamaTransportImpl_getParameter (
-            mDefOutgoing,
-            "%s.%s.%s",
+    /* Now parse any _0, _1 etc. */
+    uri_index = 0;
+    while (NULL != (uri = properties_GetPropertyValueUsingFormatString (
+            mamaInternal_getProperties(),
+            NULL,
+            "%s.%s.%s_%d",
             TPORT_PARAM_PREFIX,
             name,
-            TPORT_PARAM_OUTGOING_URL);
+            TPORT_PARAM_INCOMING_URL,
+            uri_index)))
+    {
+        impl->mIncomingAddress[uri_index] = uri;
+        uri_index++;
+    }
+
+    /* Start with bare outgoing address */
+    impl->mOutgoingAddress[0] = properties_GetPropertyValueUsingFormatString (
+                mamaInternal_getProperties(),
+                mDefOutgoing,
+                "%s.%s.%s",
+                TPORT_PARAM_PREFIX,
+                name,
+                TPORT_PARAM_OUTGOING_URL);
+
+    /* Now parse any _0, _1 etc. */
+    uri_index = 0;
+    while (NULL != (uri = properties_GetPropertyValueUsingFormatString (
+            mamaInternal_getProperties(),
+            NULL,
+            "%s.%s.%s_%d",
+            TPORT_PARAM_PREFIX,
+            name,
+            TPORT_PARAM_OUTGOING_URL,
+            uri_index)))
+    {
+        impl->mOutgoingAddress[uri_index] = uri;
+        uri_index++;
+    }
 
     status = endpointPool_create (&impl->mSubEndpoints, "mSubEndpoints");
     if (MAMA_STATUS_OK != status)
@@ -742,6 +775,7 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
     int rc = 0;
     int hwm = 0;
     int rcvto = 10;
+    int i  = 0;
 
     if (NULL == impl)
     {
@@ -773,18 +807,46 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVHWM, &hwm, sizeof(int));
     zmq_setsockopt(impl->mZmqSocketSubscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(int));
 
-    if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketPublisher,
-                                                     impl->mOutgoingAddress,
-                                                     ZMQ_TPORT_DIRECTION_OUTGOING))
+    for (i = 0; i < ZMQ_MAX_INCOMING_URIS; i++)
     {
-        return MAMA_STATUS_PLATFORM;
+        if (NULL == impl->mOutgoingAddress[i])
+        {
+            break;
+        }
+        if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketPublisher,
+                                                         impl->mOutgoingAddress[i],
+                                                         ZMQ_TPORT_DIRECTION_OUTGOING))
+        {
+            return MAMA_STATUS_PLATFORM;
+        }
+        else
+        {
+            mama_log (MAMA_LOG_LEVEL_FINE,
+                      "zmqBridgeMamaTransportImpl_start(): Successfully set up "
+                      "outgoing ZeroMQ socket for URI: %s",
+                      impl->mOutgoingAddress[i]);
+        }
     }
 
-    if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketSubscriber,
-                                                     impl->mIncomingAddress,
-                                                     ZMQ_TPORT_DIRECTION_INCOMING))
+    for (i = 0; i < ZMQ_MAX_OUTGOING_URIS; i++)
     {
-        return MAMA_STATUS_PLATFORM;
+        if (NULL == impl->mIncomingAddress[i])
+        {
+            break;
+        }
+        if (0 != zmqBridgeMamaTransportImpl_setupSocket (impl->mZmqSocketSubscriber,
+                                                         impl->mIncomingAddress[i],
+                                                         ZMQ_TPORT_DIRECTION_INCOMING))
+        {
+            return MAMA_STATUS_PLATFORM;
+        }
+        else
+        {
+            mama_log (MAMA_LOG_LEVEL_FINE,
+                      "zmqBridgeMamaTransportImpl_start(): Successfully set up "
+                      "incoming ZeroMQ socket for URI: %s",
+                      impl->mIncomingAddress[i]);
+        }
     }
 
     /* Set the transport bridge mIsDispatching to true. */
@@ -933,137 +995,6 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     return;
 }
 
-/*
-long int zmqBridgeMamaTransportImpl_getParameterAsLong (
-                                                long defaultVal,
-                                                long minimum,
-                                                long maximum,
-                                                const char* format, ...)
-{
-    const char* returnVal     = NULL;
-    long        returnLong    = 0;
-    char        paramDefault[PARAM_NAME_MAX_LENGTH];
-    char        paramName[PARAM_NAME_MAX_LENGTH];
-
-    va_list arguments;
-
-    va_start(arguments, format);
-
-    snprintf (paramDefault, PARAM_NAME_MAX_LENGTH, "%ld", defaultVal);
-
-    returnVal = zmqBridgeMamaTransportImpl_getParameterWithVaList (paramDefault,
-                                                                    paramName,
-                                                                    format,
-                                                                    arguments);
-
-    returnLong = atol (returnVal);
-
-    if (returnLong < minimum)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINER,
-                "zmqBridgeMamaTransportImpl_getParameterAsLong: "
-                "Value for %s too small (%ld) - reverting to: [%ld]",
-                paramName,
-                returnLong,
-                minimum);
-        returnLong = minimum;
-    }
-    else if (returnLong > maximum)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINER,
-                "zmqBridgeMamaTransportImpl_getParameterAsLong: "
-                "Value for %s too large (%ld) - reverting to: [%ld]",
-                paramName,
-                returnLong,
-                maximum);
-        returnLong = maximum;
-    }
-    else if (returnVal == paramDefault)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINER,
-                  "zmqBridgeMamaTransportImpl_getParameterAsLong: "
-                  "parameter [%s]: [%ld] (Default)",
-                  paramName, returnLong);
-    }
-    else
-    {
-        mama_log (MAMA_LOG_LEVEL_FINER,
-                  "zmqBridgeMamaTransportImpl_getParameterAsLong: "
-                  "parameter [%s]: [%ld] (User Defined)",
-                  paramName, returnLong);
-    }
-
-    return returnLong;
-}
-*/
-
-const char* zmqBridgeMamaTransportImpl_getParameterWithVaList (
-                                            char*       defaultVal,
-                                            char*       paramName,
-                                            const char* format,
-                                            va_list     arguments)
-{
-    const char* property = NULL;
-
-    /* Create the complete transport property string */
-    vsnprintf (paramName, PARAM_NAME_MAX_LENGTH,
-               format, arguments);
-
-    /* Get the property out for analysis */
-    property = properties_Get (mamaInternal_getProperties (),
-                               paramName);
-
-    /* Properties will return NULL if parameter is not specified in configs */
-    if (property == NULL)
-    {
-        property = defaultVal;
-    }
-
-    return property;
-}
-
-const char* zmqBridgeMamaTransportImpl_getParameter (
-                                            const char* defaultVal,
-                                            const char* format, ...)
-{
-    char        paramName[PARAM_NAME_MAX_LENGTH];
-    const char* returnVal = NULL;
-    /* Create list for storing the parameters passed in */
-    va_list     arguments;
-
-    /* Populate list with arguments passed in */
-    va_start (arguments, format);
-
-    returnVal = zmqBridgeMamaTransportImpl_getParameterWithVaList (
-                        (char*)defaultVal,
-                        paramName,
-                        format,
-                        arguments);
-
-    /* These will be equal if unchanged */
-    if (returnVal == defaultVal)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINER,
-                  "zmqBridgeMamaTransportImpl_getParameter: "
-                  "parameter [%s]: [%s] (Default)",
-                  paramName,
-                  returnVal);
-    }
-    else
-    {
-        mama_log (MAMA_LOG_LEVEL_FINER,
-                  "zmqBridgeMamaTransportImpl_getParameter: "
-                  "parameter [%s]: [%s] (User Defined)",
-                  paramName,
-                  returnVal);
-    }
-
-    /* Clean up the list */
-    va_end(arguments);
-
-    return returnVal;
-}
-
 void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
 {
     zmqTransportBridge*     impl          = (zmqTransportBridge*)closure;
@@ -1148,7 +1079,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
                           "same application",
                           subject);
                 //zmqBridgeMamaQueue_enqueueEvent (
-                //        (queueBridge) subscription->mQpidQueue,
+                //        (queueBridge) subscription->mZmqQueue,
                 //        zmqBridgeMamaTransportImpl_queueCallback,
                 //        NULL);
             }

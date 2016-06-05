@@ -49,6 +49,8 @@ extern "C" {
 
 /* Maximum topic length */
 #define     MAX_SUBJECT_LENGTH              256
+#define     ZMQ_MAX_INCOMING_URIS           64
+#define     ZMQ_MAX_OUTGOING_URIS           64
 
 /* Message types */
 typedef enum zmqMsgType_
@@ -88,8 +90,8 @@ typedef struct zmqTransportBridge_
     void*                   mZmqSocketSubscriber;
     void*                   mZmqSocketPublisher;
     void*                   mZmqSocketDispatcher;
-    const char*             mIncomingAddress;
-    const char*             mOutgoingAddress;
+    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
+    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
     const char*             mName;
     wthread_t               mOmzmqDispatchThread;
     int                     mIsDispatching;
