@@ -30,6 +30,7 @@ int gDebug = 0;
 int gQueueChoice = 0;
 wInterlockedInt gSentEvents;
 wInterlockedInt gReceivedEvents;
+wthread_mutex_t gLock; /* for multiple readers */
 
 void wQueueCb (void* data, void* closure)
 {
@@ -52,7 +53,9 @@ void* dealer (void* closure)
             buf[1] = '\0';
 
             memcpy (buf+2, &currentSize, sizeof(int));
+            wthread_mutex_lock (&gLock);
             zmq_send (ep->mSocket, buf, 6, 0);
+            wthread_mutex_unlock (&gLock);
         }
         if (gQueueChoice == QUEUE_WOMBAT) {
             wombatQueue_enqueue (newQbn->mWombatQueue, wQueueCb, NULL, NULL);
@@ -83,11 +86,11 @@ void* worker (void* closure)
     while ((recEv = wInterlocked_read (&gReceivedEvents)) < QB_SIZE)
     {
         if (gQueueChoice == QUEUE_ZMQ) {
-            int size = zmq_msg_recv (&zmsg, ep->mSocket, 0);
+            wthread_mutex_lock (&gLock);
+            int size = zmq_msg_recv (&zmsg, ep->mSocket, ZMQ_DONTWAIT);
+            wthread_mutex_unlock (&gLock);
             if (size == -1)
             {
-                printf ("LOCALLY RECEIVED %d in queue %d\n", local, ep->mIdx);
-                printf ("Timing out waiting for message...\n");
                 continue;
             }
 
@@ -121,6 +124,8 @@ int main (int argc, char *argv[])
 
     wInterlocked_initialize(&gReceivedEvents);
     wInterlocked_set(0, &gReceivedEvents);
+
+    wthread_mutex_init( &gLock, NULL);
 
     if (argc == 1 || argc > 4) {
         printf ("Usage: queuebench [wombat|zmq] [producers] [consumers]");
@@ -160,24 +165,20 @@ int main (int argc, char *argv[])
                             WOMBAT_QUEUE_CHUNK_SIZE);
     }
 
+    void* dealerSocket = NULL;
     for (i = 0; i < pubs; i++)
     {
         struct qbnEndpoint* ep = &pubEps[i];
         ep->mIdx = i;
         ep->mQbn = newQbn;
-        void* dealerSocket = zmq_socket (gCtx, ZMQ_PUB);
-        zmq_setsockopt (dealerSocket, ZMQ_SNDHWM, &hwm, sizeof(int));
         if (0 == i)
         {
+            dealerSocket = zmq_socket (gCtx, ZMQ_PUB);
+            zmq_setsockopt (dealerSocket, ZMQ_SNDHWM, &hwm, sizeof(int));
             zmq_bind (dealerSocket, newQbn->mUri);
-        }
-        else
-        {
-            zmq_connect (dealerSocket, newQbn->mUri);
-        }
-        printf ("ERRNO for pub %d = %d\n", i, errno);
+        } // Else reuse the last one
+
         ep->mSocket = dealerSocket;
-        sleep (1);
     }
 
     for (i = 0; i < subs; i++)
