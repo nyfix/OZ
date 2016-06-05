@@ -356,8 +356,7 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
     }
 
     /* Start with bare incoming address */
-    impl->mIncomingAddress[0] = properties_GetPropertyValueUsingFormatString (
-                mamaInternal_getProperties(),
+    impl->mIncomingAddress[0] = zmqBridgeMamaTransportImpl_getParameter (
                 mDefIncoming,
                 "%s.%s.%s",
                 TPORT_PARAM_PREFIX,
@@ -366,8 +365,7 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
 
     /* Now parse any _0, _1 etc. */
     uri_index = 0;
-    while (NULL != (uri = properties_GetPropertyValueUsingFormatString (
-            mamaInternal_getProperties(),
+    while (NULL != (uri = zmqBridgeMamaTransportImpl_getParameter (
             NULL,
             "%s.%s.%s_%d",
             TPORT_PARAM_PREFIX,
@@ -380,8 +378,7 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
     }
 
     /* Start with bare outgoing address */
-    impl->mOutgoingAddress[0] = properties_GetPropertyValueUsingFormatString (
-                mamaInternal_getProperties(),
+    impl->mOutgoingAddress[0] = zmqBridgeMamaTransportImpl_getParameter (
                 mDefOutgoing,
                 "%s.%s.%s",
                 TPORT_PARAM_PREFIX,
@@ -390,8 +387,7 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
 
     /* Now parse any _0, _1 etc. */
     uri_index = 0;
-    while (NULL != (uri = properties_GetPropertyValueUsingFormatString (
-            mamaInternal_getProperties(),
+    while (NULL != (uri = zmqBridgeMamaTransportImpl_getParameter (
             NULL,
             "%s.%s.%s_%d",
             TPORT_PARAM_PREFIX,
@@ -993,6 +989,73 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     memoryPool_returnNode (pool, node);
 
     return;
+}
+
+const char* zmqBridgeMamaTransportImpl_getParameterWithVaList (
+                                            char*       defaultVal,
+                                            char*       paramName,
+                                            const char* format,
+                                            va_list     arguments)
+{
+    const char* property = NULL;
+
+    /* Create the complete transport property string */
+    vsnprintf (paramName, PARAM_NAME_MAX_LENGTH,
+               format, arguments);
+
+    /* Get the property out for analysis */
+    property = properties_Get (mamaInternal_getProperties (),
+                               paramName);
+
+    /* Properties will return NULL if parameter is not specified in configs */
+    if (property == NULL)
+    {
+        property = defaultVal;
+    }
+
+    return property;
+}
+
+const char* zmqBridgeMamaTransportImpl_getParameter (
+                                            const char* defaultVal,
+                                            const char* format, ...)
+{
+    char        paramName[PARAM_NAME_MAX_LENGTH];
+    const char* returnVal = NULL;
+    /* Create list for storing the parameters passed in */
+    va_list     arguments;
+
+    /* Populate list with arguments passed in */
+    va_start (arguments, format);
+
+    returnVal = zmqBridgeMamaTransportImpl_getParameterWithVaList (
+                        (char*)defaultVal,
+                        paramName,
+                        format,
+                        arguments);
+
+    /* These will be equal if unchanged */
+    if (returnVal == defaultVal)
+    {
+        mama_log (MAMA_LOG_LEVEL_FINER,
+                  "zmqBridgeMamaTransportImpl_getParameter: "
+                  "parameter [%s]: [%s] (Default)",
+                  paramName,
+                  returnVal);
+    }
+    else
+    {
+        mama_log (MAMA_LOG_LEVEL_FINER,
+                  "zmqBridgeMamaTransportImpl_getParameter: "
+                  "parameter [%s]: [%s] (User Defined)",
+                  paramName,
+                  returnVal);
+    }
+
+    /* Clean up the list */
+    va_end(arguments);
+
+    return returnVal;
 }
 
 void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
