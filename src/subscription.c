@@ -85,7 +85,7 @@ zmqBridgeMamaSubscription_create (subscriptionBridge* subscriber,
         return MAMA_STATUS_NOMEM;
     }
 
-    mamaQueue_getNativeHandle(queue, &impl->mQpidQueue);
+    mamaQueue_getNativeHandle(queue, &impl->mZmqQueue);
     impl->mMamaCallback        = callback;
     impl->mMamaSubscription    = subscription;
     impl->mMamaQueue           = queue;

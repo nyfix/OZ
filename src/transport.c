@@ -242,6 +242,8 @@ zmqBridgeMamaTransportImpl_getParameter (const char* defaultVal,
 static void*
 zmqBridgeMamaTransportImpl_dispatchThread (void* closure);
 
+static void
+zmqBridgeMamaTransportImpl_queueClosureCleanupCb (void* closure);
 
 /*=========================================================================
   =               Public interface implementation functions               =
@@ -285,8 +287,6 @@ zmqBridgeMamaTransport_destroy (transportBridge transport)
     endpointPool_destroy (impl->mSubEndpoints);
     endpointPool_destroy (impl->mPubEndpoints);
 
-    memoryPool_destroy (impl->mMemoryNodePool, NULL);
-
     free (impl);
 
     return status;
@@ -301,8 +301,6 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
     mama_status           status          = MAMA_STATUS_OK;
     char*                 mDefIncoming    = NULL;
     char*                 mDefOutgoing    = NULL;
-    long int              poolSize        = 0;
-    long int              nodeSize        = 0;
 
     if (NULL == result || NULL == name || NULL == parent)
     {
@@ -323,28 +321,26 @@ zmqBridgeMamaTransport_create (transportBridge*    result,
               "zmqBridgeMamaTransport_create(): Initializing Transport %s",
               name);
 
-    poolSize = atol(zmqBridgeMamaTransportImpl_getParameter (
-                        DEFAULT_MEMPOOL_SIZE,
-                        "%s.%s.%s",
-                        TPORT_PARAM_PREFIX,
-                        name,
-                        TPORT_PARAM_MSG_POOL_SIZE));
+    impl->mMemoryPoolSize = atol(zmqBridgeMamaTransportImpl_getParameter (
+            DEFAULT_MEMPOOL_SIZE,
+            "%s.%s.%s",
+            TPORT_PARAM_PREFIX,
+            name,
+            TPORT_PARAM_MSG_POOL_SIZE));
 
-    nodeSize = atol(zmqBridgeMamaTransportImpl_getParameter (
-                        DEFAULT_MEMNODE_SIZE,
-                        "%s.%s.%s",
-                        TPORT_PARAM_PREFIX,
-                        name,
-                        TPORT_PARAM_MSG_NODE_SIZE));
+    impl->mMemoryNodeSize = atol(zmqBridgeMamaTransportImpl_getParameter (
+            DEFAULT_MEMNODE_SIZE,
+            "%s.%s.%s",
+            TPORT_PARAM_PREFIX,
+            name,
+            TPORT_PARAM_MSG_NODE_SIZE));
 
     mama_log (MAMA_LOG_LEVEL_FINE,
-              "zmqBridgeMamaTransport_create(): Creating a transport mempool "
-              "for %s with %lu nodes of %lu bytes.",
+              "zmqBridgeMamaTransport_create(): Any message pools created will "
+              "contain %lu nodes of %lu bytes.",
               name,
-              poolSize,
-              nodeSize);
-
-    impl->mMemoryNodePool = memoryPool_create (poolSize, nodeSize);
+              impl->mMemoryPoolSize,
+              impl->mMemoryNodeSize);
 
     if (0 == strcmp(impl->mName, "pub"))
     {
@@ -847,6 +843,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     mama_status           status          = MAMA_STATUS_OK;
     mamaMsg               tmpMsg          = NULL;
     msgBridge             bridgeMsg       = NULL;
+    memoryPool*           pool            = NULL;
     memoryNode*           node            = (memoryNode*) closure;
     zmqTransportMsg*      tmsg            = (zmqTransportMsg*) node->mNodeBuffer;
     uint32_t              bufferSize      = tmsg->mNodeSize;
@@ -854,6 +851,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     const char*           subject         = (char*)buffer;
     zmqSubscription*      subscription    = (zmqSubscription*) tmsg->mSubscription;
     zmqTransportBridge*   impl            = subscription->mTransport;
+    zmqQueueBridge*       queueImpl       = NULL;
 
     /* Can't do anything without a subscriber */
     if (NULL == subscription)
@@ -926,8 +924,11 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
         }
     }
 
+    mamaQueue_getNativeHandle (queue, (void**)&queueImpl);
+
     // Return the memory node to the pool
-    memoryPool_returnNode (node->mPool, node);
+    pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure ((queueBridge) queueImpl);
+    memoryPool_returnNode (pool, node);
 
     return;
 }
@@ -1157,28 +1158,43 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
              */
             else
             {
-                void* queueClosure = NULL;
-                size_t memLength = sizeof(zmqTransportMsg) +
-                        zmq_msg_size(&zmsg);
-                memoryNode* node = memoryPool_getNode (impl->mMemoryNodePool,
-                                                       memLength);
-                zmqTransportMsg* tmsg =
-                        (zmqTransportMsg*) node->mNodeBuffer;
+                queueBridge      queueImpl    = NULL;
+                memoryPool*      pool         = NULL;
+                memoryNode*      node         = NULL;
+                zmqTransportMsg* tmsg         = NULL;
+                size_t           memLength    = sizeof(zmqTransportMsg) +
+                                                     zmq_msg_size(&zmsg);
 
-                tmsg->mNodeBuffer = (uint8_t*)(tmsg + 1);
-                tmsg->mNodeSize = zmq_msg_size(&zmsg);
+                queueImpl = (queueBridge) subscription->mZmqQueue;
+
+                /* Get the memory pool from the queue, creating if necessary */
+                pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure (queueImpl);
+                if (NULL == zmqBridgeMamaQueueImpl_getClosure (queueImpl))
+                {
+                    pool = memoryPool_create (impl->mMemoryPoolSize,
+                                              impl->mMemoryNodeSize);
+                    zmqBridgeMamaQueueImpl_setClosure (
+                            queueImpl,
+                            pool,
+                            zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
+                }
+
+                node = memoryPool_getNode (pool, memLength);
+
+                tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+
+                tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
+                tmsg->mNodeSize     = zmq_msg_size(&zmsg);
                 tmsg->mSubscription = subscription;
 
                 memcpy (tmsg->mNodeBuffer,
                         zmq_msg_data(&zmsg),
                         tmsg->mNodeSize);
 
-                queueClosure = (void*) node;
-
                 zmqBridgeMamaQueue_enqueueEvent (
-                        (queueBridge) subscription->mQpidQueue,
+                        (queueBridge) queueImpl,
                         zmqBridgeMamaTransportImpl_queueCallback,
-                        queueClosure);
+                        (void*) node);
             }
         }
     }
@@ -1187,3 +1203,14 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
     return NULL;
 }
 
+void
+zmqBridgeMamaTransportImpl_queueClosureCleanupCb (void* closure)
+{
+    memoryPool* pool = (memoryPool*) closure;
+    if (NULL != pool)
+    {
+        mama_log (MAMA_LOG_LEVEL_FINE,
+                  "Destroying memory pool for queue %p.", closure);
+        memoryPool_destroy (pool, NULL);
+    }
+}

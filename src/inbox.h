@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef MAMA_BRIDGE_QPID_INBOX_H__
-#define MAMA_BRIDGE_QPID_INBOX_H__
+#ifndef MAMA_BRIDGE_ZMQ_INBOX_H__
+#define MAMA_BRIDGE_ZMQ_INBOX_H__
 
 
 /*=========================================================================
@@ -57,4 +57,4 @@ zmqBridgeMamaInboxImpl_getReplySubject (inboxBridge inbox);
 }
 #endif
 
-#endif /* MAMA_BRIDGE_QPID_INBOX_H__ */
+#endif /* MAMA_BRIDGE_ZMQ_INBOX_H__ */

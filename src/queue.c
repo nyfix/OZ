@@ -189,6 +189,11 @@ zmqBridgeMamaQueue_destroy (queueBridge queue)
     status = wombatQueue_destroy    (impl->mQueue);
     wthread_mutex_unlock            (&impl->mDispatchLock);
 
+    if (NULL != impl->mClosureCleanupCb && NULL != impl->mClosure)
+    {
+        impl->mClosureCleanupCb (impl->mClosure);
+    }
+
     /* Free the zmqQueueImpl container struct */
     free (impl);
 
@@ -269,7 +274,7 @@ zmqBridgeMamaQueue_dispatch (queueBridge queue)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaQueue_dispatch (): "
-                  "Failed to dispatch Qpid Middleware queue (%d). ",
+                  "Failed to dispatch Zmq Middleware queue (%d). ",
                   status);
         return MAMA_STATUS_PLATFORM;
     }
@@ -482,6 +487,29 @@ zmqBridgeMamaQueue_setLowWatermark (queueBridge    queue,
     impl->mLowWatermark = lowWatermark;
 
     return MAMA_STATUS_OK;
+}
+
+
+/*=========================================================================
+  =                  Public implementation functions                      =
+  =========================================================================*/
+
+void
+zmqBridgeMamaQueueImpl_setClosure (queueBridge              queue,
+                                   void*                    closure,
+                                   zmqQueueClosureCleanup   callback)
+{
+    zmqQueueBridge* impl    = (zmqQueueBridge*) queue;
+    impl->mClosure          = closure;
+    impl->mClosureCleanupCb = callback;
+}
+
+void*
+zmqBridgeMamaQueueImpl_getClosure (queueBridge              queue)
+{
+    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
+
+    return impl->mClosure;
 }
 
 

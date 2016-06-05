@@ -36,6 +36,7 @@
 #include <wombat/queue.h>
 #include <wombat/mempool.h>
 #include "endpointpool.h"
+#include "queue.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -95,7 +96,8 @@ typedef struct zmqTransportBridge_
     mama_status             mOmzmqDispatchStatus;
     endpointPool_t          mSubEndpoints;
     endpointPool_t          mPubEndpoints;
-    memoryPool*             mMemoryNodePool;
+    long int                mMemoryPoolSize;
+    long int                mMemoryNodeSize;
 } zmqTransportBridge;
 
 typedef struct zmqSubscription_
@@ -103,8 +105,8 @@ typedef struct zmqSubscription_
     mamaMsgCallbacks        mMamaCallback;
     mamaSubscription        mMamaSubscription;
     mamaQueue               mMamaQueue;
-    void*                   mQpidQueue;
-    zmqTransportBridge*   mTransport;
+    void*                   mZmqQueue;
+    zmqTransportBridge*     mTransport;
     const char*             mSymbol;
     char*                   mSubjectKey;
     void*                   mClosure;
@@ -119,7 +121,7 @@ typedef struct zmqTransportMsg_
 {
     size_t                  mNodeSize;
     size_t                  mNodeCapacity;
-    zmqSubscription*      mSubscription;
+    zmqSubscription*        mSubscription;
     uint8_t*                mNodeBuffer;
 } zmqTransportMsg;
 
@@ -134,7 +136,12 @@ typedef struct zmqQueueBridge {
     mamaQueueEnqueueCB      mEnqueueCallback;
     void*                   mClosure;
     wthread_mutex_t         mDispatchLock;
+    zmqQueueClosureCleanup  mClosureCleanupCb;
+    void*                   mZmqContext;
+    void*                   mZmqSocketWorker;
+    void*                   mZmqSocketDealer;
 } zmqQueueBridge;
+
 
 #if defined(__cplusplus)
 }
