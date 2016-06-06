@@ -31,22 +31,19 @@ know.*
 
 ### Supported Platforms
 
-* RHEL / CentOS 5+
-* Windows 7+
+* RHEL / CentOS
+* Fedora
+* Ubuntu
+* Windows
 
 ### Dependencies
 
 The bridge depends on:
 
-* MAMA / OpenMAMA
-* Libevent
-* Libuuid (Linux only)
-* Scons
-
-As of the 2.4.0 release of OpenMAMA, there is no longer a requirement to
-build this library off my own special fork of OpenMAMA. Instead thanks to
-dynamic bridge loading support, you can now build this off the master
-branch of OpenMAMA. I may also make binary releases available soon.
+* MAMA / OpenMAMA (2.4.0+)
+* Libevent (1.x)
+* Scons (will also require Python)
+* Libuuid (only on Linux)
 
 ### Building
 
@@ -63,7 +60,7 @@ applications with `-m zmq` to use the bridge. Example mama.properties
 transport configuration parameters are included in the code in the `config`
 folder.
 
-If you want to use the omnm payload (less functionality but faster than qpid),
+If you want to use the omnm payload (less functionality but _much_ faster than qpid),
 you can have a look at
 [the omnm github page](https://github.com/fquinner/OpenMAMA-omnm) to find
 out how.
