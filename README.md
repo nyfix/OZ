@@ -25,7 +25,7 @@ of the box:
 
 ## Build Instructions
 
-*NB: This is very much in development and I will always be developing on the
+*NB: This is in active development and I will always be developing on the
 latest version of Fedora. If I have broken an OS that you use, please let me
 know.*
 
