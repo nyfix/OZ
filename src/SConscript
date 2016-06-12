@@ -61,13 +61,14 @@ if env['PLATFORM'] == "win32":
                         'libmamac' + env['suffix'],
                         'uuid',
                         'Ws2_32',
-                        'libevent_core',
+                        'libevent',
                         'libwombatcommon' + env['suffix'],
                         zmq_lib,
                     ],
         LIBPATH  =  [
                         '$WITH_MAMA/lib/' + env['BUILD_TYPE'],
-                        '$WITH_LIBEVENT/',
+                        '$WITH_LIBEVENT/WIN32-Prj/Release',
+                        '$WITH_LIBEVENT/WIN32-Prj/x64/Release',
                         '$WITH_ZMQ/lib',
                         '.',
                     ],
@@ -90,7 +91,7 @@ if env['PLATFORM'] == "win32":
         # Scons preprocessor doesn't understand this file, so just check it
         # exists
         if not FindFile('event.h', env['WITH_LIBEVENT']):
-            print 'Cannot find libevent - ensure libevent devel is installed'
+            print 'Cannot find event.h - ensure libevent devel is installed'
             Exit(1)
 
         # Scons preprocessor doesn't understand this file, so just check it
@@ -134,13 +135,16 @@ elif env['PLATFORM'] == "posix":
             Exit(1)
 
         if not conf.CheckCHeader ('event.h'):
-            print 'Cannot find libevent - ensure libevent devel is installed'
+            print 'Cannot find event.h - ensure libevent devel is installed'
             Exit(1)
 
         if not conf.CheckLib ('mama'):
             print 'Cannot find MAMA install directory - check --with-mamainstall'
             Exit(1)
         conf.Finish()
+    env.Program ('hammer', 'hammer.c')
+    env.Program ('nail', 'nail.c')
+    env.Program ('queuebench', 'queuebench.c')
 else:
     print "Unsupported platform: %s" % env['PLATFORM']
     exit (1)
@@ -167,9 +171,6 @@ libs = env.SharedLibrary (
         'transport.c'
     ]
 )
-env.Program ('hammer', 'hammer.c')
-env.Program ('nail', 'nail.c')
-env.Program ('queuebench', 'queuebench.c')
 
 # Install the library to the top directory
 env.Command ("../../" + str(libs[0]),

@@ -242,7 +242,7 @@ zmqBridgeMamaTransportImpl_getParameter (const char* defaultVal,
 static void*
 zmqBridgeMamaTransportImpl_dispatchThread (void* closure);
 
-static void
+void MAMACALLTYPE
 zmqBridgeMamaTransportImpl_queueClosureCleanupCb (void* closure);
 
 /*=========================================================================
@@ -1191,7 +1191,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
     return NULL;
 }
 
-void
+void MAMACALLTYPE
 zmqBridgeMamaTransportImpl_queueClosureCleanupCb (void* closure)
 {
     memoryPool* pool = (memoryPool*) closure;
