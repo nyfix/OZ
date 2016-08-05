@@ -67,8 +67,6 @@ if env['PLATFORM'] == "win32":
                     ],
         LIBPATH  =  [
                         '$WITH_MAMA/lib/' + env['BUILD_TYPE'],
-                        '$WITH_LIBEVENT/WIN32-Prj/Release',
-                        '$WITH_LIBEVENT/WIN32-Prj/x64/Release',
                         '$WITH_ZMQ/lib',
                         '.',
                     ],
@@ -79,7 +77,13 @@ if env['PLATFORM'] == "win32":
     env['CPPPATH'].append([
                               '$WITH_LIBEVENT/WIN32-Code',
                               '$WITH_LIBEVENT/',
+                              '$WITH_MAMA_SOURCE/common/c_cpp/src/c/windows',
                           ])
+    if 'x86_64' == env['TARGET_ARCH']:
+        env['LIBPATH'].append(['$WITH_LIBEVENT/WIN32-Prj/x64/Release'])
+    else:
+        env['LIBPATH'].append(['$WITH_LIBEVENT/WIN32-Prj/Release'])
+
     if not env.GetOption('clean') and not env.GetOption('help'):
         conf = Configure (env)
 

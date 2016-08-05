@@ -26,13 +26,10 @@
   =                             Includes                                  =
   =========================================================================*/
 
-#include <property.h>
 #include <mama/mama.h>
 #include <queueimpl.h>
 #include <msgimpl.h>
-#include <mama/types.h>
 #include <queueimpl.h>
-#include <msgimpl.h>
 #include <subscriptionimpl.h>
 #include <transportimpl.h>
 #include <timers.h>

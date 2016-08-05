@@ -127,10 +127,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include=".sconf_temp\conftest_0.c" />
-    <ClCompile Include=".sconf_temp\conftest_1.c" />
-    <ClCompile Include="objects\dynamic-debug\endpointpool.c" />
-    <ClCompile Include="objects\dynamic\endpointpool.c" />
     <ClCompile Include="src\bridge.c" />
     <ClCompile Include="src\inbox.c" />
     <ClCompile Include="src\io.c" />
