@@ -54,34 +54,43 @@ the various transport options available and how to set them up.
 You can also use a forwarder as
 detailed [here](http://fquinner.github.io/2015/12/05/openmama-and-zeromq-fanout/).
 
-It's worth mentioning you can also override the following zmq socket settings
-directly as well if you find you need to by setting `mama.zmq.transport.<transportname>.<settingname>`
-where `settingname` is one of the list below, as defined by zeromq
-[in their documentation](http://api.zeromq.org/4-0:zmq-setsockopt):
+It's worth mentioning you can also override selected zmq socket settings
+directly as listed in the configuration table below.
 
-* zmq_sndhwm
-* zmq_rcvhwm
-* zmq_affinity
-* zmq_identity
-* zmq_sndbuf
-* zmq_rcvbuf
-* zmq_reconnect_ivl
-* zmq_reconnect_ivl_max
-* zmq_backlog
-* zmq_maxmsgsize
-* zmq_rcvtimeo
-* zmq_sndtimeo
-* zmq_rate
+You may set a configuration parameter by setting `mama.zmq.transport.<transportname>.<setting>`
+either programatically or through `mama.properties` where `setting` is one of the
+parameters listed below.
+
+|Configuration Setting|Brief Description|Default Value in Bridge|
+|---|---|---|
+|msg_pool_size|Number of elements to store in the transport's message pool|1024|
+|msg_node_size|Initial size of each memory node in the transport's message pool|4096
+|outgoing_url_0, outgoing_url_1 .. outgoing_url_N|Multiple URLs to send all publisher messages to including published data and subscription requests (see ZMQ URI documentation)|'tcp://\*:5557' if transport name is 'sub', 'tcp://*:5556' if transport name is 'pub'|
+|incoming_url_0, incoming_url_1 .. incoming_url_N|Multiple URLs to receive messages from including subscription data and replies (see ZMQ URI documentation)|'tcp://127.0.0.1:5556' if transport name is 'sub', 'tcp://127.0.0.1:5557' if transport name is 'pub'|
+|zmq_sndhwm|High watermark for outbound messages|0 (Unlimited)|
+|zmq_rcvhwm|High watermark for inbound messages|0 (Unlimited)|
+|zmq_identity|Socket identifier|NULL|
+|zmq_affinity|Set I/O thread affinity (bitmap)|0 (Unbinded)|
+|zmq_sndbuf|Kernel transmit buffer size|OS Default|
+|zmq_rcvbuf|Kernel receive buffer size|OS Default|
+|zmq_reconnect_ivl|Reconnection interval (milliseconds)|100|
+|zmq_reconnect_ivl_max|Maximum reconnection interval during exponential backoff policy|0 (Only use reconnection interval ad infinum)|
+|zmq_backlog|Maximum length of the queue of outstanding connections|100|
+|zmq_maxmsgsize|Maximum message size to be transferred|-1 (Unlimited)|
+|zmq_rcvtimeo|Maximum time before a recv operation returns with EAGAIN (milliseconds)|10|
+|zmq_sndtimeo|Maximum time before a send operation returns with EAGAIN (milliseconds)|-1 (Unlimited)|
+|zmq_rate|Maximum multicast data rate (kbps)|1,000,000|
 
 Note that any settings made here will apply to all sockets that are created
-by the transport.
+by the transport. For more details on the parameters beginning with `zmq_`, please
+refer to the [ZeroMW socket option documentation](http://api.zeromq.org/4-0:zmq-setsockopt).
 
 ## Payload Selection
 
 This middleware bridge uses the qpid payload bridge by default. If you want
 to use the omnm payload (less functionality but _much_ faster than qpid),
 you can have a look at [the omnm github page](https://github.com/fquinner/OpenMAMA-omnm) to find
-out how.
+to see what's involved.
 
 ## Build Instructions
 
