@@ -29,4 +29,4 @@ before_install:
 
 script:
  - cd $SOURCE_DIR
- - scons --with-mamasource=$MAMA_SOURCE --with-mamainstall=$MAMA_INSTALL
+ - cmake -DMAMA_SRC=$MAMA_SOURCE -DMAMA_ROOT=$MAMA_INSTALL .
