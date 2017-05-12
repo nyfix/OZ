@@ -30,3 +30,4 @@ before_install:
 script:
  - cd $SOURCE_DIR
  - cmake -DMAMA_SRC=$MAMA_SOURCE -DMAMA_ROOT=$MAMA_INSTALL .
+ - make install

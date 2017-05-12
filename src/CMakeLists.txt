@@ -66,6 +66,7 @@ elseif(UNIX)
                           wombatcommon
                           mama
                           zmq
+                          uuid
                           event)
     install(TARGETS mamazmqimpl${MAMA_LIB_SUFFIX} DESTINATION lib)
 endif()
