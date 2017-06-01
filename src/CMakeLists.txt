@@ -7,7 +7,7 @@ include_directories(${EVENT_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)
 
 link_directories(${MAMA_ROOT}/lib)
-link_directories(${ZMQ_ROOT}/lib)
+link_directories(${ZMQ_ROOT}/lib64)
 link_directories(${EVENT_ROOT}/lib)
 
 add_definitions(-DBRIDGE -DMAMA_DLL)
