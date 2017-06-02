@@ -89,7 +89,7 @@ typedef struct zmqTransportBridge_
     void*                   mZmqContext;
     void*                   mZmqSocketSubscriber;
     void*                   mZmqSocketPublisher;
-    void*                   mZmqSocketDispatcher;
+    //void*                   mZmqSocketDispatcher;
     const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
     const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
     const char*             mName;

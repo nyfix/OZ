@@ -274,7 +274,7 @@ zmqBridgeMamaTransport_destroy (transportBridge transport)
 
     status = zmqBridgeMamaTransportImpl_stop (impl);
 
-    zmq_close (impl->mZmqSocketDispatcher);
+    //zmq_close (impl->mZmqSocketDispatcher);
     zmq_close (impl->mZmqSocketPublisher);
     zmq_close (impl->mZmqSocketSubscriber);
 
@@ -856,7 +856,7 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
 mama_status zmqBridgeMamaTransportImpl_stop (zmqTransportBridge* impl)
 {
     /* There are two mechanisms by which we can stop the transport
-     * - Send a special message, which will be picked up by recv 
+     * - Send a special message, which will be picked up by recv
      *   For the instance when there is very little data flowing.
      * - Set the mIsDispatching variable in the transportBridge object to
      *   false, for instances when there is a lot of data flowing.
@@ -1062,7 +1062,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
     /*
      * Check if we should be still dispatching.
      * We shouldn't need to lock around this, as we're performing a simple value
-     * read - if it changes in the middle of the read, we don't actually care. 
+     * read - if it changes in the middle of the read, we don't actually care.
      */
     zmq_msg_t zmsg;
     zmq_msg_init (&zmsg);
