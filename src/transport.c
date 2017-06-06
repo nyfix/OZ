@@ -1105,7 +1105,6 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
             continue;
         }
 
-        /* Within this loop, queue callbacks release the pool messages */
         for (subInc = 0; subInc < subCount; subInc++)
         {
             subscription = (zmqSubscription*)subs[subInc];
@@ -1123,64 +1122,30 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
                           subject);
                 continue;
             }
-            /* If this isn't the last one in the list */
-            else if (subInc != (subCount - 1))
+
+            queueBridge queueImpl = (queueBridge) subscription->mZmqQueue;
+
+            /* Get the memory pool from the queue, creating if necessary */
+            memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure (queueImpl);
+            if (NULL == pool)
             {
-                // TODO: Handle multiple subscriptions per app like this
-                mama_log (MAMA_LOG_LEVEL_WARN,
-                          "zmqBridgeMamaTransportImpl_dispatchThread(): "
-                          "Cannot currently handle multiple subscribers in "
-                          "same application",
-                          subject);
-                //zmqBridgeMamaQueue_enqueueEvent (
-                //        (queueBridge) subscription->mZmqQueue,
-                //        zmqBridgeMamaTransportImpl_queueCallback,
-                //        NULL);
+                pool = memoryPool_create (impl->mMemoryPoolSize, impl->mMemoryNodeSize);
+                zmqBridgeMamaQueueImpl_setClosure (queueImpl, pool,
+                        zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
             }
-            /*
-             * If this is the last (or only) element and all copies are
-             * done, make use of the original message rather than copy.
-             */
-            else
-            {
-                queueBridge      queueImpl    = NULL;
-                memoryPool*      pool         = NULL;
-                memoryNode*      node         = NULL;
-                zmqTransportMsg* tmsg         = NULL;
-                size_t           memLength    = sizeof(zmqTransportMsg) +
-                                                     zmq_msg_size(&zmsg);
 
-                queueImpl = (queueBridge) subscription->mZmqQueue;
+            // allocate/populate zmqTransportMsg
+            memoryNode* node = memoryPool_getNode (pool, sizeof(zmqTransportMsg) + zmq_msg_size(&zmsg));
+            zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+            tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
+            tmsg->mNodeSize     = zmq_msg_size(&zmsg);
+            tmsg->mSubscription = subscription;
+            memcpy (tmsg->mNodeBuffer, zmq_msg_data(&zmsg),tmsg->mNodeSize);
 
-                /* Get the memory pool from the queue, creating if necessary */
-                pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure (queueImpl);
-                if (NULL == zmqBridgeMamaQueueImpl_getClosure (queueImpl))
-                {
-                    pool = memoryPool_create (impl->mMemoryPoolSize,
-                                              impl->mMemoryNodeSize);
-                    zmqBridgeMamaQueueImpl_setClosure (
-                            queueImpl,
-                            pool,
-                            zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
-                }
 
-                node = memoryPool_getNode (pool, memLength);
-
-                tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-
-                tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
-                tmsg->mNodeSize     = zmq_msg_size(&zmsg);
-                tmsg->mSubscription = subscription;
-
-                memcpy (tmsg->mNodeBuffer,
-                        zmq_msg_data(&zmsg),
-                        tmsg->mNodeSize);
-
-                zmqBridgeMamaQueue_enqueueEvent (
-                        (queueBridge) queueImpl,
-                        zmqBridgeMamaTransportImpl_queueCallback,
-                        (void*) node);
-            }
+            // callback (queued) will release the message
+            zmqBridgeMamaQueue_enqueueEvent ((queueBridge) queueImpl,
+                    zmqBridgeMamaTransportImpl_queueCallback, node);
         }
     }
 
