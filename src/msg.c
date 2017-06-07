@@ -123,9 +123,22 @@ zmqBridgeMamaMsg_isFromInbox (msgBridge msg)
 {
     if (NULL == msg)
     {
-        return -1;
+        return 0;
     }
-    if (ZMQ_MSG_INBOX_REQUEST == ((zmqBridgeMsgImpl*)msg)->mMsgType)
+
+
+    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
+    if (ZMQ_MSG_INBOX_REQUEST == (impl->mMsgType))
+    {
+        return 1;
+    }
+
+    if (impl->mReplyHandle.mInboxName[0] != '\0')
+    {
+        return 1;
+    }
+
+    if (impl->mReplyHandle.mReplyTo[0] != '\0')
     {
         return 1;
     }
