@@ -794,7 +794,7 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
     ZMQ_SET_SOCKET_OPTIONS (const char*,impl,IDENTITY,);
     ZMQ_SET_SOCKET_OPTIONS (int64_t,impl,MAXMSGSIZE,atoll);
 
-    for (i = 0; i < ZMQ_MAX_INCOMING_URIS; i++)
+    for (i = 0; i < ZMQ_MAX_OUTGOING_URIS; i++)
     {
         if (NULL == impl->mOutgoingAddress[i])
         {
@@ -815,7 +815,7 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
         }
     }
 
-    for (i = 0; i < ZMQ_MAX_OUTGOING_URIS; i++)
+    for (i = 0; i < ZMQ_MAX_INCOMING_URIS; i++)
     {
         if (NULL == impl->mIncomingAddress[i])
         {
