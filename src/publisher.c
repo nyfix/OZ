@@ -362,6 +362,8 @@ zmqBridgeMamaPublisher_sendReplyToInbox (publisherBridge   publisher,
         return status;
     }
 
+    mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaPublisher_sendReplyToInbox: Sent reply to %s", inboxSubject);
+
     /* Fire out the message to the inbox */
     return zmqBridgeMamaPublisher_send (publisher, reply);
 }
@@ -451,6 +453,9 @@ zmqBridgeMamaPublisher_sendReplyToInboxHandle (publisherBridge     publisher,
         return status;
     }
 
+
+    mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaPublisher_sendReplyToInboxHandle: Sent reply to %s", inboxSubject);
+
     /* Fire out the message to the inbox */
     return zmqBridgeMamaPublisher_send (publisher, reply);
 }
@@ -499,6 +504,8 @@ zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
                   mamaStatus_stringForStatus (status));
         return status;
     }
+
+     mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyAddr);
 
     return zmqBridgeMamaPublisher_send (publisher, msg);;
 }
