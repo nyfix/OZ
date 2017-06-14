@@ -252,7 +252,7 @@ zmqBridgeMamaPublisher_send (publisherBridge publisher, mamaMsg msg)
     zmqBridgeMamaMsgImpl_getPayloadSize (impl->mMamaBridgeMsg, &payloadSize);
 
     int i = zmq_send (impl->mTransport->mZmqSocketPublisher, buf, bufSize, 0);
-    mama_log (MAMA_LOG_LEVEL_FINER,
+    mama_log (MAMA_LOG_LEVEL_FINE,
               "zmqBridgeMamaPublisher_send(): "
               "Sending %lu bytes [payload=%lu; type=%d]",
               bufSize,
@@ -362,7 +362,7 @@ zmqBridgeMamaPublisher_sendReplyToInbox (publisherBridge   publisher,
         return status;
     }
 
-    mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaPublisher_sendReplyToInbox: Sent reply to %s", inboxSubject);
+    mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendReplyToInbox: Sent reply to %s", inboxSubject);
 
     /* Fire out the message to the inbox */
     return zmqBridgeMamaPublisher_send (publisher, reply);
@@ -454,7 +454,7 @@ zmqBridgeMamaPublisher_sendReplyToInboxHandle (publisherBridge     publisher,
     }
 
 
-    mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaPublisher_sendReplyToInboxHandle: Sent reply to %s", inboxSubject);
+    mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendReplyToInboxHandle: Sent reply to %s", inboxSubject);
 
     /* Fire out the message to the inbox */
     return zmqBridgeMamaPublisher_send (publisher, reply);
@@ -505,7 +505,7 @@ zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
         return status;
     }
 
-     mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyAddr);
+     mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyAddr);
 
     return zmqBridgeMamaPublisher_send (publisher, msg);;
 }

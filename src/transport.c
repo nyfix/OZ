@@ -1078,7 +1078,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
         // We just received a message if we got this far
         subject = (char*) zmq_msg_data (&zmsg);
 
-        mama_log (MAMA_LOG_LEVEL_WARN, "zmqBridgeMamaTransportImpl_dispatchThread: Got msg with subject %s", subject);
+        mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaTransportImpl_dispatchThread: Got msg with subject %s", subject);
 
         status = endpointPool_getRegistered (impl->mSubEndpoints,
                                              subject,
