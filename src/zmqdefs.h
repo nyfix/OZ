@@ -52,6 +52,17 @@ extern "C" {
 #define     ZMQ_MAX_INCOMING_URIS           64
 #define     ZMQ_MAX_OUTGOING_URIS           64
 
+#define     ZMQ_MSG_PROPERTY_LEN     1024
+
+
+typedef struct zmqBridgeMsgReplyHandle
+{
+    char                        mInboxName[ZMQ_MSG_PROPERTY_LEN];
+    char                        mReplyTo[ZMQ_MSG_PROPERTY_LEN];
+} zmqBridgeMsgReplyHandle;
+
+
+
 /* Message types */
 typedef enum zmqMsgType_
 {

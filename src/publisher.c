@@ -221,28 +221,7 @@ zmqBridgeMamaPublisher_send (publisherBridge publisher, mamaMsg msg)
         return MAMA_STATUS_NULL_ARG;
     }
 
-    /* Get the bridge message type if specified already by inbox handlers */
-    zmqBridgeMamaMsgImpl_getMsgType (impl->mMamaBridgeMsg, &type);
-
-    switch (type)
-    {
-    case ZMQ_MSG_INBOX_REQUEST:
-        /* Use the publisher's default send subject */
-        zmqBridgeMamaMsg_setSendSubject (impl->mMamaBridgeMsg,
-                                         impl->mSubject,
-                                         impl->mSource);
-        break;
-    case ZMQ_MSG_INBOX_RESPONSE:
-        /* The url should already be set for inbox responses as the replyTo */
-        zmqBridgeMamaMsgImpl_getDestination (impl->mMamaBridgeMsg, &url);
-        break;
-    default:
-        /* Use the publisher's default send subject */
-        zmqBridgeMamaMsg_setSendSubject (impl->mMamaBridgeMsg,
-                                         impl->mSubject,
-                                         impl->mSource);
-        break;
-    }
+    zmqBridgeMamaMsg_setSendSubject (impl->mMamaBridgeMsg, impl->mSubject, impl->mSource);
 
     void* buf = NULL;
     size_t bufSize = 0;
@@ -274,8 +253,6 @@ zmqBridgeMamaPublisher_sendReplyToInbox (publisherBridge   publisher,
 {
     zmqPublisherBridge*    impl            = (zmqPublisherBridge*) publisher;
     mamaMsg                requestMsg      = (mamaMsg) request;
-    const char*            inboxSubject    = NULL;
-    const char*            replyTo         = NULL;
     msgBridge              bridgeMsg       = NULL;
     mama_status            status          = MAMA_STATUS_OK;
 
@@ -283,14 +260,6 @@ zmqBridgeMamaPublisher_sendReplyToInbox (publisherBridge   publisher,
     {
         return MAMA_STATUS_NULL_ARG;
     }
-
-    /* Set properties for the outgoing bridge message */
-    zmqBridgeMamaMsgImpl_setMsgType (impl->mMamaBridgeMsg,
-                                     ZMQ_MSG_INBOX_RESPONSE);
-
-    /* Target is for MD subscriptions to respond to this particular topic */
-    zmqBridgeMamaMsgImpl_setTargetSubject (impl->mMamaBridgeMsg,
-                                           impl->mSubject);
 
     /* Get the incoming bridge message from the mamaMsg */
     status = mamaMsgImpl_getBridgeMsg (requestMsg, &bridgeMsg);
@@ -305,67 +274,18 @@ zmqBridgeMamaPublisher_sendReplyToInbox (publisherBridge   publisher,
     }
 
     /* Get properties from the incoming bridge message */
-    status = zmqBridgeMamaMsgImpl_getInboxName (bridgeMsg,
-                                                (char**) &inboxSubject);
+    zmqBridgeMsgReplyHandle* replyHandle = NULL;
+    status = zmqBridgeMamaMsg_duplicateReplyHandle (bridgeMsg, (void**) &replyHandle);
     if (MAMA_STATUS_OK != status)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaPublisher_sendReplyToInbox(): "
-                  "Could not get inbox name [%s]",
+                  "Could not get reply handle[%s]",
                   mamaStatus_stringForStatus (status));
         return status;
     }
 
-    status = zmqBridgeMamaMsgImpl_getReplyTo (bridgeMsg, (char**) &replyTo);
-    if (MAMA_STATUS_OK != status)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridgeMamaPublisher_sendReplyToInbox(): "
-                  "Could not get reply to [%s]",
-                  mamaStatus_stringForStatus (status));
-        return status;
-    }
-
-    if (NULL == inboxSubject)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridgeMamaPublisher_sendReplyToInbox(): "
-                  "No reply address specified - cannot respond to inbox %s.",
-                  inboxSubject);
-        return status;
-    }
-
-    /* Set the send subject to publish onto the inbox subject */
-    status = zmqBridgeMamaMsg_setSendSubject (impl->mMamaBridgeMsg,
-                                              inboxSubject,
-                                              impl->mSource);
-    if (MAMA_STATUS_OK != status)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridgeMamaPublisher_sendReplyToInbox(): "
-                  "Could not set send subject '%s' [%s]",
-                  inboxSubject,
-                  mamaStatus_stringForStatus (status));
-        return status;
-    }
-
-    /* Set the destination to the replyTo URL */
-    status = zmqBridgeMamaMsgImpl_setDestination (impl->mMamaBridgeMsg,
-                                                  replyTo);
-    if (MAMA_STATUS_OK != status)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridgeMamaPublisher_sendReplyToInbox(): "
-                  "Could not set destination '%s' [%s]",
-                  replyTo,
-                  mamaStatus_stringForStatus (status));
-        return status;
-    }
-
-    mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendReplyToInbox: Sent reply to %s", inboxSubject);
-
-    /* Fire out the message to the inbox */
-    return zmqBridgeMamaPublisher_send (publisher, reply);
+   return zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisher, replyHandle, reply);
 }
 
 mama_status
@@ -374,7 +294,7 @@ zmqBridgeMamaPublisher_sendReplyToInboxHandle (publisherBridge     publisher,
                                                mamaMsg             reply)
 {
     zmqPublisherBridge*       impl           = (zmqPublisherBridge*) publisher;
-    const char*               inboxSubject   = NULL;
+    const char*               inboxName      = NULL;
     const char*               replyTo        = NULL;
     mama_status               status         = MAMA_STATUS_OK;
 
@@ -387,14 +307,10 @@ zmqBridgeMamaPublisher_sendReplyToInboxHandle (publisherBridge     publisher,
     zmqBridgeMamaMsgImpl_setMsgType (impl->mMamaBridgeMsg,
                                      ZMQ_MSG_INBOX_RESPONSE);
 
-    /* Target is for MD subscriptions to respond to this particular topic */
-    zmqBridgeMamaMsgImpl_setTargetSubject (impl->mMamaBridgeMsg,
-                                           impl->mSubject);
-
     /* Get properties from the incoming bridge message */
     status = zmqBridgeMamaMsgReplyHandleImpl_getInboxName (
                      inbox,
-                     (char**) &inboxSubject);
+                     (char**) &inboxName);
     if (MAMA_STATUS_OK != status)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
@@ -417,44 +333,55 @@ zmqBridgeMamaPublisher_sendReplyToInboxHandle (publisherBridge     publisher,
     }
 
 
-    if (NULL == inboxSubject || NULL == replyTo)
+    if (NULL == inboxName || NULL == replyTo)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaPublisher_sendReplyToInboxHandle(): "
                   "No reply address specified - cannot respond to inbox %s.",
-                  inboxSubject);
+                  inboxName);
         return status;
     }
 
     /* Set the send subject to publish onto the inbox subject */
     status = zmqBridgeMamaMsg_setSendSubject (impl->mMamaBridgeMsg,
-                                              inboxSubject,
+                                              replyTo,
                                               impl->mSource);
     if (MAMA_STATUS_OK != status)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaPublisher_sendReplyToInboxHandle(): "
                   "Could not set send subject '%s' [%s]",
-                  inboxSubject,
-                  mamaStatus_stringForStatus (status));
-        return status;
-    }
-
-    /* Set the destination to the replyTo URL */
-    status = zmqBridgeMamaMsgImpl_setDestination (impl->mMamaBridgeMsg,
-                                                  replyTo);
-    if (MAMA_STATUS_OK != status)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridgeMamaPublisher_sendReplyToInboxHandle(): "
-                  "Could not set destination '%s' [%s]",
                   replyTo,
                   mamaStatus_stringForStatus (status));
         return status;
     }
 
+    /* Set inboxName and replyTo so they will be serialized along with the rest of the message */
+    status = zmqBridgeMamaMsgImpl_setReplyTo (impl->mMamaBridgeMsg,
+                                              replyTo);
+    if (MAMA_STATUS_OK != status)
+    {
+        mama_log (MAMA_LOG_LEVEL_ERROR,
+                  "zmqBridgeMamaPublisher_sendReplyToInboxHandle(): "
+                  "Could not set send replyTo '%s' [%s]",
+                  replyTo,
+                  mamaStatus_stringForStatus (status));
+        return status;
+    }
 
-    mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendReplyToInboxHandle: Sent reply to %s", inboxSubject);
+    status = zmqBridgeMamaMsgImpl_setInboxName (impl->mMamaBridgeMsg,
+                                              inboxName);
+    if (MAMA_STATUS_OK != status)
+    {
+        mama_log (MAMA_LOG_LEVEL_ERROR,
+                  "zmqBridgeMamaPublisher_sendReplyToInboxHandle(): "
+                  "Could not set send inbox name '%s' [%s]",
+                  inboxName,
+                  mamaStatus_stringForStatus (status));
+        return status;
+    }
+
+    mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendReplyToInboxHandle: Sent reply to %s for inbox", replyTo, inboxName);
 
     /* Fire out the message to the inbox */
     return zmqBridgeMamaPublisher_send (publisher, reply);
@@ -467,10 +394,10 @@ zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
                                              mamaInbox         inbox,
                                              mamaMsg           msg)
 {
-    zmqPublisherBridge*    impl        = (zmqPublisherBridge*) publisher;
-    const char*             replyAddr   = NULL;
-    inboxBridge             inboxImpl   = NULL;
-    mama_status             status      = MAMA_STATUS_OK;
+    zmqPublisherBridge*      impl        = (zmqPublisherBridge*) publisher;
+    zmqBridgeMsgReplyHandle* replyHandle = NULL;
+    inboxBridge              inboxImpl   = NULL;
+    mama_status              status      = MAMA_STATUS_OK;
 
     if (NULL == impl || NULL == inbox || NULL == msg)
     {
@@ -479,7 +406,7 @@ zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
 
     /* Get the inbox which you want the publisher to respond to */
     inboxImpl = mamaInboxImpl_getInboxBridge (inbox);
-    replyAddr = zmqBridgeMamaInboxImpl_getReplySubject (inboxImpl);
+    replyHandle = zmqBridgeMamaInboxImpl_getReplyHandle (inboxImpl);
 
     /* Mark this as being a request from an inbox */
     status = zmqBridgeMamaMsgImpl_setMsgType (impl->mMamaBridgeMsg,
@@ -494,8 +421,8 @@ zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
     }
 
     /* Update meta data in outgoing message to reflect the inbox name */
-    zmqBridgeMamaMsgImpl_setInboxName (impl->mMamaBridgeMsg,
-                                       replyAddr);
+    status = zmqBridgeMamaMsgImpl_setInboxName (impl->mMamaBridgeMsg,
+                                       replyHandle->mInboxName);
     if (MAMA_STATUS_OK != status)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
@@ -504,8 +431,18 @@ zmqBridgeMamaPublisher_sendFromInboxByIndex (publisherBridge   publisher,
                   mamaStatus_stringForStatus (status));
         return status;
     }
+    status = zmqBridgeMamaMsgImpl_setReplyTo (impl->mMamaBridgeMsg,
+                                       replyHandle->mReplyTo);
+    if (MAMA_STATUS_OK != status)
+    {
+        mama_log (MAMA_LOG_LEVEL_ERROR,
+                  "zmqBridgeMamaPublisher_sendFromInboxByIndex(): "
+                  "Failed to set reply to  [%s]",
+                  mamaStatus_stringForStatus (status));
+        return status;
+    }
 
-     mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyAddr);
+    mama_log (MAMA_LOG_LEVEL_FINE, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s with reply %s", replyHandle->mInboxName, replyHandle->mReplyTo);
 
     return zmqBridgeMamaPublisher_send (publisher, msg);;
 }

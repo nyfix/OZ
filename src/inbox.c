@@ -48,13 +48,13 @@
 
 typedef struct zmqInboxImpl
 {
-    char                            mInbox[MAX_SUBJECT_LENGTH];
     mamaSubscription                mSubscription;
     void*                           mClosure;
     mamaInboxMsgCallback            mMsgCB;
     mamaInboxErrorCallback          mErrCB;
     mamaInboxDestroyCallback        mOnInboxDestroyed;
     mamaInbox                       mParent;
+    zmqBridgeMsgReplyHandle         mReplyHandle;
 } zmqInboxImpl;
 
 /*=========================================================================
@@ -194,9 +194,9 @@ zmqBridgeMamaInbox_createByIndex   (inboxBridge*             bridge,
     wUuid_generate_time     (tempUuid);
     wUuid_unparse           (tempUuid, uuidStringBuffer);
 
-    /* Create the unique topic name allocated to this inbox */
-    snprintf (impl->mInbox,
-              sizeof (impl->mInbox) - 1,
+    /* Create the unique name allocated to this inbox */
+    snprintf (impl->mReplyHandle.mInboxName,
+              sizeof (impl->mReplyHandle.mInboxName) - 1,
               "_INBOX.%s",
               uuidStringBuffer);
 
@@ -218,12 +218,17 @@ zmqBridgeMamaInbox_createByIndex   (inboxBridge*             bridge,
     impl->mParent           = parent;
     impl->mOnInboxDestroyed = onInboxDestroyed;
 
+   // TODO: factor this out to one-time
+   char host[MAXHOSTNAMELEN + 1] = {0};
+   gethostname(host, MAXHOSTNAMELEN);
+   snprintf(impl->mReplyHandle.mReplyTo, sizeof(impl->mReplyHandle.mReplyTo) -1, "_INBOX.%s.%05d", host, getpid());
+
     /* Subscribe to the inbox topic name */
     status = mamaSubscription_createBasic (impl->mSubscription,
                                            transport,
                                            queue,
                                            &cb,
-                                           impl->mInbox,
+                                           impl->mReplyHandle.mReplyTo,
                                            impl);
     if (MAMA_STATUS_OK != status)
     {
@@ -248,9 +253,7 @@ zmqBridgeMamaInbox_destroy (inboxBridge inbox)
 
     if (NULL != impl)
     {
-        mamaSubscription_destroy    (impl->mSubscription);
-        mamaSubscription_deallocate (impl->mSubscription);
-        free (impl);
+        mamaSubscription_destroyEx  (impl->mSubscription);
     }
     else
     {
@@ -264,15 +267,15 @@ zmqBridgeMamaInbox_destroy (inboxBridge inbox)
   =                  Public implementation functions                      =
   =========================================================================*/
 
-const char*
-zmqBridgeMamaInboxImpl_getReplySubject (inboxBridge inbox)
+zmqBridgeMsgReplyHandle*
+zmqBridgeMamaInboxImpl_getReplyHandle (inboxBridge inbox)
 {
     zmqInboxImpl* impl = (zmqInboxImpl*) inbox;
     if (NULL == impl)
     {
         return NULL;
     }
-    return impl->mInbox;
+    return &impl->mReplyHandle;
 }
 
 
@@ -293,6 +296,14 @@ zmqBridgeMamaInboxImpl_onMsg (mamaSubscription    subscription,
         return;
     }
 
+   // is this our reply?
+   msgBridge tmp;
+   mamaMsgImpl_getBridgeMsg(msg, &tmp);
+   char* inboxName;
+   zmqBridgeMamaMsgImpl_getInboxName(tmp, &inboxName);
+   if (strcmp(inboxName, impl->mReplyHandle.mInboxName) != 0)
+      return;
+
     /* If a message callback is defined, call it */
     if (NULL != impl->mMsgCB)
     {
@@ -307,23 +318,28 @@ zmqBridgeMamaInboxImpl_onCreate (mamaSubscription    subscription,
 {
 }
 
-/* Calls the implementation's destroy callback on execution */
+/*
+   Calls the implementation's destroy callback on execution
+   Also deallocates the subscription and frees the inbox impl
+*/
 static void MAMACALLTYPE
 zmqBridgeMamaInboxImpl_onDestroy (mamaSubscription    subscription,
                                   void*               closure)
 {
     /* The closure provided is the zmq inbox implementation */
     zmqInboxImpl* impl = (zmqInboxImpl*) closure;
-    if (NULL == impl)
+    if (NULL != impl)
     {
-        return;
+       /* Call the zmq inbox destroy callback if defined */
+       if (NULL != impl->mOnInboxDestroyed)
+       {
+           (impl->mOnInboxDestroyed)(impl->mParent, impl->mClosure);
+       }
+
+       free (impl);
     }
 
-    /* Call the zmq inbox destroy callback if defined */
-    if (NULL != impl->mOnInboxDestroyed)
-    {
-        (impl->mOnInboxDestroyed)(impl->mParent, impl->mClosure);
-    }
+    mamaSubscription_deallocate (subscription);
 }
 
 /* Calls the implementation's error callback on execution */
@@ -347,5 +363,3 @@ zmqBridgeMamaInboxImpl_onError (mamaSubscription    subscription,
         (impl->mErrCB)(status, impl->mClosure);
     }
 }
-
-

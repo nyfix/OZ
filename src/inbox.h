@@ -49,8 +49,8 @@ extern "C" {
  *
  * @return const char* containing the subject on which to reply.
  */
-const char*
-zmqBridgeMamaInboxImpl_getReplySubject (inboxBridge inbox);
+zmqBridgeMsgReplyHandle*
+zmqBridgeMamaInboxImpl_getReplyHandle (inboxBridge inbox);
 
 
 #if defined(__cplusplus)

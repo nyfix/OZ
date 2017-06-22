@@ -911,6 +911,17 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
         return;
     }
 
+    // It *appears* that the subscription is valid even after its mTransport member is set to NULL,
+    // so do this test first to avoid a SEGV dereferencing impl->mSubEndpoints below
+    /* Make sure that the subscription is processing messages */
+    if (1 != subscription->mIsNotMuted)
+    {
+        mama_log (MAMA_LOG_LEVEL_ERROR,
+                  "zmqBridgeMamaTransportImpl_queueCallback(): "
+                  "Skipping update - subscription %p is muted.", subscription);
+        goto exit;
+    }
+
     if (0 == endpointPool_isRegistedByContent (impl->mSubEndpoints,
                                                subject,
                                                subscription))
@@ -918,16 +929,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "Subscriber has been unregistered since msg was enqueued.");
-        return;
-    }
-
-    /* Make sure that the subscription is processing messages */
-    if (1 != subscription->mIsNotMuted)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridgeMamaTransportImpl_queueCallback(): "
-                  "Skipping update - subscription %p is muted.", subscription);
-        return;
+        goto exit;
     }
 
     /* This is the reuseable message stored on the associated MamaQueue */
@@ -937,7 +939,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "Could not get cached mamaMsg from event queue.");
-        return;
+        goto exit;
     }
 
     /* Get the bridge message from the mamaMsg */
@@ -948,7 +950,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "Could not get bridge message from cached "
                   "queue mamaMsg [%s]", mamaStatus_stringForStatus (status));
-        return;
+        goto exit;
     }
 
     /* Unpack this bridge message into a MAMA msg implementation */
@@ -973,9 +975,9 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
         }
     }
 
+exit:
+    // Return the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
     mamaQueue_getNativeHandle (queue, (void**)&queueImpl);
-
-    // Return the memory node to the pool
     pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure ((queueBridge) queueImpl);
     memoryPool_returnNode (pool, node);
 
@@ -1099,7 +1101,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
 
         if (0 == subCount)
         {
-            mama_log (MAMA_LOG_LEVEL_FINEST,
+            mama_log (MAMA_LOG_LEVEL_WARN,
                       "zmqBridgeMamaTransportImpl_dispatchThread(): "
                       "discarding uninteresting message "
                       "for symbol %s", subject);
@@ -1136,6 +1138,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
                         zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
             }
 
+            // TODO: can/should move following to zmqBridgeMamaTransportImpl_queueCallback?
             // allocate/populate zmqTransportMsg
             memoryNode* node = memoryPool_getNode (pool, sizeof(zmqTransportMsg) + zmq_msg_size(&zmsg));
             zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;

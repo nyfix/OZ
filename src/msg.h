@@ -135,47 +135,6 @@ zmqBridgeMamaMsgImpl_getReplyTo              (msgBridge    msg,
                                               char**       value);
 
 /**
- * This will set the bridge's target subject according to the value provided.
- * Note that the target subject is used in initial message responses to allow
- * the listener to determine which symbol this initial is in reference to.
- *
- * @param msg    The bridge message to update.
- * @param type   The new target subject.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_setTargetSubject        (msgBridge    msg,
-                                              const char*  value);
-
-/**
- * This will get the bridge's target subject. Note that the target subject is
- * used in initial message responses to allow the listener to determine which
- * symbol this initial is in reference to.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with the value of the target subject.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_getTargetSubject        (msgBridge    msg,
-                                              char**       value);
-
-/**
- * This will set the bridge's destination according to the value provided.
- * This is the URL to send the message to.
- *
- * @param msg    The bridge message to update.
- * @param type   The new destination url (e.g. amqp://x.x.x.x/LISTENER).
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_setDestination          (msgBridge    msg,
-                                              const char*  value);
-
-/**
  * This will get the payload size of the last serialized message
  *
  * @param msg    The bridge message to query.
@@ -187,18 +146,6 @@ mama_status
 zmqBridgeMamaMsgImpl_getPayloadSize          (msgBridge   msg,
                                               size_t*     size);
 
-/**
- * This will get the bridge's destination. This is the URL to send the message
- * to.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with the value of the destination URL.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_getDestination          (msgBridge    msg,
-                                              char**       value);
 
 /**
  * This will get the bridge's send subject which is currently the topic name.
