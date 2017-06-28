@@ -152,31 +152,19 @@ zmqBridgeMamaMsg_destroy (msgBridge msg, int destroyMsg)
 mama_status
 zmqBridgeMamaMsg_destroyMiddlewareMsg (msgBridge msg)
 {
-    /*
-     * The bridge message is never responsible for the memory associated with
-     * the underlying middleware message (it's owned by publishers and
-     * transports) so no need to do anything here
-     */
-    if (NULL == msg)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
-    return MAMA_STATUS_OK;
+   return zmqBridgeMamaMsg_destroy(msg, 1);
 }
 
 mama_status
 zmqBridgeMamaMsg_detach (msgBridge msg)
 {
-    /*
-     * The bridge message is never responsible for the memory associated with
-     * the underlying middleware message (it's owned by publishers and
-     * transports) so no need to do anything here
-     */
     if (NULL == msg)
     {
         return MAMA_STATUS_NULL_ARG;
     }
-    return MAMA_STATUS_OK;
+
+    zmqBridgeMsgImpl*  impl = (zmqBridgeMsgImpl*) msg;
+    return mamaMsgImpl_setMessageOwner(impl->mParent, 1);
 }
 
 mama_status
@@ -688,19 +676,11 @@ zmqBridgeMamaMsgImpl_deserialize (msgBridge        msg,
               impl->mMsgType);
 
     mama_status status;
-    // if the message already has a payload, we need to destroy the old one before
-    // replacing it
-    // to do that, we force msg's owner flag to 1 prior to calling setMsgBuffer
-    // (setMsgBuffer sets the owner flag to 0)
 
     status = mamaMsgImpl_setMsgBuffer (target,
                                        (void*) bufferPos,
                                        payloadSize,
                                        *bufferPos);
-
-    // let's not forget metadata
-       // resolves to zmqBridgeMamaMsgImpl_setReplyHandle(), which copies its input params,
-       // so no need to worry about lifetimes here
 
     return status;
 }
@@ -730,3 +710,4 @@ mama_status zmqBridgeMamaMsgImpl_setStringValue (char*         dest,
     }
     return MAMA_STATUS_OK;
 }
+
