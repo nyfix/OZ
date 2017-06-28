@@ -916,7 +916,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     /* Make sure that the subscription is processing messages */
     if (1 != subscription->mIsNotMuted)
     {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
+        mama_log (MAMA_LOG_LEVEL_WARN,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "Skipping update - subscription %p is muted.", subscription);
         goto exit;
@@ -926,7 +926,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
                                                subject,
                                                subscription))
     {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
+        mama_log (MAMA_LOG_LEVEL_WARN,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "Subscriber has been unregistered since msg was enqueued.");
         goto exit;
@@ -1120,7 +1120,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
 
             if (1 != subscription->mIsNotMuted)
             {
-                mama_log (MAMA_LOG_LEVEL_FINEST,
+                mama_log (MAMA_LOG_LEVEL_WARN,
                           "zmqBridgeMamaTransportImpl_dispatchThread(): "
                           "muted - not queueing update for symbol %s",
                           subject);
