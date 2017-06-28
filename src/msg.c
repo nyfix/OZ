@@ -687,10 +687,23 @@ zmqBridgeMamaMsgImpl_deserialize (msgBridge        msg,
               payloadSize,
               impl->mMsgType);
 
-    mama_status status = mamaMsgImpl_setMsgBuffer (target,
-                                                   (void*) bufferPos,
-                                                   payloadSize,
-                                                   *bufferPos);
+    mama_status status;
+#if 0
+    // if the message already has a payload, we need to destroy the old one before
+    // replacing it
+    // to do that, we force msg's owner flag to 1 prior to calling setMsgBuffer
+    // (setMsgBuffer sets the owner flag to 0)
+    msgPayload payload = NULL;
+    status = mamaMsgImpl_getPayload(impl->mParent, &payload);
+    if (payload != NULL) {
+       mamaMsgImpl_setMessageOwner(impl->mParent, 1);
+    }
+#endif
+
+    status = mamaMsgImpl_setMsgBuffer (target,
+                                       (void*) bufferPos,
+                                       payloadSize,
+                                       *bufferPos);
 
     #if 0
     // let's not forget metadata
