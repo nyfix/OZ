@@ -335,3 +335,46 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey (const char*  root,
         return MAMA_STATUS_OK;
     }
 }
+
+
+mama_status
+zmqBridgeMamaSubscriptionImpl_deactivate (subscriptionBridge subscriber)
+{
+    if (NULL == subscriber)
+    {
+        return MAMA_STATUS_NULL_ARG;
+    }
+
+    zmqSubscription* impl = (zmqSubscription*) subscriber;
+    zmqTransportBridge* transportBridge = impl->mTransport;
+    if (NULL == transportBridge || NULL == transportBridge->mSubEndpoints
+        || NULL == impl->mSubjectKey)
+    {
+       return MAMA_STATUS_NULL_ARG;
+    }
+
+    // zmq sockets are not thread-safe
+    #if 0
+    // NOTE: zmq filters are reference-counted?
+    /* un-subscribe to the topic */
+    zmq_setsockopt (transportBridge->mZmqSocketSubscriber,
+                    ZMQ_UNSUBSCRIBE,
+                    impl->mSubjectKey,
+                    strlen (impl->mSubjectKey));
+
+    mama_log (MAMA_LOG_LEVEL_FINEST,
+              "zmqBridgeMamaSubscriptionImpl_deactivate(): "
+              "deleted interest for %s.",
+              impl->mSubjectKey);
+    #endif
+
+    /* Remove the subscription from the transport's subscription pool. */
+    endpointPool_unregister (transportBridge->mSubEndpoints,
+                             impl->mSubjectKey,
+                             impl->mEndpointIdentifier);
+
+    /* Mark this subscription as invalid */
+    impl->mIsValid = 0;
+
+    return MAMA_STATUS_OK;
+}

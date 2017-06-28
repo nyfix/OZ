@@ -34,6 +34,9 @@
 #include "inbox.h"
 #include "zmqbridgefunctions.h"
 
+extern subscriptionBridge
+mamaSubscription_getSubscriptionBridge(
+    mamaSubscription subscription);
 
 /*=========================================================================
   =                              Macros                                   =
@@ -250,15 +253,34 @@ mama_status
 zmqBridgeMamaInbox_destroy (inboxBridge inbox)
 {
     zmqInboxImpl* impl = (zmqInboxImpl*) inbox;
-
-    if (NULL != impl)
-    {
-        mamaSubscription_destroyEx  (impl->mSubscription);
-    }
-    else
+    if (NULL == impl)
     {
         return MAMA_STATUS_NULL_ARG;
     }
+
+    mama_status status;
+
+    // immediately stop the subscription
+    subscriptionBridge subBridge = mamaSubscription_getSubscriptionBridge(impl->mSubscription);
+    status = zmqBridgeMamaSubscriptionImpl_deactivate(subBridge);
+    if (MAMA_STATUS_OK != status)
+    {
+       mama_log (MAMA_LOG_LEVEL_ERROR,
+                 "zmqBridgeMamaSubscriptionImpl_deactivate(): "
+                 "Failed to deactivate subscription ");
+       return status;
+    }
+
+    // queue up the destroy
+    status = mamaSubscription_destroyEx (impl->mSubscription);
+    if (MAMA_STATUS_OK != status)
+    {
+       mama_log (MAMA_LOG_LEVEL_ERROR,
+                 "mamaSubscription_destroyEx(): "
+                 "Failed ");
+       return status;
+    }
+
     return MAMA_STATUS_OK;
 }
 
