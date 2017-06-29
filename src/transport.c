@@ -898,17 +898,22 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     uint32_t              bufferSize      = tmsg->mNodeSize;
     const void*           buffer          = tmsg->mNodeBuffer;
     const char*           subject         = (char*)buffer;
-    zmqSubscription*      subscription    = (zmqSubscription*) tmsg->mSubscription;
-    zmqTransportBridge*   impl            = subscription->mTransport;
+    //zmqSubscription*      subscription    = (zmqSubscription*) tmsg->mSubscription;
     zmqQueueBridge*       queueImpl       = NULL;
+
+
+    // find the subscription based on its identifier
+    zmqSubscription* subscription = NULL;
+    endpointPool_getEndpointByIdentifiers(tmsg->mSubEndpoints, subject,
+        tmsg->mEndpointIdentifier, (endpoint_t*) &subscription);
 
     /* Can't do anything without a subscriber */
     if (NULL == subscription)
     {
         mama_log (MAMA_LOG_LEVEL_ERROR,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
-                  "Called with NULL subscriber (destroyed?)");
-        return;
+                  "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
+        goto exit;
     }
 
     // It *appears* that the subscription is valid even after its mTransport member is set to NULL,
@@ -919,16 +924,6 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
         mama_log (MAMA_LOG_LEVEL_WARN,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "Skipping update - subscription %p is muted.", subscription);
-        goto exit;
-    }
-
-    if (0 == endpointPool_isRegistedByContent (impl->mSubEndpoints,
-                                               subject,
-                                               subscription))
-    {
-        mama_log (MAMA_LOG_LEVEL_WARN,
-                  "zmqBridgeMamaTransportImpl_queueCallback(): "
-                  "Subscriber has been unregistered since msg was enqueued.");
         goto exit;
     }
 
@@ -976,6 +971,8 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     }
 
 exit:
+   free(tmsg->mEndpointIdentifier);
+
     // Return the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
     mamaQueue_getNativeHandle (queue, (void**)&queueImpl);
     pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure ((queueBridge) queueImpl);
@@ -1144,9 +1141,10 @@ void* zmqBridgeMamaTransportImpl_dispatchThread (void* closure)
             zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
             tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
             tmsg->mNodeSize     = zmq_msg_size(&zmsg);
-            tmsg->mSubscription = subscription;
+            //tmsg->mSubscription = subscription;
+            tmsg->mSubEndpoints = impl->mSubEndpoints;
+            tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
             memcpy (tmsg->mNodeBuffer, zmq_msg_data(&zmsg),tmsg->mNodeSize);
-
 
             // callback (queued) will release the message
             zmqBridgeMamaQueue_enqueueEvent ((queueBridge) queueImpl,

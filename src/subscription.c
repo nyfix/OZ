@@ -375,6 +375,7 @@ zmqBridgeMamaSubscriptionImpl_deactivate (subscriptionBridge subscriber)
 
     /* Mark this subscription as invalid */
     impl->mIsValid = 0;
+    impl->mIsNotMuted = 0;
 
     return MAMA_STATUS_OK;
 }

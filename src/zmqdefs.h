@@ -134,7 +134,9 @@ typedef struct zmqTransportMsg_
 {
     size_t                  mNodeSize;
     size_t                  mNodeCapacity;
-    zmqSubscription*        mSubscription;
+    endpointPool_t          mSubEndpoints;
+    char*                   mEndpointIdentifier;
+//    zmqSubscription*        mSubscription;
     uint8_t*                mNodeBuffer;
 } zmqTransportMsg;
 
