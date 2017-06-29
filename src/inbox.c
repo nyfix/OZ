@@ -221,10 +221,14 @@ zmqBridgeMamaInbox_createByIndex   (inboxBridge*             bridge,
     impl->mParent           = parent;
     impl->mOnInboxDestroyed = onInboxDestroyed;
 
-   // TODO: factor this out to one-time
-   char host[MAXHOSTNAMELEN + 1] = {0};
-   gethostname(host, MAXHOSTNAMELEN);
-   snprintf(impl->mReplyHandle.mReplyTo, sizeof(impl->mReplyHandle.mReplyTo) -1, "_INBOX.%s.%05d", host, getpid());
+    // TODO: make this thread-safe
+    static char replyTo[ZMQ_MSG_PROPERTY_LEN] = "";
+    if (strlen(replyTo) == 0) {
+       char host[MAXHOSTNAMELEN + 1] = {0};
+       gethostname(host, MAXHOSTNAMELEN);
+       snprintf(replyTo, sizeof(replyTo) -1, "_INBOX.%s.%05d", host, getpid());
+    }
+    strcpy(impl->mReplyHandle.mReplyTo, replyTo);
 
     /* Subscribe to the inbox topic name */
     status = mamaSubscription_createBasic (impl->mSubscription,

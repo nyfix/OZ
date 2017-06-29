@@ -910,7 +910,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     /* Can't do anything without a subscriber */
     if (NULL == subscription)
     {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
+        mama_log (MAMA_LOG_LEVEL_FINE,
                   "zmqBridgeMamaTransportImpl_queueCallback(): "
                   "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
         goto exit;
