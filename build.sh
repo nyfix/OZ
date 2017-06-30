@@ -1,7 +1,7 @@
 #!/bin/bash -x
 
 PACKAGE=OpenMAMA-zmq
-VERSION=master
+VERSION=nyfix
 REPO=OpenMAMA-zmq
 
 # get cmd line params
