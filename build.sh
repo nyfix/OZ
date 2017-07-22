@@ -2,7 +2,6 @@
 
 PACKAGE=OpenMAMA-zmq
 VERSION=nyfix
-REPO=OpenMAMA-zmq
 
 # get cmd line params
 VERBOSE=""
