@@ -274,7 +274,7 @@ zmqBridgeMamaTransport_destroy (transportBridge transport)
 
     status = zmqBridgeMamaTransportImpl_stop (impl);
 
-    //zmq_close (impl->mZmqSocketDispatcher);
+
     zmq_close (impl->mZmqSocketPublisher);
     zmq_close (impl->mZmqSocketSubscriber);
 
@@ -898,7 +898,6 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
     uint32_t              bufferSize      = tmsg->mNodeSize;
     const void*           buffer          = tmsg->mNodeBuffer;
     const char*           subject         = (char*)buffer;
-    //zmqSubscription*      subscription    = (zmqSubscription*) tmsg->mSubscription;
     zmqQueueBridge*       queueImpl       = NULL;
 
 
@@ -973,7 +972,7 @@ zmqBridgeMamaTransportImpl_queueCallback (mamaQueue queue, void* closure)
 exit:
    free(tmsg->mEndpointIdentifier);
 
-    // Return the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
+    // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
     mamaQueue_getNativeHandle (queue, (void**)&queueImpl);
     pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure ((queueBridge) queueImpl);
     memoryPool_returnNode (pool, node);

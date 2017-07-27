@@ -100,7 +100,7 @@ typedef struct zmqTransportBridge_
     void*                   mZmqContext;
     void*                   mZmqSocketSubscriber;
     void*                   mZmqSocketPublisher;
-    //void*                   mZmqSocketDispatcher;
+
     const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
     const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
     const char*             mName;
@@ -136,7 +136,6 @@ typedef struct zmqTransportMsg_
     size_t                  mNodeCapacity;
     endpointPool_t          mSubEndpoints;
     char*                   mEndpointIdentifier;
-//    zmqSubscription*        mSubscription;
     uint8_t*                mNodeBuffer;
 } zmqTransportMsg;
 
