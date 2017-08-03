@@ -745,6 +745,10 @@ zmqBridgeMamaTransportImpl_setupSocket (void* socket, const char* uri, zmqTransp
                       uri,
                       strerror(errno));
         }
+
+
+
+
         return rc;
     }
     else
@@ -777,8 +781,14 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
 
 
     impl->mZmqContext = zmq_ctx_new ();
+
+    #ifdef USE_XSUB
+    impl->mZmqSocketSubscriber = zmq_socket (impl->mZmqContext, ZMQ_XSUB);
+    impl->mZmqSocketPublisher  = zmq_socket (impl->mZmqContext, ZMQ_XPUB);
+    #else
     impl->mZmqSocketSubscriber = zmq_socket (impl->mZmqContext, ZMQ_SUB);
     impl->mZmqSocketPublisher  = zmq_socket (impl->mZmqContext, ZMQ_PUB);
+    #endif
 
     ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDHWM,atoi);
     ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVHWM,atoi);

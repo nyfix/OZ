@@ -42,6 +42,9 @@
 #include <zmq.h>
 #include <errno.h>
 
+void zmqBridgeMamaSubscriptionImpl_subscribe (void* socket, char* topic);
+void zmqBridgeMamaSubscriptionImpl_unsubscribe (void* socket, char* topic);
+
 
 /*=========================================================================
   =               Public interface implementation functions               =
@@ -112,11 +115,9 @@ zmqBridgeMamaSubscription_create (subscriptionBridge* subscriber,
     zmqBridgeMamaMsgImpl_setMsgType (transport->mMsg,
                                      ZMQ_MSG_SUB_REQUEST);
 
+
     /* subscribe to the topic */
-    zmq_setsockopt (transport->mZmqSocketSubscriber,
-                    ZMQ_SUBSCRIBE,
-                    impl->mSubjectKey,
-                    strlen (impl->mSubjectKey));
+    zmqBridgeMamaSubscriptionImpl_subscribe(transport->mZmqSocketSubscriber, impl->mSubjectKey);
 
     mama_log (MAMA_LOG_LEVEL_FINEST,
               "zmqBridgeMamaSubscription_create(): "
@@ -353,7 +354,8 @@ zmqBridgeMamaSubscriptionImpl_deactivate (subscriptionBridge subscriber)
        return MAMA_STATUS_NULL_ARG;
     }
 
-    // zmq sockets are not thread-safe
+    // zmq sockets are not thread-safe (?!)
+    zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey);
     #if 0
     // NOTE: zmq filters are reference-counted?
     /* un-subscribe to the topic */
@@ -378,4 +380,30 @@ zmqBridgeMamaSubscriptionImpl_deactivate (subscriptionBridge subscriber)
     impl->mIsNotMuted = 0;
 
     return MAMA_STATUS_OK;
+}
+
+void
+zmqBridgeMamaSubscriptionImpl_subscribe (void* socket, char* topic)
+{
+   #ifdef USE_XSUB
+   char buf[MAX_SUBJECT_LENGTH +1];
+   memset(buf, '\1', sizeof(buf));
+   memcpy(&buf[1], topic, strlen (topic));
+   int i = zmq_send (socket, buf, strlen (topic) +1, 0);
+   #else
+   zmq_setsockopt (socket, ZMQ_SUBSCRIBE, topic, strlen(topic));
+   #endif
+}
+
+void
+zmqBridgeMamaSubscriptionImpl_unsubscribe (void* socket, char* topic)
+{
+   #ifdef USE_XSUB
+   char buf[MAX_SUBJECT_LENGTH +1];
+   memset(buf, '\0', sizeof(buf));
+   memcpy(&buf[1], topic, strlen (topic));
+   int i = zmq_send (socket, buf, strlen (topic) +1, 0);
+   #else
+   zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic));
+   #endif
 }
