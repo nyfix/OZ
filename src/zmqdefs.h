@@ -53,8 +53,9 @@ extern "C" {
 
 /* Maximum topic length */
 #define     MAX_SUBJECT_LENGTH              256
-#define     ZMQ_MAX_INCOMING_URIS           64
-#define     ZMQ_MAX_OUTGOING_URIS           64
+#define     ZMQ_MAX_NAMING_ADDRS            8
+#define     ZMQ_MAX_INCOMING_URIS           256
+#define     ZMQ_MAX_OUTGOING_URIS           256
 
 #define     ZMQ_MSG_PROPERTY_LEN     1024
 
@@ -102,17 +103,26 @@ typedef struct zmqTransportBridge_
     mamaTransport           mTransport;
     msgBridge               mMsg;
     void*                   mZmqContext;
+    int                     mIsNaming;
+
+    // naming transports only
+    const char*             mNamingAddress[ZMQ_MAX_NAMING_ADDRS];
+    int                     mNamingPort[ZMQ_MAX_NAMING_ADDRS];
+    const char*             mSubEndpoint;          // endpoint address for naming
+    const char*             mPubEndpoint;          // endpoint address for naming
+    void*                   mZmqNamingSubscriber;  // incoming connections from nsd
+    void*                   mZmqNamingPublisher;   // outgoing connections to nsd
+
     void*                   mZmqSocketSubscriber;
     void*                   mZmqSocketPublisher;
-
     const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
     const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
+
     const char*             mName;
     wthread_t               mOmzmqDispatchThread;
     int                     mIsDispatching;
     mama_status             mOmzmqDispatchStatus;
     endpointPool_t          mSubEndpoints;
-    endpointPool_t          mPubEndpoints;
     long int                mMemoryPoolSize;
     long int                mMemoryNodeSize;
 } zmqTransportBridge;
