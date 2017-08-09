@@ -28,6 +28,15 @@
 
 #define USE_XSUB
 
+#define EXEC_MAMA_FUNC(x)                                                                                   \
+  do {                                                                                                      \
+  mama_status s = (x);                                                                                      \
+  if (s != MAMA_STATUS_OK) {                                                                                \
+     mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d in function %s at %s:%d=", s, __FUNCTION__, __FILE__, __LINE__); \
+     return s;                                                                                              \
+   } } while(0)
+
+
 
 
 /*=========================================================================
@@ -104,6 +113,7 @@ typedef struct zmqTransportBridge_
     msgBridge               mMsg;
     void*                   mZmqContext;
     int                     mIsNaming;
+    const char*             mPublishAddress;
 
     // naming transports only
     const char*             mNamingAddress[ZMQ_MAX_NAMING_ADDRS];
