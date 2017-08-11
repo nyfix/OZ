@@ -57,6 +57,8 @@
 #define     TPORT_PARAM_INCOMING_URL            "incoming_url"
 #define     TPORT_PARAM_MSG_POOL_SIZE           "msg_pool_size"
 #define     TPORT_PARAM_MSG_NODE_SIZE           "msg_node_size"
+
+// zmq params
 #define     TPORT_PARAM_ZMQ_SNDHWM              "zmq_sndhwm"
 #define     TPORT_PARAM_ZMQ_RCVHWM              "zmq_rcvhwm"
 #define     TPORT_PARAM_ZMQ_AFFINITY            "zmq_affinity"
@@ -70,6 +72,8 @@
 #define     TPORT_PARAM_ZMQ_RCVTIMEO            "zmq_rcvtimeo"
 #define     TPORT_PARAM_ZMQ_SNDTIMEO            "zmq_sndtimeo"
 #define     TPORT_PARAM_ZMQ_RATE                "zmq_rate"
+
+// naming params
 #define     TPORT_PARAM_ISNAMING                "is_naming"
 #define     TPORT_PARAM_NAMING_ADDR             "naming.subscribe_address"
 #define     TPORT_PARAM_NAMING_PORT             "naming.subscribe_port"
@@ -82,6 +86,8 @@
 #define     DEFAULT_PUB_INCOMING_URL        "tcp://127.0.0.1:5557"
 #define     DEFAULT_MEMPOOL_SIZE            "1024"
 #define     DEFAULT_MEMNODE_SIZE            "4096"
+
+// zmq params
 #define     DEFAULT_ZMQ_SNDHWM              "0"       /* ZMQ Default = 1000 */
 #define     DEFAULT_ZMQ_RCVHWM              "0"       /* ZMQ Default = 1000 */
 #define     DEFAULT_ZMQ_AFFINITY            "0"       /* ZMQ Default        */
@@ -95,13 +101,15 @@
 #define     DEFAULT_ZMQ_RCVTIMEO            "10"      /* ZMQ Default = -1   */
 #define     DEFAULT_ZMQ_SNDTIMEO            "-1"      /* ZMQ Default        */
 #define     DEFAULT_ZMQ_RATE                "1000000" /* ZMQ Default = 100  */
+
+// naming params
 #define     DEFAULT_ISNAMING                "0"
 #define     DEFAULT_PUBLISH_ADDRESS         "lo"
 
 /* Non configurable runtime defaults */
 #define     PARAM_NAME_MAX_LENGTH           1024L
 
-#define ZMQ_SET_SOCKET_OPTIONS(type,impl,opt,map)                              \
+#define ZMQ_SET_SOCKET_OPTIONS(socket,type,impl,opt,map)                       \
 do                                                                             \
 {                                                                              \
     const char* valStr = zmqBridgeMamaTransportImpl_getParameter (             \
@@ -119,8 +127,7 @@ do                                                                             \
               valStr,                                                          \
               impl->mName);                                                    \
                                                                                \
-    zmq_setsockopt (impl->mZmqSocketPublisher, ZMQ_ ## opt, &value, sizeof(int));   \
-    zmq_setsockopt (impl->mZmqSocketSubscriber, ZMQ_ ## opt, &value, sizeof(int));  \
+    zmq_setsockopt (socket, ZMQ_ ## opt, &value, sizeof(int));   \
 } while (0);
 
 /*=========================================================================
@@ -257,6 +264,10 @@ void MAMACALLTYPE
 zmqBridgeMamaTransportImpl_parseNonNamingParams(zmqTransportBridge* impl);
 mama_status MAMACALLTYPE
 zmqBridgeMamaTransportImpl_bindSocket (void* socket, const char* uri, const char** endpointName);
+mama_status
+zmqBridgeMamaTransportImpl_createSocketPair (zmqTransportBridge* impl, void** pPubSocket, void** pSubSocket);
+mama_status
+zmqBridgeMamaTransportImpl_connectNamingSockets(void* pubSocket, void* subSocket, const char* address, int port);
 
 
 /*=========================================================================
@@ -679,13 +690,6 @@ zmqBridgeMamaTransportImpl_setupSocket (void* socket, const char* uri, zmqTransp
                       uri,
                       strerror(errno));
         }
-
-        char endpointName[1024];
-        size_t endpointNameLen = sizeof(endpointName);
-        rc = zmq_getsockopt(socket, ZMQ_LAST_ENDPOINT, endpointName, &endpointNameLen);
-        mama_log (MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaTransportImpl_setupSocket(): "
-                   "zmq_bind bound to '%s'", endpointName);
-
         return rc;
     }
     else
@@ -715,46 +719,31 @@ zmqBridgeMamaTransportImpl_start (zmqTransportBridge* impl)
                 "zmqBridgeMamaTransportImpl_start(): transport NULL");
         return MAMA_STATUS_NULL_ARG;
     }
+
     impl->mZmqContext = zmq_ctx_new ();
 
     // initialize pub/sub sockets
-    #ifdef USE_XSUB
-    impl->mZmqSocketSubscriber = zmq_socket (impl->mZmqContext, ZMQ_XSUB);
-    impl->mZmqSocketPublisher  = zmq_socket (impl->mZmqContext, ZMQ_XPUB);
-    #else
-    impl->mZmqSocketSubscriber = zmq_socket (impl->mZmqContext, ZMQ_SUB);
-    impl->mZmqSocketPublisher  = zmq_socket (impl->mZmqContext, ZMQ_PUB);
-    #endif
-
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDHWM,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVHWM,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDBUF,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVBUF,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,RECONNECT_IVL,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,RECONNECT_IVL_MAX,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,BACKLOG,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,RCVTIMEO,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,SNDTIMEO,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (int,impl,RATE,atoi);
-    ZMQ_SET_SOCKET_OPTIONS (uint64_t,impl,AFFINITY,atoll);
-    ZMQ_SET_SOCKET_OPTIONS (const char*,impl,IDENTITY,);
-    ZMQ_SET_SOCKET_OPTIONS (int64_t,impl,MAXMSGSIZE,atoll);
-
+    EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocketPair(impl, &impl->mZmqSocketPublisher, &impl->mZmqSocketSubscriber));
 
     if (impl->mIsNaming) {
-       #ifdef USE_XSUB
-       impl->mZmqNamingSubscriber = zmq_socket (impl->mZmqContext, ZMQ_XSUB);
-       impl->mZmqNamingPublisher  = zmq_socket (impl->mZmqContext, ZMQ_XPUB);
-       #else
-       impl->mZmqNamingSubscriber = zmq_socket (impl->mZmqContext, ZMQ_SUB);
-       impl->mZmqNamingPublisher  = zmq_socket (impl->mZmqContext, ZMQ_PUB);
-       #endif
+       // bind pub/sub sockets
+       char endpointAddress[1024];
+       sprintf(endpointAddress, "tcp://%s:*", impl->mPublishAddress);
+       EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(impl->mZmqSocketSubscriber, endpointAddress, &impl->mSubEndpoint));
+       EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(impl->mZmqSocketPublisher,  endpointAddress, &impl->mPubEndpoint));
 
-       char bindAddress[1024];
-       sprintf(bindAddress, "tcp://%s:*", impl->mPublishAddress);
-       EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(impl->mZmqSocketSubscriber, bindAddress, &impl->mSubEndpoint));
-       EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(impl->mZmqSocketPublisher,  bindAddress, &impl->mPubEndpoint));
+       // create naming sockets & connect to broker(s)
+       EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocketPair(impl, &impl->mZmqNamingPublisher, &impl->mZmqNamingSubscriber));
 
+       for (i = 0; (i < ZMQ_MAX_NAMING_ADDRS) && (impl->mNamingAddress[i] != NULL); i++)
+       {
+           // connect to proxy
+           EXEC_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectNamingSockets(impl->mZmqNamingPublisher, impl->mZmqNamingSubscriber,
+                          impl->mNamingAddress[i], impl->mNamingPort[i]));
+       }
+    }
+    else {
+       // non-naming style
        for (i = 0; i < ZMQ_MAX_OUTGOING_URIS; i++)
        {
            if (NULL == impl->mOutgoingAddress[i])
@@ -1317,4 +1306,71 @@ zmqBridgeMamaTransportImpl_bindSocket (void* socket, const char* uri, const char
    }
 
    return MAMA_STATUS_OK;
+}
+
+
+mama_status
+zmqBridgeMamaTransportImpl_createSocketPair (zmqTransportBridge* impl, void** pPubSocket, void** pSubSocket)
+{
+   void* pubSocket;
+   void* subSocket;
+
+    pubSocket = zmq_socket (impl->mZmqContext, ZMQ_PUB_TYPE);
+    subSocket = zmq_socket (impl->mZmqContext, ZMQ_SUB_TYPE);
+
+    // options apply to all sockets (?!)
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,SNDHWM,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,RCVHWM,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,SNDBUF,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,RCVBUF,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,RECONNECT_IVL,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,RECONNECT_IVL_MAX,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,BACKLOG,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,RCVTIMEO,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,SNDTIMEO,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int,impl,RATE,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,uint64_t,impl,AFFINITY,atoll);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,const char*,impl,IDENTITY,);
+    ZMQ_SET_SOCKET_OPTIONS (pubSocket,int64_t,impl,MAXMSGSIZE,atoll);
+
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,SNDHWM,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,RCVHWM,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,SNDBUF,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,RCVBUF,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,RECONNECT_IVL,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,RECONNECT_IVL_MAX,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,BACKLOG,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,RCVTIMEO,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,SNDTIMEO,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int,impl,RATE,atoi);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,uint64_t,impl,AFFINITY,atoll);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,const char*,impl,IDENTITY,);
+    ZMQ_SET_SOCKET_OPTIONS (subSocket,int64_t,impl,MAXMSGSIZE,atoll);
+
+    *pPubSocket = pubSocket;
+    *pSubSocket = subSocket;
+
+    return MAMA_STATUS_OK;
+}
+
+mama_status
+zmqBridgeMamaTransportImpl_connectNamingSockets(void* pubSocket, void* subSocket, const char* address, int port)
+{
+    int rc;
+    char endpointAddress[1024];
+
+    sprintf(endpointAddress, "tcp://%s:%d", address, port);
+    rc = zmq_connect(pubSocket, endpointAddress);
+    if (rc != 0) {
+       return MAMA_STATUS_PLATFORM;
+    }
+
+    // (note: convention is that subscribe port = publish port +1)
+    sprintf(endpointAddress, "tcp://%s:%d", address, port+1);
+    rc = zmq_connect(subSocket, endpointAddress);
+    if (rc != 0) {
+       return MAMA_STATUS_PLATFORM;
+    }
+
+    return MAMA_STATUS_OK;
 }

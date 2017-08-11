@@ -27,6 +27,13 @@
 
 
 #define USE_XSUB
+#ifdef USE_XSUB
+#define  ZMQ_PUB_TYPE   ZMQ_XPUB
+#define  ZMQ_SUB_TYPE   ZMQ_XSUB
+#else
+#define  ZMQ_PUB_TYPE   ZMQ_PUB
+#define  ZMQ_SUB_TYPE   ZMQ_SUB
+#endif
 
 #define EXEC_MAMA_FUNC(x)                                                                                   \
   do {                                                                                                      \
@@ -118,13 +125,13 @@ typedef struct zmqTransportBridge_
     // naming transports only
     const char*             mNamingAddress[ZMQ_MAX_NAMING_ADDRS];
     int                     mNamingPort[ZMQ_MAX_NAMING_ADDRS];
-    const char*             mSubEndpoint;          // endpoint address for naming
     const char*             mPubEndpoint;          // endpoint address for naming
-    void*                   mZmqNamingSubscriber;  // incoming connections from nsd
+    const char*             mSubEndpoint;          // endpoint address for naming
     void*                   mZmqNamingPublisher;   // outgoing connections to nsd
+    void*                   mZmqNamingSubscriber;  // incoming connections from nsd
 
-    void*                   mZmqSocketSubscriber;
     void*                   mZmqSocketPublisher;
+    void*                   mZmqSocketSubscriber;
     const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
     const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
 
