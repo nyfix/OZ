@@ -26,7 +26,7 @@
 #define MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 
 
-#define USE_XSUB
+//#define USE_XSUB
 #ifdef USE_XSUB
 #define  ZMQ_PUB_TYPE   ZMQ_XPUB
 #define  ZMQ_SUB_TYPE   ZMQ_XSUB
