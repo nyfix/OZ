@@ -266,12 +266,12 @@ zmqBridgeMamaInbox_destroy (inboxBridge inbox)
 
     // immediately stop the subscription
     subscriptionBridge subBridge = mamaSubscription_getSubscriptionBridge(impl->mSubscription);
-    status = zmqBridgeMamaSubscriptionImpl_deactivate(subBridge);
+    status = zmqBridgeMamaSubscriptionImpl_destroyInbox(subBridge);
     if (MAMA_STATUS_OK != status)
     {
        mama_log (MAMA_LOG_LEVEL_ERROR,
-                 "zmqBridgeMamaSubscriptionImpl_deactivate(): "
-                 "Failed to deactivate subscription ");
+                 "zmqBridgeMamaSubscriptionImpl_destroyInbox(): "
+                 "Failed to destroy inbox subscription ");
        return status;
     }
 

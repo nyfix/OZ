@@ -236,13 +236,14 @@ zmqBridgeMamaSubscription_getPlatformError (subscriptionBridge subscriber,
     return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
+
 int
 zmqBridgeMamaSubscription_isTportDisconnected (subscriptionBridge subscriber)
 {
 	zmqSubscription* impl = (zmqSubscription*) subscriber;
 	if (NULL == impl)
 	{
-		return MAMA_STATUS_NULL_ARG;
+		return 1;
 	}
     return impl->mIsTportDisconnected;
 }
@@ -337,9 +338,10 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey (const char*  root,
     }
 }
 
-
+// NOTE: this function is used only to remove the endpoint identifier from the endpoint collection, leaving the
+// subscription itself in place.
 mama_status
-zmqBridgeMamaSubscriptionImpl_deactivate (subscriptionBridge subscriber)
+zmqBridgeMamaSubscriptionImpl_destroyInbox (subscriptionBridge subscriber)
 {
     if (NULL == subscriber)
     {
@@ -356,19 +358,6 @@ zmqBridgeMamaSubscriptionImpl_deactivate (subscriptionBridge subscriber)
 
     // zmq sockets are not thread-safe (?!)
     zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey);
-    #if 0
-    // NOTE: zmq filters are reference-counted?
-    /* un-subscribe to the topic */
-    zmq_setsockopt (transportBridge->mZmqSocketSubscriber,
-                    ZMQ_UNSUBSCRIBE,
-                    impl->mSubjectKey,
-                    strlen (impl->mSubjectKey));
-
-    mama_log (MAMA_LOG_LEVEL_FINEST,
-              "zmqBridgeMamaSubscriptionImpl_deactivate(): "
-              "deleted interest for %s.",
-              impl->mSubjectKey);
-    #endif
 
     /* Remove the subscription from the transport's subscription pool. */
     endpointPool_unregister (transportBridge->mSubEndpoints,
