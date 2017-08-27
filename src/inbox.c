@@ -221,14 +221,10 @@ zmqBridgeMamaInbox_createByIndex   (inboxBridge*             bridge,
     impl->mParent           = parent;
     impl->mOnInboxDestroyed = onInboxDestroyed;
 
-    // TODO: make this thread-safe
-    static char replyTo[ZMQ_MSG_PROPERTY_LEN] = "";
-    if (strlen(replyTo) == 0) {
-       char host[MAXHOSTNAMELEN + 1] = {0};
-       gethostname(host, MAXHOSTNAMELEN);
-       snprintf(replyTo, sizeof(replyTo) -1, "_INBOX.%s.%05d", host, getpid());
-    }
-    strcpy(impl->mReplyHandle.mReplyTo, replyTo);
+    // get reply address from transport
+    const char* inboxSubject = NULL;
+    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_getInboxSubject(transport, &inboxSubject));
+    strcpy(impl->mReplyHandle.mReplyTo, inboxSubject);
 
     /* Subscribe to the inbox topic name */
     status = mamaSubscription_createBasic (impl->mSubscription,
@@ -327,8 +323,12 @@ zmqBridgeMamaInboxImpl_onMsg (mamaSubscription    subscription,
    mamaMsgImpl_getBridgeMsg(msg, &tmp);
    char* inboxName;
    zmqBridgeMamaMsgImpl_getInboxName(tmp, &inboxName);
-   if (strcmp(inboxName, impl->mReplyHandle.mInboxName) != 0)
+   if (strcmp(inboxName, impl->mReplyHandle.mInboxName) != 0) {
+       mama_log (MAMA_LOG_LEVEL_FINE,
+                 "zmqBridgeMamaInboxImpl_onMsg(): "
+                 "Discarding msg w/%s which does not match %s.", inboxName, impl->mReplyHandle.mInboxName);
       return;
+   }
 
     /* If a message callback is defined, call it */
     if (NULL != impl->mMsgCB)

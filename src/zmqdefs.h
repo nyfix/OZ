@@ -35,13 +35,15 @@
 #define  ZMQ_SUB_TYPE   ZMQ_SUB
 #endif
 
-#define EXEC_MAMA_FUNC(x)                                                                                   \
-  do {                                                                                                      \
-  mama_status s = (x);                                                                                      \
-  if (s != MAMA_STATUS_OK) {                                                                                \
-     mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d in function %s at %s:%d=", s, __FUNCTION__, __FILE__, __LINE__); \
-     return s;                                                                                              \
-   } } while(0)
+// call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
+#define CALL_MAMA_FUNC(x)                                                                                            \
+  do {                                                                                                               \
+     mama_status s = (x);                                                                                            \
+     if (s != MAMA_STATUS_OK) {                                                                                      \
+        mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d in function %s at %s:%d=", s, __FUNCTION__, __FILE__, __LINE__);   \
+        return s;                                                                                                    \
+      }                                                                                                              \
+  } while(0)
 
 
 
@@ -142,6 +144,7 @@ typedef struct zmqTransportBridge_
     endpointPool_t          mSubEndpoints;
     long int                mMemoryPoolSize;
     long int                mMemoryNodeSize;
+    const char*             mInboxSubject;         // one subject per transport
 } zmqTransportBridge;
 
 typedef struct zmqSubscription_

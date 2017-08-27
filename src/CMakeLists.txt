@@ -40,6 +40,7 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
                    transport.h
                    zmqbridgefunctions.h
                    zmqdefs.h
+                   util.h util.c
                    ${MAMA_SRC}/mama/c_cpp/src/c/bridge/qpid/endpointpool.c)
 
 if(WIN32)

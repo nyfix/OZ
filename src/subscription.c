@@ -39,6 +39,7 @@
 #include "endpointpool.h"
 #include "zmqbridgefunctions.h"
 #include "msg.h"
+#include "util.h"
 #include <zmq.h>
 #include <errno.h>
 
@@ -105,11 +106,19 @@ zmqBridgeMamaSubscription_create (subscriptionBridge* subscriber,
                                                       symbol,
                                                       &impl->mSubjectKey);
 
+    #if 1
+    impl->mEndpointIdentifier = zmq_generate_uuid();
+    endpointPool_registerWithIdentifier (transport->mSubEndpoints,
+                                            impl->mSubjectKey,
+                                            impl->mEndpointIdentifier,
+                                            impl);
+    #else
     /* Register the endpoint */
     endpointPool_registerWithoutIdentifier (transport->mSubEndpoints,
                                             impl->mSubjectKey,
                                             &impl->mEndpointIdentifier,
                                             impl);
+    #endif
 
     /* Set the message meta data to reflect a subscription request */
     zmqBridgeMamaMsgImpl_setMsgType (transport->mMsg,
@@ -393,6 +402,6 @@ zmqBridgeMamaSubscriptionImpl_unsubscribe (void* socket, char* topic)
    memcpy(&buf[1], topic, strlen (topic));
    int i = zmq_send (socket, buf, strlen (topic) +1, 0);
    #else
-   zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic));
+   //zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic));
    #endif
 }
