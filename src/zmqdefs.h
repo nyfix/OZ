@@ -45,6 +45,15 @@
       }                                                                                                              \
   } while(0)
 
+// call a function that returns an int -- log an error and return if not 0
+#define CALL_ZMQ_FUNC(x)                                                                                            \
+  do {                                                                                                               \
+     int rc = (x);                                                                                            \
+     if (rc != 0) {                                                                                      \
+        mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d(%s) in function %s at %s:%d=", rc, strerror(errno), __FUNCTION__, __FILE__, __LINE__);   \
+        return MAMA_STATUS_PLATFORM;                                                                                                    \
+      }                                                                                                              \
+  } while(0)
 
 
 
@@ -106,6 +115,7 @@ typedef enum zmqTransportType_
 
 typedef enum zmqTransportDirection_
 {
+    ZMQ_TPORT_DIRECTION_DONTCARE,
     ZMQ_TPORT_DIRECTION_INCOMING,
     ZMQ_TPORT_DIRECTION_OUTGOING
 } zmqTransportDirection;
@@ -189,6 +199,14 @@ typedef struct zmqQueueBridge {
     void*                   mZmqSocketWorker;
     void*                   mZmqSocketDealer;
 } zmqQueueBridge;
+
+typedef struct zmqNamingMsg {
+    char                    mTopic[256];
+    unsigned char           mType;
+    char                    mPubEndpoint[256];
+    char                    mSubEndpoint[256];
+} zmqNamingMsg;
+
 
 
 #if defined(__cplusplus)
