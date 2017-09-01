@@ -25,6 +25,7 @@
 #ifndef MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 #define MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 
+#include "util.h"
 
 //#define USE_XSUB
 #ifdef USE_XSUB
@@ -37,33 +38,31 @@
 
 // NOTE: following code uses (deprecated) gMamaLogLevel directly, rather than calling mama_getLogLevel
 // (which acquires a read lock on gMamaLogLevel)
-#define MAMA_LOG(l, ...) \
-   do { \
-      if (gMamaLogLevel >= l) { \
+#define MAMA_LOG(l, ...)                                                      \
+   do {                                                                       \
+      if (gMamaLogLevel >= l) {                                               \
          mama_log_helper(l, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__); \
-      } \
+      }                                                                       \
    } while(0)
-
-
 
 // call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
-#define CALL_MAMA_FUNC(x)                                                                                            \
-   do {                                                                                                              \
-      mama_status s = (x);                                                                                           \
-      if (s != MAMA_STATUS_OK) {                                                                                     \
-         mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d in function %s at %s:%d=", s, __FUNCTION__, __FILE__, __LINE__);  \
-         return s;                                                                                                   \
-      }                                                                                                              \
+#define CALL_MAMA_FUNC(x)                                                                  \
+   do {                                                                                    \
+      mama_status s = (x);                                                                 \
+      if (s != MAMA_STATUS_OK) {                                                           \
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
+         return s;                                                                         \
+      }                                                                                    \
    } while(0)
 
-// call a function that returns an int -- log an error and return if not 0
-#define CALL_ZMQ_FUNC(x)                                                                                             \
-   do {                                                                                                              \
-      int rc = (x);                                                                                                  \
-      if (rc != 0) {                                                                                                 \
-         mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d(%s) in function %s at %s:%d=", rc, strerror(errno), __FUNCTION__, __FILE__, __LINE__);   \
-         return MAMA_STATUS_PLATFORM;                                                                                \
-      }                                                                                                              \
+// call a function that returns an int -- log an error and return if < 0
+#define CALL_ZMQ_FUNC(x)                                                             \
+   do {                                                                              \
+      int rc = (x);                                                                  \
+      if (rc < 0) {                                                                  \
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", errno, zmq_strerror(errno)); \
+         return MAMA_STATUS_PLATFORM;                                                \
+      }                                                                              \
    } while(0)
 
 

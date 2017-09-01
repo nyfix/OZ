@@ -119,7 +119,7 @@ zmqBridgeMamaSubscription_create(subscriptionBridge* subscriber,
 
 
    /* subscribe to the topic */
-   zmqBridgeMamaSubscriptionImpl_subscribe(transport->mZmqSocketSubscriber, impl->mSubjectKey);
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(transport->mZmqSocketSubscriber, impl->mSubjectKey));
 
    mama_log(MAMA_LOG_LEVEL_FINEST,
             "zmqBridgeMamaSubscription_create(): "
@@ -341,7 +341,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscr
    }
 
    // zmq sockets are not thread-safe (?!)
-   zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey);
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey));
 
    /* Remove the subscription from the transport's subscription pool. */
    endpointPool_unregister(transportBridge->mSubEndpoints,
@@ -355,28 +355,26 @@ mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscr
    return MAMA_STATUS_OK;
 }
 
-void
-zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic)
 {
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\1', sizeof(buf));
    memcpy(&buf[1], topic, strlen(topic));
-   int i = zmq_send(socket, buf, strlen(topic) + 1, 0);
+   CALL_ZMQ_FUNC(zmq_send(socket, buf, strlen(topic) + 1, 0));
 #else
-   zmq_setsockopt(socket, ZMQ_SUBSCRIBE, topic, strlen(topic));
+   CALL_ZMQ_FUNC(zmq_setsockopt(socket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
 #endif
 }
 
-void
-zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic)
 {
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\0', sizeof(buf));
    memcpy(&buf[1], topic, strlen(topic));
-   int i = zmq_send(socket, buf, strlen(topic) + 1, 0);
+   CALL_ZMQ_FUNC(zmq_send(socket, buf, strlen(topic) + 1, 0));
 #else
-   //zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic));
+   CALL_ZMQ_FUNC(zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
 #endif
 }
