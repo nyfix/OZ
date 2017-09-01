@@ -63,6 +63,9 @@ if(WIN32)
             DESTINATION bin/dynamic-debug)
 
 elseif(UNIX)
+    # note: io.c uses u_char (gnu extension)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+
     target_link_libraries(mamazmqimpl${MAMA_LIB_SUFFIX}
                           wombatcommon
                           mama

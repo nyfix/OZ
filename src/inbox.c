@@ -27,11 +27,15 @@
   =========================================================================*/
 
 #include <mama/mama.h>
+#include <msgimpl.h>
 #include <string.h>
 #include <wombat/wUuid.h>
 #include <wombat/port.h>
 #include "zmqdefs.h"
 #include "inbox.h"
+#include "transport.h"
+#include "msg.h"
+#include "subscription.h"
 #include "zmqbridgefunctions.h"
 
 extern subscriptionBridge

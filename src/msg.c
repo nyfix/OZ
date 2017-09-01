@@ -363,8 +363,7 @@ mama_status zmqBridgeMamaMsgImpl_setInboxName(msgBridge   msg,
              value);
 }
 
-mama_status zmqBridgeMamaMsgImpl_getInboxName(msgBridge   msg,
-                                              char**      value)
+mama_status zmqBridgeMamaMsgImpl_getInboxName(msgBridge msg, char** value)
 {
    zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
 

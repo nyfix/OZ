@@ -61,6 +61,10 @@ zmqBridgeMamaTransportImpl_getTransportBridge(mamaTransport transport);
 void
 zmqBridgeMamaTransportImpl_dumpMessagePool(zmqTransportBridge* impl);
 
+
+mama_status zmqBridgeMamaTransportImpl_getInboxSubject(mamaTransport transport, const char** inboxSubject);
+
+
 #if defined(__cplusplus)
 }
 #endif

@@ -43,10 +43,6 @@
 #include <zmq.h>
 #include <errno.h>
 
-void zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic);
-void zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic);
-
-
 /*=========================================================================
   =               Public interface implementation functions               =
   =========================================================================*/
@@ -331,8 +327,7 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
 
 // NOTE: this function is used only to remove the endpoint identifier from the endpoint collection, leaving the
 // subscription itself in place.
-mama_status
-zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscriber)
+mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscriber)
 {
    if (NULL == subscriber) {
       return MAMA_STATUS_NULL_ARG;

@@ -103,9 +103,7 @@ zmqBridgeMamaMsgImpl_setInboxName(msgBridge    msg,
  *
  * @return mama_status indicating whether the method succeeded or failed.
  */
-mama_status
-zmqBridgeMamaMsgImpl_getInboxName(msgBridge    msg,
-                                  char**       value);
+mama_status zmqBridgeMamaMsgImpl_getInboxName(msgBridge msg, char** value);
 
 /**
  * This will set the bridge's internal message replyTo according to the value
