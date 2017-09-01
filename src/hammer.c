@@ -30,31 +30,31 @@
 
 int main()
 {
-    char buffer [223];
-    buffer[0] = 'A';
-    buffer[1] = '\0';
-    uint64_t* seq = (uint64_t*)(buffer + 2);
-    uint32_t* s = (uint32_t*)(seq + 1);
-    uint32_t* us = (uint32_t*)(s + 1);
-    int i = 0;
-    int j = 0;
-    int hwm = 0;
-    void* zmqSocketPublisher  = zmq_socket (zmq_ctx_new (), ZMQ_PUB);
-    zmq_setsockopt (zmqSocketPublisher, ZMQ_SNDHWM, &hwm, sizeof(int));
-    struct timeval tv;
-    zmq_bind (zmqSocketPublisher, "tcp://*:5556");
-    *seq = 0;
-    while (1)
-    {
-        (*seq)++;
-        gettimeofday(&tv, NULL);
-        *s = (uint32_t)tv.tv_sec;
-        *us = (uint32_t)tv.tv_usec;
+   char buffer [223];
+   buffer[0] = 'A';
+   buffer[1] = '\0';
+   uint64_t* seq = (uint64_t*)(buffer + 2);
+   uint32_t* s = (uint32_t*)(seq + 1);
+   uint32_t* us = (uint32_t*)(s + 1);
+   int i = 0;
+   int j = 0;
+   int hwm = 0;
+   void* zmqSocketPublisher  = zmq_socket(zmq_ctx_new(), ZMQ_PUB);
+   zmq_setsockopt(zmqSocketPublisher, ZMQ_SNDHWM, &hwm, sizeof(int));
+   struct timeval tv;
+   zmq_bind(zmqSocketPublisher, "tcp://*:5556");
+   *seq = 0;
+   while (1) {
+      (*seq)++;
+      gettimeofday(&tv, NULL);
+      *s = (uint32_t)tv.tv_sec;
+      *us = (uint32_t)tv.tv_usec;
 
-        int i = zmq_send (zmqSocketPublisher, buffer, sizeof(buffer), 0);
-        int e = errno;
-        if (i == -1)
-            printf ("ERROR FOUND: %d\n", e);
-        //for (j = 0; j < 1000000; j++);
-    }
+      int i = zmq_send(zmqSocketPublisher, buffer, sizeof(buffer), 0);
+      int e = errno;
+      if (i == -1) {
+         printf("ERROR FOUND: %d\n", e);
+      }
+      //for (j = 0; j < 1000000; j++);
+   }
 }

@@ -50,7 +50,7 @@ extern "C" {
  * @return zmqTransportBridge* associated with the mamaTransport.
  */
 zmqTransportBridge*
-zmqBridgeMamaTransportImpl_getTransportBridge (mamaTransport transport);
+zmqBridgeMamaTransportImpl_getTransportBridge(mamaTransport transport);
 
 /**
  * This is purely a debug function to dump to screen a snapshot of the status
@@ -59,7 +59,7 @@ zmqBridgeMamaTransportImpl_getTransportBridge (mamaTransport transport);
  * @param impl       The zmq transport bridge referring to a message pool.
  */
 void
-zmqBridgeMamaTransportImpl_dumpMessagePool (zmqTransportBridge* impl);
+zmqBridgeMamaTransportImpl_dumpMessagePool(zmqTransportBridge* impl);
 
 #if defined(__cplusplus)
 }

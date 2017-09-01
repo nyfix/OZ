@@ -39,18 +39,17 @@
 
 extern timerHeap gOmzmqTimerHeap;
 
-typedef struct zmqTimerImpl_
-{
-    timerElement    mTimerElement;
-    double          mInterval;
-    void*           mClosure;
-    mamaTimer       mParent;
-    void*           mQueue;
-    uint8_t         mDestroying;
-    /* This callback will be invoked whenever the timer has been destroyed. */
-    mamaTimerCb     mOnTimerDestroyed;
-    /* This callback will be invoked on each timer firing */
-    mamaTimerCb     mAction;
+typedef struct zmqTimerImpl_ {
+   timerElement    mTimerElement;
+   double          mInterval;
+   void*           mClosure;
+   mamaTimer       mParent;
+   void*           mQueue;
+   uint8_t         mDestroying;
+   /* This callback will be invoked whenever the timer has been destroyed. */
+   mamaTimerCb     mOnTimerDestroyed;
+   /* This callback will be invoked on each timer firing */
+   mamaTimerCb     mAction;
 } zmqTimerImpl;
 
 
@@ -71,7 +70,7 @@ typedef struct zmqTimerImpl_
  *                implementation.
  */
 static void MAMACALLTYPE
-zmqBridgeMamaTimerImpl_destroyCallback (mamaQueue queue, void* closure);
+zmqBridgeMamaTimerImpl_destroyCallback(mamaQueue queue, void* closure);
 
 /**
  * When a timer fires, it enqueues this callback for execution. This is where
@@ -82,7 +81,7 @@ zmqBridgeMamaTimerImpl_destroyCallback (mamaQueue queue, void* closure);
  *                implementation.
  */
 static void MAMACALLTYPE
-zmqBridgeMamaTimerImpl_queueCallback (mamaQueue queue, void* closure);
+zmqBridgeMamaTimerImpl_queueCallback(mamaQueue queue, void* closure);
 
 /**
  * Every time the timer fires, it calls this timer callback which adds
@@ -94,7 +93,7 @@ zmqBridgeMamaTimerImpl_queueCallback (mamaQueue queue, void* closure);
  *                implementation.
  */
 static void
-zmqBridgeMamaTimerImpl_timerCallback (timerElement timer, void* closure);
+zmqBridgeMamaTimerImpl_timerCallback(timerElement timer, void* closure);
 
 
 /*=========================================================================
@@ -102,169 +101,160 @@ zmqBridgeMamaTimerImpl_timerCallback (timerElement timer, void* closure);
   =========================================================================*/
 
 mama_status
-zmqBridgeMamaTimer_create (timerBridge*  result,
-                           void*         nativeQueueHandle,
-                           mamaTimerCb   action,
-                           mamaTimerCb   onTimerDestroyed,
-                           double        interval,
-                           mamaTimer     parent,
-                           void*         closure)
+zmqBridgeMamaTimer_create(timerBridge*  result,
+                          void*         nativeQueueHandle,
+                          mamaTimerCb   action,
+                          mamaTimerCb   onTimerDestroyed,
+                          double        interval,
+                          mamaTimer     parent,
+                          void*         closure)
 {
 
-    zmqTimerImpl*              impl            = NULL;
-    int                        timerResult     = 0;
-    struct timeval             timeout;
+   zmqTimerImpl*              impl            = NULL;
+   int                        timerResult     = 0;
+   struct timeval             timeout;
 
-    if (NULL == result || NULL == nativeQueueHandle
-            || NULL == action
-            || NULL == parent )
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == result || NULL == nativeQueueHandle
+       || NULL == action
+       || NULL == parent) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    /* Null initialize the timer bridge supplied */
-    *result = NULL;
+   /* Null initialize the timer bridge supplied */
+   *result = NULL;
 
-    /* Allocate the timer implementation and set up */
-    impl = (zmqTimerImpl*) calloc (1, sizeof (zmqTimerImpl));
-    if (NULL == impl)
-    {
-        return MAMA_STATUS_NOMEM;
-    }
+   /* Allocate the timer implementation and set up */
+   impl = (zmqTimerImpl*) calloc(1, sizeof(zmqTimerImpl));
+   if (NULL == impl) {
+      return MAMA_STATUS_NOMEM;
+   }
 
-    *result                     = (timerBridge) impl;
-    impl->mQueue                = nativeQueueHandle;
-    impl->mParent               = parent;
-    impl->mAction               = action;
-    impl->mClosure              = closure;
-    impl->mInterval             = interval;
-    impl->mOnTimerDestroyed     = onTimerDestroyed;
-    impl->mDestroying           = 0;
+   *result                     = (timerBridge) impl;
+   impl->mQueue                = nativeQueueHandle;
+   impl->mParent               = parent;
+   impl->mAction               = action;
+   impl->mClosure              = closure;
+   impl->mInterval             = interval;
+   impl->mOnTimerDestroyed     = onTimerDestroyed;
+   impl->mDestroying           = 0;
 
-    /* Determine when the next timer should fire */
-    timeout.tv_sec  = (time_t) interval;
-    timeout.tv_usec = ((interval-timeout.tv_sec) * 1000000.0);
+   /* Determine when the next timer should fire */
+   timeout.tv_sec  = (time_t) interval;
+   timeout.tv_usec = ((interval - timeout.tv_sec) * 1000000.0);
 
-    /* Create the first single fire timer */
-    timerResult = createTimer (&impl->mTimerElement,
-                               gOmzmqTimerHeap,
-                               zmqBridgeMamaTimerImpl_timerCallback,
-                               &timeout,
-                               impl);
-    if (0 != timerResult)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "Failed to create Qpid underlying timer [%d].", timerResult);
-        return MAMA_STATUS_PLATFORM;
-    }
+   /* Create the first single fire timer */
+   timerResult = createTimer(&impl->mTimerElement,
+                             gOmzmqTimerHeap,
+                             zmqBridgeMamaTimerImpl_timerCallback,
+                             &timeout,
+                             impl);
+   if (0 != timerResult) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "Failed to create Qpid underlying timer [%d].", timerResult);
+      return MAMA_STATUS_PLATFORM;
+   }
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 /* This call should always come from MAMA queue thread */
 mama_status
-zmqBridgeMamaTimer_destroy (timerBridge timer)
+zmqBridgeMamaTimer_destroy(timerBridge timer)
 {
-    zmqTimerImpl*  impl            = NULL;
-    mama_status    returnStatus    = MAMA_STATUS_OK;
-    int            timerResult     = 0;
+   zmqTimerImpl*  impl            = NULL;
+   mama_status    returnStatus    = MAMA_STATUS_OK;
+   int            timerResult     = 0;
 
-    if (NULL == timer)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == timer) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    /* Nullify the callback and set destroy flag */
-    impl                            = (zmqTimerImpl*) timer;
-    impl->mDestroying               = 1;
-    impl->mAction                   = NULL;
+   /* Nullify the callback and set destroy flag */
+   impl                            = (zmqTimerImpl*) timer;
+   impl->mDestroying               = 1;
+   impl->mAction                   = NULL;
 
-    /* Destroy the timer element */
-    timerResult = destroyTimer (gOmzmqTimerHeap, impl->mTimerElement);
-    if (0 != timerResult)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "Failed to destroy Qpid underlying timer [%d].",
-                  timerResult);
-        returnStatus = MAMA_STATUS_PLATFORM;
-    }
+   /* Destroy the timer element */
+   timerResult = destroyTimer(gOmzmqTimerHeap, impl->mTimerElement);
+   if (0 != timerResult) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "Failed to destroy Qpid underlying timer [%d].",
+               timerResult);
+      returnStatus = MAMA_STATUS_PLATFORM;
+   }
 
-    /*
-     * Put the impl free at the back of the queue to be executed when all
-     * pending timer events have been completed
-     */
-    zmqBridgeMamaQueue_enqueueEvent ((queueBridge) impl->mQueue,
-                                     zmqBridgeMamaTimerImpl_destroyCallback,
-                                     (void*) impl);
+   /*
+    * Put the impl free at the back of the queue to be executed when all
+    * pending timer events have been completed
+    */
+   zmqBridgeMamaQueue_enqueueEvent((queueBridge) impl->mQueue,
+                                   zmqBridgeMamaTimerImpl_destroyCallback,
+                                   (void*) impl);
 
-    return returnStatus;
+   return returnStatus;
 }
 
 mama_status
-zmqBridgeMamaTimer_reset (timerBridge timer)
+zmqBridgeMamaTimer_reset(timerBridge timer)
 {
-    zmqTimerImpl*      impl            = (zmqTimerImpl*) timer;
-    int                timerResult     = 0;
-    struct timeval     timeout;
+   zmqTimerImpl*      impl            = (zmqTimerImpl*) timer;
+   int                timerResult     = 0;
+   struct timeval     timeout;
 
-    if (NULL == impl)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == impl) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    /* Destroy the existing timer element */
-    destroyTimer (gOmzmqTimerHeap, impl->mTimerElement);
+   /* Destroy the existing timer element */
+   destroyTimer(gOmzmqTimerHeap, impl->mTimerElement);
 
-    /* Calculate next time interval */
-    timeout.tv_sec  = (time_t) impl->mInterval;
-    timeout.tv_usec = ((impl->mInterval- timeout.tv_sec) * 1000000.0);
+   /* Calculate next time interval */
+   timeout.tv_sec  = (time_t) impl->mInterval;
+   timeout.tv_usec = ((impl->mInterval - timeout.tv_sec) * 1000000.0);
 
-    /* Create the timer for the next firing */
-    timerResult = createTimer (&impl->mTimerElement,
-                               gOmzmqTimerHeap,
-                               zmqBridgeMamaTimerImpl_timerCallback,
-                               &timeout,
-                               impl);
-    if (0 != timerResult)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "Failed to reset Qpid underlying timer [%d].", timerResult);
-        return MAMA_STATUS_PLATFORM;
-    }
+   /* Create the timer for the next firing */
+   timerResult = createTimer(&impl->mTimerElement,
+                             gOmzmqTimerHeap,
+                             zmqBridgeMamaTimerImpl_timerCallback,
+                             &timeout,
+                             impl);
+   if (0 != timerResult) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "Failed to reset Qpid underlying timer [%d].", timerResult);
+      return MAMA_STATUS_PLATFORM;
+   }
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 
 }
 
 mama_status
-zmqBridgeMamaTimer_setInterval (timerBridge  timer,
-                                mama_f64_t   interval)
+zmqBridgeMamaTimer_setInterval(timerBridge  timer,
+                               mama_f64_t   interval)
 {
-    zmqTimerImpl* impl  = (zmqTimerImpl*) timer;
-    if (NULL == timer)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   zmqTimerImpl* impl  = (zmqTimerImpl*) timer;
+   if (NULL == timer) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    impl->mInterval = interval;
+   impl->mInterval = interval;
 
-    return  zmqBridgeMamaTimer_reset (timer);
+   return  zmqBridgeMamaTimer_reset(timer);
 }
 
 mama_status
-zmqBridgeMamaTimer_getInterval (timerBridge    timer,
-                                mama_f64_t*    interval)
+zmqBridgeMamaTimer_getInterval(timerBridge    timer,
+                               mama_f64_t*    interval)
 {
-    zmqTimerImpl* impl  = NULL;
-    if (NULL == timer || NULL == interval)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   zmqTimerImpl* impl  = NULL;
+   if (NULL == timer || NULL == interval) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    impl = (zmqTimerImpl*) timer;
-    *interval = impl->mInterval;
+   impl = (zmqTimerImpl*) timer;
+   *interval = impl->mInterval;
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 
@@ -274,50 +264,47 @@ zmqBridgeMamaTimer_getInterval (timerBridge    timer,
 
 /* This callback is invoked by the zmq bridge's destroy event */
 static void MAMACALLTYPE
-zmqBridgeMamaTimerImpl_destroyCallback (mamaQueue queue, void* closure)
+zmqBridgeMamaTimerImpl_destroyCallback(mamaQueue queue, void* closure)
 {
-    zmqTimerImpl* impl = (zmqTimerImpl*) closure;
-    (*impl->mOnTimerDestroyed)(impl->mParent, impl->mClosure);
+   zmqTimerImpl* impl = (zmqTimerImpl*) closure;
+   (*impl->mOnTimerDestroyed)(impl->mParent, impl->mClosure);
 
-    /* Free the implementation memory here */
-    free (impl);
+   /* Free the implementation memory here */
+   free(impl);
 }
 
 /* This callback is invoked by the zmq bridge's timer event */
 static void MAMACALLTYPE
-zmqBridgeMamaTimerImpl_queueCallback (mamaQueue queue, void* closure)
+zmqBridgeMamaTimerImpl_queueCallback(mamaQueue queue, void* closure)
 {
-    zmqTimerImpl* impl = (zmqTimerImpl*) closure;
-    if (impl->mAction)
-    {
-        impl->mAction (impl->mParent, impl->mClosure);
-    }
+   zmqTimerImpl* impl = (zmqTimerImpl*) closure;
+   if (impl->mAction) {
+      impl->mAction(impl->mParent, impl->mClosure);
+   }
 }
 
 /* This callback is invoked by the common timer's dispatch thread */
 static void
-zmqBridgeMamaTimerImpl_timerCallback (timerElement  timer,
-                                      void*         closure)
+zmqBridgeMamaTimerImpl_timerCallback(timerElement  timer,
+                                     void*         closure)
 {
-    zmqTimerImpl* impl = (zmqTimerImpl*) closure;
+   zmqTimerImpl* impl = (zmqTimerImpl*) closure;
 
-    if (NULL == impl)
-    {
-        return;
-    }
+   if (NULL == impl) {
+      return;
+   }
 
-    /*
-     * Only enqueue further timer callbacks the timer is not currently getting
-     * destroyed
-     */
-    if (0 == impl->mDestroying)
-    {
-        /* Set the timer for the next firing */
-        zmqBridgeMamaTimer_reset ((timerBridge) closure);
+   /*
+    * Only enqueue further timer callbacks the timer is not currently getting
+    * destroyed
+    */
+   if (0 == impl->mDestroying) {
+      /* Set the timer for the next firing */
+      zmqBridgeMamaTimer_reset((timerBridge) closure);
 
-        /* Enqueue the callback for handling */
-        zmqBridgeMamaQueue_enqueueEvent ((queueBridge) impl->mQueue,
-                                          zmqBridgeMamaTimerImpl_queueCallback,
-                                          closure);
-    }
+      /* Enqueue the callback for handling */
+      zmqBridgeMamaQueue_enqueueEvent((queueBridge) impl->mQueue,
+                                      zmqBridgeMamaTimerImpl_queueCallback,
+                                      closure);
+   }
 }

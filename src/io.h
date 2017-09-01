@@ -43,10 +43,10 @@ extern "C" {
   =========================================================================*/
 
 mama_status
-zmqBridgeMamaIoImpl_start (void);
+zmqBridgeMamaIoImpl_start(void);
 
 mama_status
-zmqBridgeMamaIoImpl_stop  (void);
+zmqBridgeMamaIoImpl_stop(void);
 
 #if defined(__cplusplus)
 }

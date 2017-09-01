@@ -50,7 +50,7 @@ extern "C" {
  * @return const char* containing the subject on which to reply.
  */
 zmqBridgeMsgReplyHandle*
-zmqBridgeMamaInboxImpl_getReplyHandle (inboxBridge inbox);
+zmqBridgeMamaInboxImpl_getReplyHandle(inboxBridge inbox);
 
 
 #if defined(__cplusplus)

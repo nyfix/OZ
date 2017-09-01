@@ -54,8 +54,8 @@ extern "C" {
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_isValid                 (msgBridge    msg,
-                                              uint8_t*     result);
+zmqBridgeMamaMsgImpl_isValid(msgBridge    msg,
+                             uint8_t*     result);
 /**
  * This will set the bridge's internal message type according to the value
  * provided.
@@ -66,8 +66,8 @@ zmqBridgeMamaMsgImpl_isValid                 (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_setMsgType              (msgBridge    msg,
-                                              zmqMsgType  type);
+zmqBridgeMamaMsgImpl_setMsgType(msgBridge    msg,
+                                zmqMsgType  type);
 
 /**
  * This will get the bridge's internal message type.
@@ -79,8 +79,8 @@ zmqBridgeMamaMsgImpl_setMsgType              (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_getMsgType              (msgBridge    msg,
-                                              zmqMsgType* type);
+zmqBridgeMamaMsgImpl_getMsgType(msgBridge    msg,
+                                zmqMsgType* type);
 
 /**
  * This will set the bridge's internal message inbox name according to the value
@@ -92,8 +92,8 @@ zmqBridgeMamaMsgImpl_getMsgType              (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_setInboxName            (msgBridge    msg,
-                                              const char*  value);
+zmqBridgeMamaMsgImpl_setInboxName(msgBridge    msg,
+                                  const char*  value);
 
 /**
  * This will get the bridge's inbox name.
@@ -104,8 +104,8 @@ zmqBridgeMamaMsgImpl_setInboxName            (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_getInboxName            (msgBridge    msg,
-                                              char**       value);
+zmqBridgeMamaMsgImpl_getInboxName(msgBridge    msg,
+                                  char**       value);
 
 /**
  * This will set the bridge's internal message replyTo according to the value
@@ -118,8 +118,8 @@ zmqBridgeMamaMsgImpl_getInboxName            (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_setReplyTo              (msgBridge    msg,
-                                              const char*  value);
+zmqBridgeMamaMsgImpl_setReplyTo(msgBridge    msg,
+                                const char*  value);
 
 /**
  * This will get the bridge's internal message replyTo string. Note the replyTo
@@ -131,8 +131,8 @@ zmqBridgeMamaMsgImpl_setReplyTo              (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_getReplyTo              (msgBridge    msg,
-                                              char**       value);
+zmqBridgeMamaMsgImpl_getReplyTo(msgBridge    msg,
+                                char**       value);
 
 /**
  * This will get the payload size of the last serialized message
@@ -143,8 +143,8 @@ zmqBridgeMamaMsgImpl_getReplyTo              (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_getPayloadSize          (msgBridge   msg,
-                                              size_t*     size);
+zmqBridgeMamaMsgImpl_getPayloadSize(msgBridge   msg,
+                                    size_t*     size);
 
 
 /**
@@ -157,8 +157,8 @@ zmqBridgeMamaMsgImpl_getPayloadSize          (msgBridge   msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_getSendSubject          (msgBridge    msg,
-                                              char**       value);
+zmqBridgeMamaMsgImpl_getSendSubject(msgBridge    msg,
+                                    char**       value);
 
 /**
  * This will get the inbox name from the reply handle specified.
@@ -169,8 +169,8 @@ zmqBridgeMamaMsgImpl_getSendSubject          (msgBridge    msg,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgReplyHandleImpl_getInboxName (void*       replyHandle,
-                                              char**      value);
+zmqBridgeMamaMsgReplyHandleImpl_getInboxName(void*       replyHandle,
+                                             char**      value);
 
 /**
  * This will set the inbox name for the reply handle specified.
@@ -181,8 +181,8 @@ zmqBridgeMamaMsgReplyHandleImpl_getInboxName (void*       replyHandle,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgReplyHandleImpl_setInboxName (void*       replyHandle,
-                                              const char* value);
+zmqBridgeMamaMsgReplyHandleImpl_setInboxName(void*       replyHandle,
+                                             const char* value);
 
 /**
  * This will get the reply to URL from the reply handle specified.
@@ -193,8 +193,8 @@ zmqBridgeMamaMsgReplyHandleImpl_setInboxName (void*       replyHandle,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgReplyHandleImpl_getReplyTo   (void*       replyHandle,
-                                              char**      value);
+zmqBridgeMamaMsgReplyHandleImpl_getReplyTo(void*       replyHandle,
+                                           char**      value);
 
 /**
  * This will set the reply to URL for the reply handle specified.
@@ -205,8 +205,8 @@ zmqBridgeMamaMsgReplyHandleImpl_getReplyTo   (void*       replyHandle,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgReplyHandleImpl_setReplyTo   (void*       replyHandle,
-                                              const char* value);
+zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(void*       replyHandle,
+                                           const char* value);
 
 /**
  * This will create a bridge message but will not create a parent with it.
@@ -216,19 +216,19 @@ zmqBridgeMamaMsgReplyHandleImpl_setReplyTo   (void*       replyHandle,
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaMsgImpl_createMsgOnly           (msgBridge*  msg);
+zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge*  msg);
 
 mama_status
-zmqBridgeMamaMsgImpl_serialize               (msgBridge      msg,
-                                              mamaMsg        source,
-                                              void**         target,
-                                              size_t*        size);
+zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
+                               mamaMsg        source,
+                               void**         target,
+                               size_t*        size);
 
 mama_status
-zmqBridgeMamaMsgImpl_deserialize             (msgBridge        msg,
-                                              const void*      source,
-                                              mama_size_t      size,
-                                              mamaMsg          target);
+zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
+                                 const void*      source,
+                                 mama_size_t      size,
+                                 mamaMsg          target);
 #if defined(__cplusplus)
 }
 #endif

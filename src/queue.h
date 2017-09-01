@@ -37,19 +37,19 @@
 extern "C" {
 #endif
 
-typedef void (MAMACALLTYPE *zmqQueueClosureCleanup)(void* closure);
+typedef void (MAMACALLTYPE* zmqQueueClosureCleanup)(void* closure);
 
 /*=========================================================================
   =                  Public implementation functions                      =
   =========================================================================*/
 
 void
-zmqBridgeMamaQueueImpl_setClosure (queueBridge              queue,
-                                   void*                    closure,
-                                   zmqQueueClosureCleanup   callback);
+zmqBridgeMamaQueueImpl_setClosure(queueBridge              queue,
+                                  void*                    closure,
+                                  zmqQueueClosureCleanup   callback);
 
 void*
-zmqBridgeMamaQueueImpl_getClosure (queueBridge              queue);
+zmqBridgeMamaQueueImpl_getClosure(queueBridge              queue);
 
 
 #if defined(__cplusplus)

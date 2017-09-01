@@ -62,157 +62,147 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
   =               Public interface implementation functions               =
   =========================================================================*/
 
-mama_status zmqBridge_init (mamaBridge bridgeImpl)
+mama_status zmqBridge_init(mamaBridge bridgeImpl)
 {
-    MAMA_SET_BRIDGE_COMPILE_TIME_VERSION(ZMQ_BRIDGE_NAME);
+   MAMA_SET_BRIDGE_COMPILE_TIME_VERSION(ZMQ_BRIDGE_NAME);
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 mama_status
-zmqBridge_open (mamaBridge bridgeImpl)
+zmqBridge_open(mamaBridge bridgeImpl)
 {
-    mama_status         status  = MAMA_STATUS_OK;
-    mamaBridgeImpl*     bridge  = (mamaBridgeImpl*) bridgeImpl;
+   mama_status         status  = MAMA_STATUS_OK;
+   mamaBridgeImpl*     bridge  = (mamaBridgeImpl*) bridgeImpl;
 
-    wsocketstartup();
+   wsocketstartup();
 
-    if (NULL == bridgeImpl)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
-
-    /* Create the default event queue */
-    status = mamaQueue_create (&bridge->mDefaultEventQueue, bridgeImpl);
-    if (MAMA_STATUS_OK != status)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridge_open(): Failed to create zmq queue (%s).",
-                  mamaStatus_stringForStatus (status));
-        return status;
-    }
-
-    /* Set the queue name (used to identify this queue in MAMA stats) */
-    mamaQueue_setQueueName (bridge->mDefaultEventQueue,
-                            ZMQ_DEFAULT_QUEUE_NAME);
-
-    /* Create the timer heap */
-    if (0 != createTimerHeap (&gOmzmqTimerHeap))
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridge_open(): Failed to initialize timers.");
-        return MAMA_STATUS_PLATFORM;
-    }
-
-    /* Start the dispatch timer heap which will create a new thread */
-    if (0 != startDispatchTimerHeap (gOmzmqTimerHeap))
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridge_open(): Failed to start timer thread.");
-        return MAMA_STATUS_PLATFORM;
-    }
-
-    /* Start the io thread */
-    zmqBridgeMamaIoImpl_start ();
-
-    return MAMA_STATUS_OK;
-}
-
-mama_status
-zmqBridge_close (mamaBridge bridgeImpl)
-{
-    mama_status      status      = MAMA_STATUS_OK;
-    mamaBridgeImpl*  bridge      = (mamaBridgeImpl*) bridgeImpl;
-    wthread_t        timerThread;
-
-    if (NULL ==  bridgeImpl)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
-
-    /* Remove the timer heap */
-    if (NULL != gOmzmqTimerHeap)
-    {
-        /* The timer heap allows us to access it's thread ID for joining */
-        timerThread = timerHeapGetTid (gOmzmqTimerHeap);
-        if (0 != destroyHeap (gOmzmqTimerHeap))
-        {
-            mama_log (MAMA_LOG_LEVEL_ERROR,
-                      "zmqBridge_close(): Failed to destroy zmq timer heap.");
-            status = MAMA_STATUS_PLATFORM;
-        }
-        /* The timer thread expects us to be responsible for terminating it */
-        wthread_join    (timerThread, NULL);
-    }
-    gOmzmqTimerHeap = NULL;
-
-    /* Destroy once queue has been emptied */
-    mamaQueue_destroyTimedWait (bridge->mDefaultEventQueue,
-                                ZMQ_SHUTDOWN_TIMEOUT);
-
-    /* Stop and destroy the io thread */
-    zmqBridgeMamaIoImpl_stop ();
-
-    return status;
-}
-
-mama_status
-zmqBridge_start (mamaQueue defaultEventQueue)
-{
-    if (NULL == defaultEventQueue)
-    {
-      mama_log (MAMA_LOG_LEVEL_FINER,
-                "zmqBridge_start(): defaultEventQueue is NULL");
+   if (NULL == bridgeImpl) {
       return MAMA_STATUS_NULL_ARG;
-    }
+   }
 
-    /* Start the default event queue */
-    return mamaQueue_dispatch (defaultEventQueue);;
+   /* Create the default event queue */
+   status = mamaQueue_create(&bridge->mDefaultEventQueue, bridgeImpl);
+   if (MAMA_STATUS_OK != status) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "zmqBridge_open(): Failed to create zmq queue (%s).",
+               mamaStatus_stringForStatus(status));
+      return status;
+   }
+
+   /* Set the queue name (used to identify this queue in MAMA stats) */
+   mamaQueue_setQueueName(bridge->mDefaultEventQueue,
+                          ZMQ_DEFAULT_QUEUE_NAME);
+
+   /* Create the timer heap */
+   if (0 != createTimerHeap(&gOmzmqTimerHeap)) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "zmqBridge_open(): Failed to initialize timers.");
+      return MAMA_STATUS_PLATFORM;
+   }
+
+   /* Start the dispatch timer heap which will create a new thread */
+   if (0 != startDispatchTimerHeap(gOmzmqTimerHeap)) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "zmqBridge_open(): Failed to start timer thread.");
+      return MAMA_STATUS_PLATFORM;
+   }
+
+   /* Start the io thread */
+   zmqBridgeMamaIoImpl_start();
+
+   return MAMA_STATUS_OK;
 }
 
 mama_status
-zmqBridge_stop (mamaQueue defaultEventQueue)
+zmqBridge_close(mamaBridge bridgeImpl)
 {
-    if (NULL == defaultEventQueue)
-    {
-      mama_log (MAMA_LOG_LEVEL_FINER,
-                "zmqBridge_start(): defaultEventQueue is NULL");
-      return MAMA_STATUS_NULL_ARG;
-    }
+   mama_status      status      = MAMA_STATUS_OK;
+   mamaBridgeImpl*  bridge      = (mamaBridgeImpl*) bridgeImpl;
+   wthread_t        timerThread;
 
-    return mamaQueue_stopDispatch (defaultEventQueue);;
+   if (NULL ==  bridgeImpl) {
+      return MAMA_STATUS_NULL_ARG;
+   }
+
+   /* Remove the timer heap */
+   if (NULL != gOmzmqTimerHeap) {
+      /* The timer heap allows us to access it's thread ID for joining */
+      timerThread = timerHeapGetTid(gOmzmqTimerHeap);
+      if (0 != destroyHeap(gOmzmqTimerHeap)) {
+         mama_log(MAMA_LOG_LEVEL_ERROR,
+                  "zmqBridge_close(): Failed to destroy zmq timer heap.");
+         status = MAMA_STATUS_PLATFORM;
+      }
+      /* The timer thread expects us to be responsible for terminating it */
+      wthread_join(timerThread, NULL);
+   }
+   gOmzmqTimerHeap = NULL;
+
+   /* Destroy once queue has been emptied */
+   mamaQueue_destroyTimedWait(bridge->mDefaultEventQueue,
+                              ZMQ_SHUTDOWN_TIMEOUT);
+
+   /* Stop and destroy the io thread */
+   zmqBridgeMamaIoImpl_stop();
+
+   return status;
+}
+
+mama_status
+zmqBridge_start(mamaQueue defaultEventQueue)
+{
+   if (NULL == defaultEventQueue) {
+      mama_log(MAMA_LOG_LEVEL_FINER,
+               "zmqBridge_start(): defaultEventQueue is NULL");
+      return MAMA_STATUS_NULL_ARG;
+   }
+
+   /* Start the default event queue */
+   return mamaQueue_dispatch(defaultEventQueue);;
+}
+
+mama_status
+zmqBridge_stop(mamaQueue defaultEventQueue)
+{
+   if (NULL == defaultEventQueue) {
+      mama_log(MAMA_LOG_LEVEL_FINER,
+               "zmqBridge_start(): defaultEventQueue is NULL");
+      return MAMA_STATUS_NULL_ARG;
+   }
+
+   return mamaQueue_stopDispatch(defaultEventQueue);;
 }
 
 const char*
-zmqBridge_getVersion (void)
+zmqBridge_getVersion(void)
 {
-    return ZMQ_BRIDGE_VERSION;
+   return ZMQ_BRIDGE_VERSION;
 }
 
 const char*
-zmqBridge_getName (void)
+zmqBridge_getName(void)
 {
-    return ZMQ_BRIDGE_NAME;
+   return ZMQ_BRIDGE_NAME;
 }
 
 mama_status
-zmqBridge_getDefaultPayloadId (char ***name, char **id)
+zmqBridge_getDefaultPayloadId(char** *name, char** id)
 {
-    if (NULL == name || NULL == id)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
-    /*
-     * Populate name with the value of all supported payload names, the first
-     * being the default
-     */
-    *name   = PAYLOAD_NAMES;
+   if (NULL == name || NULL == id) {
+      return MAMA_STATUS_NULL_ARG;
+   }
+   /*
+    * Populate name with the value of all supported payload names, the first
+    * being the default
+    */
+   *name   = PAYLOAD_NAMES;
 
-    /*
-     * Populate id with the char keys for all supported payload names, the first
-     * being the default
-     */
-    *id     = PAYLOAD_IDS;
+   /*
+    * Populate id with the char keys for all supported payload names, the first
+    * being the default
+    */
+   *id     = PAYLOAD_IDS;
 
-     return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }

@@ -47,10 +47,10 @@ extern "C" {
  * @return mama_status indicating whether the method succeeded or failed.
  */
 mama_status
-zmqBridgeMamaSubscriptionImpl_generateSubjectKey (const char*  root,
-                                                  const char*  source,
-                                                  const char*  topic,
-                                                  char**       keyTarget);
+zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
+                                                 const char*  source,
+                                                 const char*  topic,
+                                                 char**       keyTarget);
 
 #if defined(__cplusplus)
 }

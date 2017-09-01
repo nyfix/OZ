@@ -43,8 +43,8 @@
 #include <zmq.h>
 #include <errno.h>
 
-void zmqBridgeMamaSubscriptionImpl_subscribe (void* socket, char* topic);
-void zmqBridgeMamaSubscriptionImpl_unsubscribe (void* socket, char* topic);
+void zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic);
+void zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic);
 
 
 /*=========================================================================
@@ -52,223 +52,214 @@ void zmqBridgeMamaSubscriptionImpl_unsubscribe (void* socket, char* topic);
   =========================================================================*/
 
 mama_status
-zmqBridgeMamaSubscription_create (subscriptionBridge* subscriber,
-                                  const char*         source,
-                                  const char*         symbol,
-                                  mamaTransport       tport,
-                                  mamaQueue           queue,
-                                  mamaMsgCallbacks    callback,
-                                  mamaSubscription    subscription,
-                                  void*               closure)
+zmqBridgeMamaSubscription_create(subscriptionBridge* subscriber,
+                                 const char*         source,
+                                 const char*         symbol,
+                                 mamaTransport       tport,
+                                 mamaQueue           queue,
+                                 mamaMsgCallbacks    callback,
+                                 mamaSubscription    subscription,
+                                 void*               closure)
 {
-    zmqSubscription*       impl        = NULL;
-    zmqTransportBridge*    transport   = NULL;
-    mama_status            status      = MAMA_STATUS_OK;
+   zmqSubscription*       impl        = NULL;
+   zmqTransportBridge*    transport   = NULL;
+   mama_status            status      = MAMA_STATUS_OK;
 
-    if ( NULL == subscriber || NULL == subscription || NULL == tport )
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                "zmqBridgeMamaSubscription_create(): something NULL");
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == subscriber || NULL == subscription || NULL == tport) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "zmqBridgeMamaSubscription_create(): something NULL");
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    status = mamaTransport_getBridgeTransport (tport,
-                                               (transportBridge*) &transport);
+   status = mamaTransport_getBridgeTransport(tport,
+                                             (transportBridge*) &transport);
 
-    if (MAMA_STATUS_OK != status || NULL == transport)
-    {
-        mama_log (MAMA_LOG_LEVEL_ERROR,
-                "zmqBridgeMamaSubscription_create(): something NULL");
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (MAMA_STATUS_OK != status || NULL == transport) {
+      mama_log(MAMA_LOG_LEVEL_ERROR,
+               "zmqBridgeMamaSubscription_create(): something NULL");
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    /* Allocate memory for zmq subscription implementation */
-    impl = (zmqSubscription*) calloc (1, sizeof (zmqSubscription));
-    if (NULL == impl)
-    {
-        return MAMA_STATUS_NOMEM;
-    }
+   /* Allocate memory for zmq subscription implementation */
+   impl = (zmqSubscription*) calloc(1, sizeof(zmqSubscription));
+   if (NULL == impl) {
+      return MAMA_STATUS_NOMEM;
+   }
 
-    mamaQueue_getNativeHandle(queue, &impl->mZmqQueue);
-    impl->mMamaCallback        = callback;
-    impl->mMamaSubscription    = subscription;
-    impl->mMamaQueue           = queue;
-    impl->mTransport           = transport;
-    impl->mSymbol              = symbol;
-    impl->mClosure             = closure;
-    impl->mIsNotMuted          = 1;
-    impl->mIsTportDisconnected = 1;
-    impl->mSubjectKey          = NULL;
+   mamaQueue_getNativeHandle(queue, &impl->mZmqQueue);
+   impl->mMamaCallback        = callback;
+   impl->mMamaSubscription    = subscription;
+   impl->mMamaQueue           = queue;
+   impl->mTransport           = transport;
+   impl->mSymbol              = symbol;
+   impl->mClosure             = closure;
+   impl->mIsNotMuted          = 1;
+   impl->mIsTportDisconnected = 1;
+   impl->mSubjectKey          = NULL;
 
-    /* Use a standard centralized method to determine a topic key */
-    zmqBridgeMamaSubscriptionImpl_generateSubjectKey (NULL,
-                                                      source,
-                                                      symbol,
-                                                      &impl->mSubjectKey);
+   /* Use a standard centralized method to determine a topic key */
+   zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL,
+                                                    source,
+                                                    symbol,
+                                                    &impl->mSubjectKey);
 
-    #if 1
-    impl->mEndpointIdentifier = zmq_generate_uuid();
-    endpointPool_registerWithIdentifier (transport->mSubEndpoints,
-                                            impl->mSubjectKey,
-                                            impl->mEndpointIdentifier,
-                                            impl);
-    #else
-    /* Register the endpoint */
-    endpointPool_registerWithoutIdentifier (transport->mSubEndpoints,
-                                            impl->mSubjectKey,
-                                            &impl->mEndpointIdentifier,
-                                            impl);
-    #endif
+#if 1
+   impl->mEndpointIdentifier = zmq_generate_uuid();
+   endpointPool_registerWithIdentifier(transport->mSubEndpoints,
+                                       impl->mSubjectKey,
+                                       impl->mEndpointIdentifier,
+                                       impl);
+#else
+   /* Register the endpoint */
+   endpointPool_registerWithoutIdentifier(transport->mSubEndpoints,
+                                          impl->mSubjectKey,
+                                          &impl->mEndpointIdentifier,
+                                          impl);
+#endif
 
-    /* Set the message meta data to reflect a subscription request */
-    zmqBridgeMamaMsgImpl_setMsgType (transport->mMsg,
-                                     ZMQ_MSG_SUB_REQUEST);
+   /* Set the message meta data to reflect a subscription request */
+   zmqBridgeMamaMsgImpl_setMsgType(transport->mMsg,
+                                   ZMQ_MSG_SUB_REQUEST);
 
 
-    /* subscribe to the topic */
-    zmqBridgeMamaSubscriptionImpl_subscribe(transport->mZmqSocketSubscriber, impl->mSubjectKey);
+   /* subscribe to the topic */
+   zmqBridgeMamaSubscriptionImpl_subscribe(transport->mZmqSocketSubscriber, impl->mSubjectKey);
 
-    mama_log (MAMA_LOG_LEVEL_FINEST,
-              "zmqBridgeMamaSubscription_create(): "
-              "created interest for %s.",
-              impl->mSubjectKey);
+   mama_log(MAMA_LOG_LEVEL_FINEST,
+            "zmqBridgeMamaSubscription_create(): "
+            "created interest for %s.",
+            impl->mSubjectKey);
 
-    /* Mark this subscription as valid */
-    impl->mIsValid = 1;
+   /* Mark this subscription as valid */
+   impl->mIsValid = 1;
 
-    *subscriber =  (subscriptionBridge) impl;
+   *subscriber = (subscriptionBridge) impl;
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 mama_status
-zmqBridgeMamaSubscription_createWildCard (subscriptionBridge*     subscriber,
-                                          const char*             source,
-                                          const char*             symbol,
-                                          mamaTransport           transport,
-                                          mamaQueue               queue,
-                                          mamaMsgCallbacks        callback,
-                                          mamaSubscription        subscription,
-                                          void*                   closure)
+zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     subscriber,
+                                         const char*             source,
+                                         const char*             symbol,
+                                         mamaTransport           transport,
+                                         mamaQueue               queue,
+                                         mamaMsgCallbacks        callback,
+                                         mamaSubscription        subscription,
+                                         void*                   closure)
 {
-    return MAMA_STATUS_NOT_IMPLEMENTED;
+   return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
 mama_status
-zmqBridgeMamaSubscription_mute (subscriptionBridge subscriber)
+zmqBridgeMamaSubscription_mute(subscriptionBridge subscriber)
 {
-    zmqSubscription* impl = (zmqSubscription*) subscriber;
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
 
-    if (NULL == impl)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == impl) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    impl->mIsNotMuted = 0;
+   impl->mIsNotMuted = 0;
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 mama_status
-zmqBridgeMamaSubscription_destroy (subscriptionBridge subscriber)
+zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
 {
-    zmqSubscription*             impl            = NULL;
-    zmqTransportBridge*          transportBridge = NULL;
-    mamaSubscription             parent          = NULL;
-    void*                        closure         = NULL;
-    wombat_subscriptionDestroyCB destroyCb       = NULL;
+   zmqSubscription*             impl            = NULL;
+   zmqTransportBridge*          transportBridge = NULL;
+   mamaSubscription             parent          = NULL;
+   void*                        closure         = NULL;
+   wombat_subscriptionDestroyCB destroyCb       = NULL;
 
-    if (NULL == subscriber)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == subscriber) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    impl            = (zmqSubscription*) subscriber;
-    parent          = impl->mMamaSubscription;
-    closure         = impl->mClosure;
-    destroyCb       = impl->mMamaCallback.onDestroy;
-    transportBridge = impl->mTransport;
+   impl            = (zmqSubscription*) subscriber;
+   parent          = impl->mMamaSubscription;
+   closure         = impl->mClosure;
+   destroyCb       = impl->mMamaCallback.onDestroy;
+   transportBridge = impl->mTransport;
 
-    /* Remove the subscription from the transport's subscription pool. */
-    if (NULL != transportBridge && NULL != transportBridge->mSubEndpoints
-        && NULL != impl->mSubjectKey)
-    {
-        endpointPool_unregister (transportBridge->mSubEndpoints,
-                                 impl->mSubjectKey,
-                                 impl->mEndpointIdentifier);
-    }
+   /* Remove the subscription from the transport's subscription pool. */
+   if (NULL != transportBridge && NULL != transportBridge->mSubEndpoints
+       && NULL != impl->mSubjectKey) {
+      endpointPool_unregister(transportBridge->mSubEndpoints,
+                              impl->mSubjectKey,
+                              impl->mEndpointIdentifier);
+   }
 
-    if (NULL != impl->mSubjectKey)
-    {
-        free (impl->mSubjectKey);
-    }
+   if (NULL != impl->mSubjectKey) {
+      free(impl->mSubjectKey);
+   }
 
-    if (NULL != impl->mEndpointIdentifier)
-    {
-        free ((void*)impl->mEndpointIdentifier);
-    }
+   if (NULL != impl->mEndpointIdentifier) {
+      free((void*)impl->mEndpointIdentifier);
+   }
 
-    free (impl);
+   free(impl);
 
-    /*
-     * Invoke the subscription callback to inform that the bridge has been
-     * destroyed.
-     */
-    if (NULL != destroyCb)
-        (*(wombat_subscriptionDestroyCB)destroyCb)(parent, closure);
+   /*
+    * Invoke the subscription callback to inform that the bridge has been
+    * destroyed.
+    */
+   if (NULL != destroyCb) {
+      (*(wombat_subscriptionDestroyCB)destroyCb)(parent, closure);
+   }
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 int
-zmqBridgeMamaSubscription_isValid (subscriptionBridge subscriber)
+zmqBridgeMamaSubscription_isValid(subscriptionBridge subscriber)
 {
-    zmqSubscription* impl = (zmqSubscription*) subscriber;
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
 
-    if (NULL != impl)
-    {
-        return impl->mIsValid;
-    }
-    return 0;
+   if (NULL != impl) {
+      return impl->mIsValid;
+   }
+   return 0;
 }
 
 int
-zmqBridgeMamaSubscription_hasWildcards (subscriptionBridge subscriber)
+zmqBridgeMamaSubscription_hasWildcards(subscriptionBridge subscriber)
 {
-    return 0;
+   return 0;
 }
 
 mama_status
-zmqBridgeMamaSubscription_getPlatformError (subscriptionBridge subscriber,
-                                            void** error)
+zmqBridgeMamaSubscription_getPlatformError(subscriptionBridge subscriber,
+                                           void** error)
 {
-    return MAMA_STATUS_NOT_IMPLEMENTED;
+   return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
 
 int
-zmqBridgeMamaSubscription_isTportDisconnected (subscriptionBridge subscriber)
+zmqBridgeMamaSubscription_isTportDisconnected(subscriptionBridge subscriber)
 {
-	zmqSubscription* impl = (zmqSubscription*) subscriber;
-	if (NULL == impl)
-	{
-		return 1;
-	}
-    return impl->mIsTportDisconnected;
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
+   if (NULL == impl) {
+      return 1;
+   }
+   return impl->mIsTportDisconnected;
 }
 
 mama_status
-zmqBridgeMamaSubscription_setTopicClosure (subscriptionBridge subscriber,
-                                           void*              closure)
+zmqBridgeMamaSubscription_setTopicClosure(subscriptionBridge subscriber,
+                                          void*              closure)
 {
-    return MAMA_STATUS_NOT_IMPLEMENTED;
+   return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
 mama_status
-zmqBridgeMamaSubscription_muteCurrentTopic (subscriptionBridge subscriber)
+zmqBridgeMamaSubscription_muteCurrentTopic(subscriptionBridge subscriber)
 {
-    /* As there is one topic per subscription, this can act as an alias */
-    return zmqBridgeMamaSubscription_mute (subscriber);
+   /* As there is one topic per subscription, this can act as an alias */
+   return zmqBridgeMamaSubscription_mute(subscriber);
 }
 
 
@@ -281,127 +272,116 @@ zmqBridgeMamaSubscription_muteCurrentTopic (subscriptionBridge subscriber)
  * in a particular way
  */
 mama_status
-zmqBridgeMamaSubscriptionImpl_generateSubjectKey (const char*  root,
-                                                  const char*  source,
-                                                  const char*  topic,
-                                                  char**       keyTarget)
+zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
+                                                 const char*  source,
+                                                 const char*  topic,
+                                                 char**       keyTarget)
 {
-    char        subject[MAX_SUBJECT_LENGTH];
-    char*       subjectPos     = subject;
-    size_t      bytesRemaining = MAX_SUBJECT_LENGTH;
-    size_t      written        = 0;
+   char        subject[MAX_SUBJECT_LENGTH];
+   char*       subjectPos     = subject;
+   size_t      bytesRemaining = MAX_SUBJECT_LENGTH;
+   size_t      written        = 0;
 
-    if (NULL != root)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINEST,
-                  "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): R.");
-        written         = snprintf (subjectPos, bytesRemaining, "%s", root);
-        subjectPos     += written;
-        bytesRemaining -= written;
-    }
+   if (NULL != root) {
+      mama_log(MAMA_LOG_LEVEL_FINEST,
+               "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): R.");
+      written         = snprintf(subjectPos, bytesRemaining, "%s", root);
+      subjectPos     += written;
+      bytesRemaining -= written;
+   }
 
-    if (NULL != source)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINEST,
-                  "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): S.");
-        /* If these are not the first bytes, prepend with a period */
-        if(subjectPos != subject)
-        {
-            written     = snprintf (subjectPos, bytesRemaining, ".%s", source);
-        }
-        else
-        {
-            written     = snprintf (subjectPos, bytesRemaining, "%s", source);
-        }
-        subjectPos     += written;
-        bytesRemaining -= written;
-    }
+   if (NULL != source) {
+      mama_log(MAMA_LOG_LEVEL_FINEST,
+               "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): S.");
+      /* If these are not the first bytes, prepend with a period */
+      if (subjectPos != subject) {
+         written     = snprintf(subjectPos, bytesRemaining, ".%s", source);
+      }
+      else {
+         written     = snprintf(subjectPos, bytesRemaining, "%s", source);
+      }
+      subjectPos     += written;
+      bytesRemaining -= written;
+   }
 
-    if (NULL != topic)
-    {
-        mama_log (MAMA_LOG_LEVEL_FINEST,
-                  "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): T.");
-        /* If these are not the first bytes, prepend with a period */
-        if (subjectPos != subject)
-        {
-            snprintf (subjectPos, bytesRemaining, ".%s", topic);
-        }
-        else
-        {
-            snprintf (subjectPos, bytesRemaining, "%s", topic);
-        }
-    }
+   if (NULL != topic) {
+      mama_log(MAMA_LOG_LEVEL_FINEST,
+               "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): T.");
+      /* If these are not the first bytes, prepend with a period */
+      if (subjectPos != subject) {
+         snprintf(subjectPos, bytesRemaining, ".%s", topic);
+      }
+      else {
+         snprintf(subjectPos, bytesRemaining, "%s", topic);
+      }
+   }
 
-    /*
-     * Allocate the memory for copying the string. Caller is responsible for
-     * destroying.
-     */
-    *keyTarget = strdup (subject);
-    if (NULL == *keyTarget)
-    {
-        return MAMA_STATUS_NOMEM;
-    }
-    else
-    {
-        return MAMA_STATUS_OK;
-    }
+   /*
+    * Allocate the memory for copying the string. Caller is responsible for
+    * destroying.
+    */
+   *keyTarget = strdup(subject);
+   if (NULL == *keyTarget) {
+      return MAMA_STATUS_NOMEM;
+   }
+   else {
+      return MAMA_STATUS_OK;
+   }
 }
 
 // NOTE: this function is used only to remove the endpoint identifier from the endpoint collection, leaving the
 // subscription itself in place.
 mama_status
-zmqBridgeMamaSubscriptionImpl_destroyInbox (subscriptionBridge subscriber)
+zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscriber)
 {
-    if (NULL == subscriber)
-    {
-        return MAMA_STATUS_NULL_ARG;
-    }
+   if (NULL == subscriber) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    zmqSubscription* impl = (zmqSubscription*) subscriber;
-    zmqTransportBridge* transportBridge = impl->mTransport;
-    if (NULL == transportBridge || NULL == transportBridge->mSubEndpoints
-        || NULL == impl->mSubjectKey)
-    {
-       return MAMA_STATUS_NULL_ARG;
-    }
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
+   zmqTransportBridge* transportBridge = impl->mTransport;
+   if (NULL == transportBridge || NULL == transportBridge->mSubEndpoints
+       || NULL == impl->mSubjectKey) {
+      return MAMA_STATUS_NULL_ARG;
+   }
 
-    // zmq sockets are not thread-safe (?!)
-    zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey);
+   // zmq sockets are not thread-safe (?!)
+   zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey);
 
-    /* Remove the subscription from the transport's subscription pool. */
-    endpointPool_unregister (transportBridge->mSubEndpoints,
-                             impl->mSubjectKey,
-                             impl->mEndpointIdentifier);
+   /* Remove the subscription from the transport's subscription pool. */
+   endpointPool_unregister(transportBridge->mSubEndpoints,
+                           impl->mSubjectKey,
+                           impl->mEndpointIdentifier);
 
-    /* Mark this subscription as invalid */
-    impl->mIsValid = 0;
-    impl->mIsNotMuted = 0;
+   /* Mark this subscription as invalid */
+   impl->mIsValid = 0;
+   impl->mIsNotMuted = 0;
 
-    return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;
 }
 
 void
-zmqBridgeMamaSubscriptionImpl_subscribe (void* socket, char* topic)
+zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic)
 {
-   #ifdef USE_XSUB
-   char buf[MAX_SUBJECT_LENGTH +1];
+#ifdef USE_XSUB
+   char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\1', sizeof(buf));
-   memcpy(&buf[1], topic, strlen (topic));
-   int i = zmq_send (socket, buf, strlen (topic) +1, 0);
-   #else
-   zmq_setsockopt (socket, ZMQ_SUBSCRIBE, topic, strlen(topic));
-   #endif
+   memcpy(&buf[1], topic, strlen(topic));
+   int i = zmq_send(socket, buf, strlen(topic) + 1, 0);
+#else
+   zmq_setsockopt(socket, ZMQ_SUBSCRIBE, topic, strlen(topic));
+#endif
 }
 
 void
-zmqBridgeMamaSubscriptionImpl_unsubscribe (void* socket, char* topic)
+zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic)
 {
-   #ifdef USE_XSUB
-   char buf[MAX_SUBJECT_LENGTH +1];
+#ifdef USE_XSUB
+   char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\0', sizeof(buf));
-   memcpy(&buf[1], topic, strlen (topic));
-   int i = zmq_send (socket, buf, strlen (topic) +1, 0);
-   #else
+   memcpy(&buf[1], topic, strlen(topic));
+   int i = zmq_send(socket, buf, strlen(topic) + 1, 0);
+#else
    //zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic));
-   #endif
+#endif
 }

@@ -35,25 +35,36 @@
 #define  ZMQ_SUB_TYPE   ZMQ_SUB
 #endif
 
+// NOTE: following code uses (deprecated) gMamaLogLevel directly, rather than calling mama_getLogLevel
+// (which acquires a read lock on gMamaLogLevel)
+#define MAMA_LOG(l, ...) \
+   do { \
+      if (gMamaLogLevel >= l) { \
+         mama_log_helper(l, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__); \
+      } \
+   } while(0)
+
+
+
 // call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
 #define CALL_MAMA_FUNC(x)                                                                                            \
-  do {                                                                                                               \
-     mama_status s = (x);                                                                                            \
-     if (s != MAMA_STATUS_OK) {                                                                                      \
-        mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d in function %s at %s:%d=", s, __FUNCTION__, __FILE__, __LINE__);   \
-        return s;                                                                                                    \
+   do {                                                                                                              \
+      mama_status s = (x);                                                                                           \
+      if (s != MAMA_STATUS_OK) {                                                                                     \
+         mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d in function %s at %s:%d=", s, __FUNCTION__, __FILE__, __LINE__);  \
+         return s;                                                                                                   \
       }                                                                                                              \
-  } while(0)
+   } while(0)
 
 // call a function that returns an int -- log an error and return if not 0
-#define CALL_ZMQ_FUNC(x)                                                                                            \
-  do {                                                                                                               \
-     int rc = (x);                                                                                            \
-     if (rc != 0) {                                                                                      \
-        mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d(%s) in function %s at %s:%d=", rc, strerror(errno), __FUNCTION__, __FILE__, __LINE__);   \
-        return MAMA_STATUS_PLATFORM;                                                                                                    \
+#define CALL_ZMQ_FUNC(x)                                                                                             \
+   do {                                                                                                              \
+      int rc = (x);                                                                                                  \
+      if (rc != 0) {                                                                                                 \
+         mama_log (MAMA_LOG_LEVEL_ERROR, "Error %d(%s) in function %s at %s:%d=", rc, strerror(errno), __FUNCTION__, __FILE__, __LINE__);   \
+         return MAMA_STATUS_PLATFORM;                                                                                \
       }                                                                                                              \
-  } while(0)
+   } while(0)
 
 
 
@@ -87,37 +98,33 @@ extern "C" {
 #define     ZMQ_MSG_PROPERTY_LEN     1024
 
 
-typedef struct zmqBridgeMsgReplyHandle
-{
-    char                        mInboxName[ZMQ_MSG_PROPERTY_LEN];
-    char                        mReplyTo[ZMQ_MSG_PROPERTY_LEN];
+typedef struct zmqBridgeMsgReplyHandle {
+   char                        mInboxName[ZMQ_MSG_PROPERTY_LEN];
+   char                        mReplyTo[ZMQ_MSG_PROPERTY_LEN];
 } zmqBridgeMsgReplyHandle;
 
 
 
 /* Message types */
-typedef enum zmqMsgType_
-{
-    ZMQ_MSG_PUB_SUB        =              0x00,
-    ZMQ_MSG_INBOX_REQUEST,
-    ZMQ_MSG_INBOX_RESPONSE,
-    ZMQ_MSG_SUB_REQUEST
+typedef enum zmqMsgType_ {
+   ZMQ_MSG_PUB_SUB        =              0x00,
+   ZMQ_MSG_INBOX_REQUEST,
+   ZMQ_MSG_INBOX_RESPONSE,
+   ZMQ_MSG_SUB_REQUEST
 } zmqMsgType;
 
-typedef enum zmqTransportType_
-{
-    ZMQ_TPORT_TYPE_TCP,
-    ZMQ_TPORT_TYPE_IPC,
-    ZMQ_TPORT_TYPE_PGM,
-    ZMQ_TPORT_TYPE_EPGM,
-    ZMQ_TPORT_TYPE_UNKNOWN = 99
+typedef enum zmqTransportType_ {
+   ZMQ_TPORT_TYPE_TCP,
+   ZMQ_TPORT_TYPE_IPC,
+   ZMQ_TPORT_TYPE_PGM,
+   ZMQ_TPORT_TYPE_EPGM,
+   ZMQ_TPORT_TYPE_UNKNOWN = 99
 } zmqTransportType;
 
-typedef enum zmqTransportDirection_
-{
-    ZMQ_TPORT_DIRECTION_DONTCARE,
-    ZMQ_TPORT_DIRECTION_INCOMING,
-    ZMQ_TPORT_DIRECTION_OUTGOING
+typedef enum zmqTransportDirection_ {
+   ZMQ_TPORT_DIRECTION_DONTCARE,
+   ZMQ_TPORT_DIRECTION_INCOMING,
+   ZMQ_TPORT_DIRECTION_OUTGOING
 } zmqTransportDirection;
 
 
@@ -125,86 +132,83 @@ typedef enum zmqTransportDirection_
   =                Typedefs, structs, enums and globals                   =
   =========================================================================*/
 
-typedef struct zmqTransportBridge_
-{
-    int                     mIsValid;
-    mamaTransport           mTransport;
-    msgBridge               mMsg;
-    void*                   mZmqContext;
-    int                     mIsNaming;
-    const char*             mPublishAddress;
+typedef struct zmqTransportBridge_ {
+   int                     mIsValid;
+   mamaTransport           mTransport;
+   msgBridge               mMsg;
+   void*                   mZmqContext;
+   int                     mIsNaming;
+   const char*             mPublishAddress;
 
-    // naming transports only
-    const char*             mNamingAddress[ZMQ_MAX_NAMING_ADDRS];
-    int                     mNamingPort[ZMQ_MAX_NAMING_ADDRS];
-    const char*             mPubEndpoint;          // endpoint address for naming
-    const char*             mSubEndpoint;          // endpoint address for naming
-    void*                   mZmqNamingPublisher;   // outgoing connections to nsd
-    void*                   mZmqNamingSubscriber;  // incoming connections from nsd
+   // naming transports only
+   const char*             mNamingAddress[ZMQ_MAX_NAMING_ADDRS];
+   int                     mNamingPort[ZMQ_MAX_NAMING_ADDRS];
+   const char*             mPubEndpoint;          // endpoint address for naming
+   const char*             mSubEndpoint;          // endpoint address for naming
+   void*                   mZmqNamingPublisher;   // outgoing connections to nsd
+   void*                   mZmqNamingSubscriber;  // incoming connections from nsd
 
-    void*                   mZmqSocketPublisher;
-    void*                   mZmqSocketSubscriber;
-    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
-    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
+   void*                   mZmqSocketPublisher;
+   void*                   mZmqSocketSubscriber;
+   const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
+   const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
 
-    const char*             mName;
-    wthread_t               mOmzmqDispatchThread;
-    int                     mIsDispatching;
-    mama_status             mOmzmqDispatchStatus;
-    endpointPool_t          mSubEndpoints;
-    long int                mMemoryPoolSize;
-    long int                mMemoryNodeSize;
-    const char*             mInboxSubject;         // one subject per transport
+   const char*             mName;
+   wthread_t               mOmzmqDispatchThread;
+   int                     mIsDispatching;
+   mama_status             mOmzmqDispatchStatus;
+   endpointPool_t          mSubEndpoints;
+   long int                mMemoryPoolSize;
+   long int                mMemoryNodeSize;
+   const char*             mInboxSubject;         // one subject per transport
 } zmqTransportBridge;
 
-typedef struct zmqSubscription_
-{
-    mamaMsgCallbacks        mMamaCallback;
-    mamaSubscription        mMamaSubscription;
-    mamaQueue               mMamaQueue;
-    void*                   mZmqQueue;
-    zmqTransportBridge*     mTransport;
-    const char*             mSymbol;
-    char*                   mSubjectKey;
-    void*                   mClosure;
-    int                     mIsNotMuted;
-    int                     mIsValid;
-    int                     mIsTportDisconnected;
-    msgBridge               mMsg;
-    const char*             mEndpointIdentifier;
+typedef struct zmqSubscription_ {
+   mamaMsgCallbacks        mMamaCallback;
+   mamaSubscription        mMamaSubscription;
+   mamaQueue               mMamaQueue;
+   void*                   mZmqQueue;
+   zmqTransportBridge*     mTransport;
+   const char*             mSymbol;
+   char*                   mSubjectKey;
+   void*                   mClosure;
+   int                     mIsNotMuted;
+   int                     mIsValid;
+   int                     mIsTportDisconnected;
+   msgBridge               mMsg;
+   const char*             mEndpointIdentifier;
 } zmqSubscription;
 
-typedef struct zmqTransportMsg_
-{
-    size_t                  mNodeSize;
-    size_t                  mNodeCapacity;
-    endpointPool_t          mSubEndpoints;
-    char*                   mEndpointIdentifier;
-    uint8_t*                mNodeBuffer;
+typedef struct zmqTransportMsg_ {
+   size_t                  mNodeSize;
+   size_t                  mNodeCapacity;
+   endpointPool_t          mSubEndpoints;
+   char*                   mEndpointIdentifier;
+   uint8_t*                mNodeBuffer;
 } zmqTransportMsg;
 
 typedef struct zmqQueueBridge {
-    mamaQueue               mParent;
-    wombatQueue             mQueue;
-    void*                   mEnqueueClosure;
-    uint8_t                 mHighWaterFired;
-    size_t                  mHighWatermark;
-    size_t                  mLowWatermark;
-    uint8_t                 mIsDispatching;
-    mamaQueueEnqueueCB      mEnqueueCallback;
-    void*                   mClosure;
-    wthread_mutex_t         mDispatchLock;
-    zmqQueueClosureCleanup  mClosureCleanupCb;
-    void*                   mZmqContext;
-    void*                   mZmqSocketWorker;
-    void*                   mZmqSocketDealer;
+   mamaQueue               mParent;
+   wombatQueue             mQueue;
+   void*                   mEnqueueClosure;
+   uint8_t                 mHighWaterFired;
+   size_t                  mHighWatermark;
+   size_t                  mLowWatermark;
+   uint8_t                 mIsDispatching;
+   mamaQueueEnqueueCB      mEnqueueCallback;
+   void*                   mClosure;
+   wthread_mutex_t         mDispatchLock;
+   zmqQueueClosureCleanup  mClosureCleanupCb;
+   void*                   mZmqContext;
+   void*                   mZmqSocketWorker;
+   void*                   mZmqSocketDealer;
 } zmqQueueBridge;
 
 typedef struct zmqNamingMsg {
-    char                    mTopic[256];
-    unsigned char           mType;
-    char                    mPubEndpoint[256];
-    char                    mSubEndpoint[256];
+   char                    mTopic[256];
+   unsigned char           mType;
+   char                    mPubEndpoint[256];
+   char                    mSubEndpoint[256];
 } zmqNamingMsg;
 
 
