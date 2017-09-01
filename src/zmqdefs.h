@@ -91,7 +91,7 @@ extern "C" {
 
 /* Maximum topic length */
 #define     MAX_SUBJECT_LENGTH              256
-#define     ZMQ_MAX_NAMING_ADDRS            8
+#define     ZMQ_MAX_NAMING_URIS             8
 #define     ZMQ_MAX_INCOMING_URIS           256
 #define     ZMQ_MAX_OUTGOING_URIS           256
 
@@ -141,8 +141,8 @@ typedef struct zmqTransportBridge_ {
    const char*             mPublishAddress;
 
    // naming transports only
-   const char*             mNamingAddress[ZMQ_MAX_NAMING_ADDRS];
-   int                     mNamingPort[ZMQ_MAX_NAMING_ADDRS];
+   const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
+   const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mPubEndpoint;          // endpoint address for naming
    const char*             mSubEndpoint;          // endpoint address for naming
    void*                   mZmqNamingPublisher;   // outgoing connections to nsd
