@@ -111,6 +111,7 @@
 /* Non configurable runtime defaults */
 #define     PARAM_NAME_MAX_LENGTH           1024L
 
+// TODO: sizeof(int) below?
 #define ZMQ_SET_SOCKET_OPTIONS(name, socket,type,opt,map)                      \
    do                                                                          \
    {                                                                           \
@@ -122,14 +123,13 @@
                            TPORT_PARAM_ZMQ_ ## opt);                           \
       type value = (type) map (valStr);                                        \
                                                                                \
-      mama_log (MAMA_LOG_LEVEL_FINE,                                           \
-                "zmqBridgeMamaTransportImpl_setSocketOptionInt(): Setting "    \
+      MAMA_LOG (MAMA_LOG_LEVEL_FINE,                                           \
                 "ZeroMQ socket option %s=%s for transport %s",                 \
                 TPORT_PARAM_ZMQ_ ## opt,                                       \
                 valStr,                                                        \
                 name);                                                         \
                                                                                \
-      zmq_setsockopt (socket, ZMQ_ ## opt, &value, sizeof(int));               \
+      CALL_ZMQ_FUNC(zmq_setsockopt (socket, ZMQ_ ## opt, &value, sizeof(int)));\
    } while (0);
 
 /*=========================================================================
@@ -239,6 +239,7 @@ mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_bindSocket(void* socket, con
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(void* socket, const char* uri);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, void** pSocket, int type);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, void* socket);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disableReconnect(void* socket);
 
 // message processing
 mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_processNamingMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
@@ -655,6 +656,11 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setSocketOptions(impl->mName, impl->mZmqSocketSubscriber));
 
    if (impl->mIsNaming) {
+      // disable reconnect on non-naming sockets
+      // (to avoid reconnecting to ephemeral port which may have been re-used by another process)
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(impl->mZmqSocketPublisher));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(impl->mZmqSocketSubscriber));
+
       // bind pub/sub sockets
       char endpointAddress[1024];
       sprintf(endpointAddress, "tcp://%s:*", impl->mPublishAddress);
@@ -1100,6 +1106,14 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, void** pSo
    return MAMA_STATUS_OK;
 }
 
+mama_status zmqBridgeMamaTransportImpl_disableReconnect(void* socket)
+{
+   int disableReconnect = -1;
+   CALL_ZMQ_FUNC(zmq_setsockopt(socket, ZMQ_RECONNECT_IVL, &disableReconnect, sizeof(disableReconnect)));
+   return MAMA_STATUS_OK;
+}
+
+// TODO: commented lines fail with errno 22: invalid argument
 mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, void* socket)
 {
    // options apply to all sockets (?!)
@@ -1112,10 +1126,10 @@ mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, void* 
    ZMQ_SET_SOCKET_OPTIONS(name, socket,  int,          BACKLOG,            atoi);
    ZMQ_SET_SOCKET_OPTIONS(name, socket,  int,          RCVTIMEO,           atoi);
    ZMQ_SET_SOCKET_OPTIONS(name, socket,  int,          SNDTIMEO,           atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket,  int,          RATE,               atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket,  uint64_t,     AFFINITY,           atoll);
+   //ZMQ_SET_SOCKET_OPTIONS(name, socket,  int,          RATE,               atoi);
+   //ZMQ_SET_SOCKET_OPTIONS(name, socket,  uint64_t,     AFFINITY,           atoll);
    ZMQ_SET_SOCKET_OPTIONS(name, socket,  const char*,  IDENTITY,                );
-   ZMQ_SET_SOCKET_OPTIONS(name, socket,  int64_t,      MAXMSGSIZE,         atoll);
+   //ZMQ_SET_SOCKET_OPTIONS(name, socket,  int64_t,      MAXMSGSIZE,         atoll);
 
    return MAMA_STATUS_OK;
 }

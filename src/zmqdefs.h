@@ -154,7 +154,10 @@ typedef struct zmqTransportBridge_ {
 
    const char*             mName;
    wthread_t               mOmzmqDispatchThread;
-   int                     mIsDispatching;
+   // TODO: declare as volatile to prevent optimization ?
+   // is that even legal?
+   // "Any attempt to read or write to an object whose type is volatile-qualified through a non-volatile lvalue results in undefined behavior"
+   volatile int            mIsDispatching;
    mama_status             mOmzmqDispatchStatus;
    endpointPool_t          mSubEndpoints;
    long int                mMemoryPoolSize;
