@@ -30,8 +30,19 @@ extern "C" {
 #endif
 
 /*=========================================================================
-  =                  Public implementation functions                      =
+  =                  Private implementation functions                      =
   =========================================================================*/
+
+
+zmqSubscription* zmqBridgeMamaSubscriptionImpl_create(subscriptionBridge* subscriber,
+                                 const char*         source,
+                                 const char*         symbol,
+                                 mamaTransport       tport,
+                                 mamaQueue           queue,
+                                 mamaMsgCallbacks    callback,
+                                 mamaSubscription    subscription,
+                                 void*               closure);
+
 
 /**
  * This function will generate a string which is unique to the root, source

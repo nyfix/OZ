@@ -71,6 +71,9 @@
   =                             Includes                                  =
   =========================================================================*/
 
+#include <sys/types.h>
+#include <regex.h>
+
 #include <wombat/wSemaphore.h>
 #include <wombat/wtable.h>
 #include <list.h>
@@ -160,6 +163,7 @@ typedef struct zmqTransportBridge_ {
    volatile int            mIsDispatching;
    mama_status             mOmzmqDispatchStatus;
    endpointPool_t          mSubEndpoints;
+   wList                   mWcEndpoints;
    long int                mMemoryPoolSize;
    long int                mMemoryNodeSize;
    const char*             mInboxSubject;         // one subject per transport
@@ -179,6 +183,8 @@ typedef struct zmqSubscription_ {
    int                     mIsTportDisconnected;
    msgBridge               mMsg;
    const char*             mEndpointIdentifier;
+   int                     mIsWildcard;
+   regex_t                 mRegexTopic;
 } zmqSubscription;
 
 typedef struct zmqTransportMsg_ {

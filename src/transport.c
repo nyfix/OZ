@@ -321,6 +321,13 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       zmqBridgeMamaTransportImpl_parseNonNamingParams(impl);
    }
 
+   impl->mWcEndpoints = list_create(sizeof(zmqSubscription));
+   if (impl->mWcEndpoints == INVALID_LIST) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create wildcard endpoints");
+      free(impl);
+      return MAMA_STATUS_NOMEM;
+   }
+
    status = endpointPool_create(&impl->mSubEndpoints, "mSubEndpoints");
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create subscribing endpoints");
