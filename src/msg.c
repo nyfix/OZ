@@ -553,9 +553,12 @@ zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
    memcpy(bufferPos, impl->mSendSubject, msgSubjectByteCount);
    bufferPos += msgSubjectByteCount;
 
+   // this is just silly?!
+   #if 0
    // Leave 8 bytes empty - receive side will be thankful for them
    memset((void*)bufferPos, 0, 8);
    bufferPos += 8;
+   #endif
 
    // Copy across the message type
    *bufferPos = (uint8_t) impl->mMsgType;
@@ -602,9 +605,12 @@ zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
    // Skip past the subject - don't care about that here
    bufferPos += strlen((char*)source) + 1;
 
+   // this is just silly?!
+   #if 0
    // Leave 8 bytes empty - receive side will be thankful for them
    memset((void*)bufferPos, 0, 8);
    bufferPos += 8;
+   #endif
 
    // Set the message type
    impl->mMsgType = (zmqMsgType) * bufferPos;
@@ -645,7 +651,6 @@ zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
 
    return status;
 }
-
 
 /*=========================================================================
   =                  Private implementation functions                     =

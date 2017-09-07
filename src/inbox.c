@@ -193,15 +193,12 @@ zmqBridgeMamaInbox_createByIndex(inboxBridge*             bridge,
       return status;
    }
 
+   /* Create the unique name allocated to this inbox */
    // NB: uuid_generate is very expensive, so we use cheaper uuid_generate_time
    wUuid_generate_time(tempUuid);
    wUuid_unparse(tempUuid, uuidStringBuffer);
-
-   /* Create the unique name allocated to this inbox */
-   snprintf(impl->mReplyHandle.mInboxName,
-            sizeof(impl->mReplyHandle.mInboxName) - 1,
-            "_INBOX.%s",
-            uuidStringBuffer);
+   snprintf(impl->mReplyHandle.mInboxName, sizeof(impl->mReplyHandle.mInboxName) - 1,
+            "_INBOX.%s", uuidStringBuffer);
 
    /* Set the mandatory callbacks for basic subscriptions */
    cb.onCreate             = &zmqBridgeMamaInboxImpl_onCreate;
