@@ -144,7 +144,8 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
    memcpy(prefix, temp, (dotPos - temp)-1);
    //CALL_MAMA_FUNC(zmqBridgeMamaSubscription_create(subscriber, NULL, prefix, transport, queue, callback, subscription, closure));
 
-   int rc = regcomp(&impl->mRegexTopic, dotPos+1, REG_NOSUB);
+   impl->mRegexTopic = calloc(1, sizeof(regex_t));
+   int rc = regcomp(impl->mRegexTopic, dotPos+1, REG_NOSUB);
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Unable to compile regex: %s", dotPos+1);
       free(impl);
@@ -297,7 +298,7 @@ zmqSubscription* zmqBridgeMamaSubscriptionImpl_create(subscriptionBridge* subscr
    impl->mIsTportDisconnected = 1;
    impl->mSubjectKey          = NULL;
    impl->mIsWildcard          = 0;
-   //impl->mRegexTopic          = NULL;
+   impl->mRegexTopic          = NULL;
 
    return impl;
 }
