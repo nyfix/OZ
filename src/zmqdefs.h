@@ -184,15 +184,17 @@ typedef struct zmqSubscription_ {
    msgBridge               mMsg;
    const char*             mEndpointIdentifier;
    int                     mIsWildcard;
-   regex_t                 mRegexTopic;
+   regex_t*                mRegexTopic;
 } zmqSubscription;
 
 typedef struct zmqTransportMsg_ {
    size_t                  mNodeSize;
-   size_t                  mNodeCapacity;
    endpointPool_t          mSubEndpoints;
    char*                   mEndpointIdentifier;
-   uint8_t*                mNodeBuffer;
+   union {
+      const char*          mSubject;
+      uint8_t*             mNodeBuffer;
+   };
 } zmqTransportMsg;
 
 typedef struct zmqQueueBridge {
@@ -218,8 +220,6 @@ typedef struct zmqNamingMsg {
    char                    mPubEndpoint[256];
    char                    mSubEndpoint[256];
 } zmqNamingMsg;
-
-
 
 #if defined(__cplusplus)
 }

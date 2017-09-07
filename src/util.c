@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -30,5 +31,6 @@ void mama_log_helper (MamaLogLevel level, const char* function, const char* file
       va_end(ap);
    }
 
-   mama_log(level, "%s:%s (%s:%d)", function, temp, file, lineno);
+   // TODO: is there a better way than calling basename?
+   mama_log(level, "%s:%s (%s:%d)", function, temp, basename(file), lineno);
 }

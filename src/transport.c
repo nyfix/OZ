@@ -748,32 +748,20 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 /**
  * Called when message removed from queue by dispatch thread
  *
- * @param data The AMQP payload
- * @param closure The subscriber
  */
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueCallback(mamaQueue queue, void* closure)
 {
-
-   mama_status           status          = MAMA_STATUS_OK;
-   mamaMsg               tmpMsg          = NULL;
-   msgBridge             bridgeMsg       = NULL;
-   memoryPool*           pool            = NULL;
-   memoryNode*           node            = (memoryNode*) closure;
-   zmqTransportMsg*      tmsg            = (zmqTransportMsg*) node->mNodeBuffer;
-   uint32_t              bufferSize      = tmsg->mNodeSize;
-   const void*           buffer          = tmsg->mNodeBuffer;
-   const char*           subject         = (char*)buffer;
-   zmqQueueBridge*       queueImpl       = NULL;
-
+   memoryNode* node = (memoryNode*) closure;
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
 
    // find the subscription based on its identifier
    zmqSubscription* subscription = NULL;
-   endpointPool_getEndpointByIdentifiers(tmsg->mSubEndpoints, subject,
+   endpointPool_getEndpointByIdentifiers(tmsg->mSubEndpoints, tmsg->mSubject,
                                          tmsg->mEndpointIdentifier, (endpoint_t*) &subscription);
 
    /* Can't do anything without a subscriber */
    if (NULL == subscription) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
       goto exit;
    }
 
@@ -787,21 +775,22 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueCallback(mamaQueue queue, voi
    }
 
    /* This is the reuseable message stored on the associated MamaQueue */
-   tmpMsg = mamaQueueImpl_getMsg(subscription->mMamaQueue);
+   mamaMsg tmpMsg = mamaQueueImpl_getMsg(subscription->mMamaQueue);
    if (NULL == tmpMsg) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get cached mamaMsg from event queue.");
       goto exit;
    }
 
    /* Get the bridge message from the mamaMsg */
-   status = mamaMsgImpl_getBridgeMsg(tmpMsg, &bridgeMsg);
+   msgBridge bridgeMsg;
+   mama_status status = mamaMsgImpl_getBridgeMsg(tmpMsg, &bridgeMsg);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get bridge message from cached queue mamaMsg [%s]", mamaStatus_stringForStatus(status));
       goto exit;
    }
 
    /* Unpack this bridge message into a MAMA msg implementation */
-   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, buffer, bufferSize, tmpMsg);
+   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, tmsg->mNodeBuffer, tmsg->mNodeSize, tmpMsg);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaMsgImpl_deserialize() failed. [%s]", mamaStatus_stringForStatus(status));
    }
@@ -817,9 +806,14 @@ exit:
    free(tmsg->mEndpointIdentifier);
 
    // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
+   zmqQueueBridge* queueImpl = NULL;
    mamaQueue_getNativeHandle(queue, (void**)&queueImpl);
-   pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
-   memoryPool_returnNode(pool, node);
+   if (queueImpl) {
+      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
+      if (pool) {
+         memoryPool_returnNode(pool, node);
+      }
+   }
 
    return;
 }
