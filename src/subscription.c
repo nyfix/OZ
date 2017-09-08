@@ -384,8 +384,9 @@ mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscr
    /* Set the message meta data to reflect a subscription request */
    zmqBridgeMamaMsgImpl_setMsgType(transportBridge->mMsg, ZMQ_MSG_SUB_REQUEST);
 
+   // TODO: revisit ...
    // zmq sockets are not thread-safe (?!)
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey));
+   //CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey));
 
    /* Remove the subscription from the transport's subscription pool. */
    endpointPool_unregister(transportBridge->mSubEndpoints,

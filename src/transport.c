@@ -878,15 +878,15 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 {
    zmqTransportBridge*     impl          = (zmqTransportBridge*)closure;
 
+   zmq_msg_t zmsg;
+   zmq_msg_init(&zmsg);
+
    /*
     * Check if we should be still dispatching.
     * We shouldn't need to lock around this, as we're performing a simple value
     * read - if it changes in the middle of the read, we don't actually care.
     */
    while (1 == impl->mIsDispatching) {
-
-      zmq_msg_t zmsg;
-      zmq_msg_init(&zmsg);
 
       int size = -1;
 
