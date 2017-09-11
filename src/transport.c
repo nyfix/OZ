@@ -288,6 +288,8 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
 
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Naming messages = %ld", impl->mNamingMessages);
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Normal messages = %ld", impl->mNormalMessages);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Polls = %ld", impl->mPolls);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No polls = %ld", impl->mNoPolls);
 
    // TODO: lots of stuff in impl is allocated on heap and should be freeed
    free(impl);
@@ -315,6 +317,8 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mName                 = name;
    impl->mNamingMessages       = 0;
    impl->mNormalMessages       = 0;
+   impl->mPolls       = 0;
+   impl->mNoPolls       = 0;
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Initializing Transport %s", impl->mName);
 
@@ -897,6 +901,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       // so try reading directly from data socket, and poll only if no msg ready
       int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber, ZMQ_DONTWAIT);
       if (size != -1) {
+         ++impl->mNoPolls;
          zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
          continue;
       }
@@ -910,6 +915,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       if (rc < 0) {
          break;
       }
+      ++impl->mPolls;
 
       // got normal msg?
       if (items[0].revents & ZMQ_POLLIN) {

@@ -149,13 +149,11 @@ typedef struct zmqTransportBridge_ {
    const char*             mSubEndpoint;          // endpoint address for naming
    void*                   mZmqNamingPublisher;   // outgoing connections to nsd
    void*                   mZmqNamingSubscriber;  // incoming connections from nsd
-   long int                mNamingMessages;
 
    void*                   mZmqSocketPublisher;
    void*                   mZmqSocketSubscriber;
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
-   long int                mNormalMessages;
 
    const char*             mName;
    wthread_t               mOmzmqDispatchThread;
@@ -168,7 +166,16 @@ typedef struct zmqTransportBridge_ {
    wList                   mWcEndpoints;
    long int                mMemoryPoolSize;
    long int                mMemoryNodeSize;
+
+   // inbox support
    const char*             mInboxSubject;         // one subject per transport
+
+   // misc stats
+   long int                mNormalMessages;
+   long int                mNamingMessages;
+   long int                mPolls;
+   long int                mNoPolls;
+
 } zmqTransportBridge;
 
 typedef struct zmqSubscription_ {
