@@ -286,6 +286,9 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
 
    endpointPool_destroy(impl->mSubEndpoints);
 
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Naming messages = %ld", impl->mNamingMessages);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Normal messages = %ld", impl->mNormalMessages);
+
    // TODO: lots of stuff in impl is allocated on heap and should be freeed
    free(impl);
 
@@ -310,6 +313,8 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mOmzmqDispatchThread  = 0;
    impl->mOmzmqDispatchStatus  = MAMA_STATUS_OK;
    impl->mName                 = name;
+   impl->mNamingMessages       = 0;
+   impl->mNormalMessages       = 0;
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Initializing Transport %s", impl->mName);
 
@@ -888,34 +893,41 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
     */
    while (1 == impl->mIsDispatching) {
 
-      int size = -1;
-
-      if (impl->mIsNaming) {
-         zmq_pollitem_t items[] = {
-            { impl->mZmqNamingSubscriber, 0, ZMQ_POLLIN, 0},
-            { impl->mZmqSocketSubscriber, 0, ZMQ_POLLIN, 0}
-         };
-         zmq_poll(items, 2, 10);
-         if (items[0].revents & ZMQ_POLLIN) {
-            size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber, 0);
-            if (size != -1) {
-               zmqBridgeMamaTransportImpl_processNamingMsg(impl, &zmsg);
-            }
-            continue;
-         }
-         if (items[1].revents & ZMQ_POLLIN) {
-            size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber, 0);
-         }
-      }
-      else {
-         size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber, 0);
-      }
-
-      if (size == -1) {
+      // zmq_poll is really slow?!
+      // so try reading directly from data socket, and poll only if no msg ready
+      int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber, ZMQ_DONTWAIT);
+      if (size != -1) {
+         zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
          continue;
       }
 
-      zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
+      // poll on one or both
+      zmq_pollitem_t items[] = {
+         { impl->mZmqSocketSubscriber, 0, ZMQ_POLLIN, 0},
+         { impl->mZmqNamingSubscriber, 0, ZMQ_POLLIN, 0}
+      };
+      int rc = zmq_poll(items, (impl->mIsNaming == 1) ? 2 : 1, 100);
+      if (rc < 0) {
+         break;
+      }
+
+      // got normal msg?
+      if (items[0].revents & ZMQ_POLLIN) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber, 0);
+         if (size != -1) {
+            zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
+         }
+         continue;
+      }
+
+      // got naming msg?
+      if (items[1].revents & ZMQ_POLLIN) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber, 0);
+         if (size != -1) {
+            zmqBridgeMamaTransportImpl_processNamingMsg(impl, &zmsg);
+         }
+         continue;
+      }
    }
 
    impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
@@ -1084,6 +1096,11 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(void* socket, const char* uri,
       return MAMA_STATUS_PLATFORM;
    }
 
+   // TODO: superfuous on bind?
+   // see https://github.com/zeromq/libzmq/issues/2267
+   //zmq_pollitem_t pollitems [] = { { socket, 0, ZMQ_POLLIN, 0 } };
+   //CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
+
    if (endpointName != NULL) {
       char temp[1024];
       size_t tempSize = sizeof(temp);
@@ -1150,6 +1167,8 @@ mama_status zmqBridgeMamaTransportImpl_getInboxSubject(mamaTransport transport, 
 
 mama_status zmqBridgeMamaTransportImpl_processNamingMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
 {
+   impl->mNamingMessages++;
+
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
    if (pMsg->mType == 'C') {
       // connect
@@ -1169,6 +1188,8 @@ mama_status zmqBridgeMamaTransportImpl_processNormalMsg(zmqTransportBridge* impl
 {
    const char* subject = (char*) zmq_msg_data(zmsg);
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Got msg with subject %s", subject);
+
+   impl->mNormalMessages++;
 
    // get list of subscribers for this subject
    endpoint_t* subs = NULL;
