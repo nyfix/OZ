@@ -184,7 +184,6 @@ typedef struct zmqSubscription_ {
    mamaQueue               mMamaQueue;
    void*                   mZmqQueue;
    zmqTransportBridge*     mTransport;
-   const char*             mSymbol;
    char*                   mSubjectKey;
    void*                   mClosure;
    int                     mIsNotMuted;
@@ -193,6 +192,7 @@ typedef struct zmqSubscription_ {
    msgBridge               mMsg;
    const char*             mEndpointIdentifier;
    int                     mIsWildcard;
+   const char*             mOrigRegex;
    regex_t*                mRegexTopic;
 } zmqSubscription;
 

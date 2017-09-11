@@ -43,6 +43,12 @@
 #include <zmq.h>
 #include <errno.h>
 
+
+zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mamaQueue queue,
+   mamaMsgCallbacks callback, mamaSubscription subscription, void* closure);
+
+mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const char* source, const char* symbol);
+
 /*=========================================================================
   =               Public interface implementation functions               =
   =========================================================================*/
@@ -60,41 +66,14 @@ mama_status zmqBridgeMamaSubscription_create(subscriptionBridge* subscriber,
       return MAMA_STATUS_NULL_ARG;
    }
 
-   zmqSubscription* impl = zmqBridgeMamaSubscriptionImpl_create(subscriber,
-      source, symbol, tport, queue, callback, subscription, closure);
+   zmqSubscription* impl = zmqBridgeMamaSubscriptionImpl_allocate(tport, queue, callback, subscription, closure);
    if (impl == NULL) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to create subscription for %s:%s", source, symbol);
       return MAMA_STATUS_NULL_ARG;
    }
 
-   /* Use a standard centralized method to determine a topic key */
-   zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
-
-   // endpointPool_registerWithoutIdentifier uses address as key, but addresses can be reused...
-   #if 1
-   impl->mEndpointIdentifier = zmq_generate_uuid();
-   endpointPool_registerWithIdentifier(impl->mTransport->mSubEndpoints,
-                                       impl->mSubjectKey,
-                                       impl->mEndpointIdentifier,
-                                       impl);
-   #else
-   /* Register the endpoint */
-   endpointPool_registerWithoutIdentifier(impl->mTransport->mSubEndpoints,
-                                          impl->mSubjectKey,
-                                          &impl->mEndpointIdentifier,
-                                          impl);
-   #endif
-
-   /* subscribe to the topic */
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
-
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
-
-   /* Mark this subscription as valid */
-   impl->mIsValid = 1;
-
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_create(impl, source, symbol));
    *subscriber = (subscriptionBridge) impl;
-
    return MAMA_STATUS_OK;
 }
 
@@ -112,46 +91,52 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
       return MAMA_STATUS_NULL_ARG;
    }
 
-   zmqSubscription* impl = zmqBridgeMamaSubscriptionImpl_create(subscriber,
-      source, symbol, tport, queue, callback, subscription, closure);
+   zmqSubscription* impl = zmqBridgeMamaSubscriptionImpl_allocate(tport, queue, callback, subscription, closure);
    if (impl == NULL) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to create subscription for %s:%s", source, symbol);
       return MAMA_STATUS_NULL_ARG;
    }
-
    impl->mIsWildcard          = 1;
 
    // stupid api ... symbol is NULL, source contains source.symbol
-
-   // for now, only deal with embedded wildcards
-   char* wcPos = strchr(source, '*');
-   if (wcPos == NULL) {
-      return MAMA_STATUS_INVALID_ARG;
-   }
-
+   // make a copy of the whole mess
    char temp[1024];
    strcpy(temp, source);
+   // replace "." with null
    char* dotPos = strchr(temp, '.');
    if (dotPos == NULL) {
       return MAMA_STATUS_INVALID_ARG;
    }
    *dotPos = '\0';
 
+   // now we have original topic in theSource, regex in theRegex
+   char* theSource = temp;
+   char* theRegex = dotPos +1;
 
    // zmq only does prefix matching, so subscribe to everything up to the first wildcard
-   char prefix[1024];
-   memset(prefix, '\0', sizeof(prefix));
-   memcpy(prefix, temp, (dotPos - temp)-1);
-   //CALL_MAMA_FUNC(zmqBridgeMamaSubscription_create(subscriber, NULL, prefix, transport, queue, callback, subscription, closure));
-
-   impl->mRegexTopic = calloc(1, sizeof(regex_t));
-   int rc = regcomp(impl->mRegexTopic, dotPos+1, REG_NOSUB);
-   if (rc != 0) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Unable to compile regex: %s", dotPos+1);
+   // TODO: for now, only deal with embedded (not final) wildcards
+   char* wcPos = strchr(theSource, '*');
+   if (wcPos == NULL) {
       free(impl);
       return MAMA_STATUS_INVALID_ARG;
    }
+   *wcPos = '\0';
 
+   // create regex to match against
+   impl->mRegexTopic = calloc(1, sizeof(regex_t));
+   int rc = regcomp(impl->mRegexTopic, theRegex, REG_NOSUB);
+   if (rc != 0) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to compile regex: %s", theRegex);
+      free(impl);
+      return MAMA_STATUS_INVALID_ARG;
+   }
+   impl->mOrigRegex = strdup(theRegex);
+
+   // TODO: depending on resolution of https://github.com/OpenMAMA/OpenMAMA/issues/324
+   // may need/want to pass source?
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_create(impl, NULL, theSource));
+
+   *subscriber = (subscriptionBridge) impl;
    return MAMA_STATUS_OK;
 }
 
@@ -272,14 +257,8 @@ zmqBridgeMamaSubscription_muteCurrentTopic(subscriptionBridge subscriber)
   =========================================================================*/
 
 
-zmqSubscription* zmqBridgeMamaSubscriptionImpl_create(subscriptionBridge* subscriber,
-                                 const char*         source,
-                                 const char*         symbol,
-                                 mamaTransport       tport,
-                                 mamaQueue           queue,
-                                 mamaMsgCallbacks    callback,
-                                 mamaSubscription    subscription,
-                                 void*               closure)
+zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mamaQueue queue,
+   mamaMsgCallbacks callback, mamaSubscription subscription, void* closure)
 {
    /* Allocate memory for zmq subscription implementation */
    zmqSubscription* impl = (zmqSubscription*) calloc(1, sizeof(zmqSubscription));
@@ -292,8 +271,8 @@ zmqSubscription* zmqBridgeMamaSubscriptionImpl_create(subscriptionBridge* subscr
    impl->mMamaQueue           = queue;
    impl->mMamaCallback        = callback;
    impl->mMamaSubscription    = subscription;
-   impl->mSymbol              = symbol;
    impl->mClosure             = closure;
+
    impl->mIsNotMuted          = 1;
    impl->mIsTportDisconnected = 1;
    impl->mSubjectKey          = NULL;
@@ -303,6 +282,36 @@ zmqSubscription* zmqBridgeMamaSubscriptionImpl_create(subscriptionBridge* subscr
    return impl;
 }
 
+mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const char* source, const char*symbol)
+{
+   /* Use a standard centralized method to determine a topic key */
+   zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
+
+   // endpointPool_registerWithoutIdentifier uses address as key, but addresses can be reused...
+   #if 1
+   impl->mEndpointIdentifier = zmq_generate_uuid();
+   endpointPool_registerWithIdentifier(impl->mTransport->mSubEndpoints,
+                                       impl->mSubjectKey,
+                                       impl->mEndpointIdentifier,
+                                       impl);
+   #else
+   /* Register the endpoint */
+   endpointPool_registerWithoutIdentifier(impl->mTransport->mSubEndpoints,
+                                          impl->mSubjectKey,
+                                          &impl->mEndpointIdentifier,
+                                          impl);
+   #endif
+
+   /* subscribe to the topic */
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
+
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
+
+   /* Mark this subscription as valid */
+   impl->mIsValid = 1;
+
+   return MAMA_STATUS_OK;
+}
 
 /*
  * Internal function to ensure that the topic names are always calculated

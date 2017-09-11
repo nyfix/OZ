@@ -1224,6 +1224,14 @@ mama_status zmqBridgeMamaTransportImpl_processNormalMsg(zmqTransportBridge* impl
          return MAMA_STATUS_NOT_FOUND;
       }
 
+      if (subscription->mIsWildcard) {
+         int rc = regexec(subscription->mRegexTopic, subject, 0, NULL, REG_NOSUB);
+         if (rc != 0) {
+            MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "wildcard regex (%s) didnt match subject (%s)", subscription->mOrigRegex, subject);
+            return MAMA_STATUS_NOT_FOUND;
+         }
+      }
+
       /* Get the memory pool from the queue, creating if necessary */
       queueBridge queueImpl = (queueBridge) subscription->mZmqQueue;
       memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure(queueImpl);
