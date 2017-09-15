@@ -419,6 +419,8 @@ mama_status zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic)
 #else
    CALL_ZMQ_FUNC(zmq_setsockopt(socket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
 #endif
+
+   return MAMA_STATUS_OK;
 }
 
 mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic)
@@ -431,4 +433,6 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic)
 #else
    CALL_ZMQ_FUNC(zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
 #endif
+
+   return MAMA_STATUS_OK;
 }
