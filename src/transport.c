@@ -682,7 +682,8 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
       sprintf(endpointAddress, "tcp://%s:*", impl->mPublishAddress);
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(impl->mZmqSocketPublisher,  endpointAddress, &impl->mPubEndpoint));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(impl->mZmqSocketSubscriber, endpointAddress, &impl->mSubEndpoint));
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketPublisher, impl->mSubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
+      // one or the other, but not both (or will get duplicate msgs)
+      //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketPublisher, impl->mSubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketSubscriber, impl->mPubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
 
       // create naming sockets & connect to broker(s)
@@ -1179,8 +1180,11 @@ mama_status zmqBridgeMamaTransportImpl_processNamingMsg(zmqTransportBridge* impl
    if (pMsg->mType == 'C') {
       // connect
       // NOTE: multiple connections to same endpoint are silently ignored (see https://github.com/zeromq/libzmq/issues/788)
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketPublisher, pMsg->mSubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketSubscriber, pMsg->mPubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
+      // dont connect to self (avoid duplicate msgs)
+      if (strcmp(pMsg->mSubEndpoint, impl->mSubEndpoint) != 0)
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketPublisher, pMsg->mSubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
+      if (strcmp(pMsg->mPubEndpoint, impl->mPubEndpoint) != 0)
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setupSocket(impl->mZmqSocketSubscriber, pMsg->mPubEndpoint, ZMQ_TPORT_DIRECTION_DONTCARE));
    }
    else {
       // TODO: implement disconnect
