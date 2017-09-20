@@ -216,7 +216,8 @@ zmqBridgeMamaPublisher_send(publisherBridge publisher, mamaMsg msg)
    zmqBridgeMamaMsgImpl_serialize(impl->mMamaBridgeMsg, msg, &buf, &bufSize);
    zmqBridgeMamaMsgImpl_getPayloadSize(impl->mMamaBridgeMsg, &payloadSize);
 
-   int i = zmq_send(impl->mTransport->mZmqSocketPublisher, buf, bufSize, 0);
+   wlock_lock(impl->mTransport->mZmqSocketPublisher.mLock);
+   int i = zmq_send(impl->mTransport->mZmqSocketPublisher.mSocket, buf, bufSize, 0);
    mama_log(MAMA_LOG_LEVEL_FINE,
             "zmqBridgeMamaPublisher_send(): "
             "Sending %lu bytes [payload=%lu; type=%d]",
@@ -224,6 +225,7 @@ zmqBridgeMamaPublisher_send(publisherBridge publisher, mamaMsg msg)
             payloadSize,
             type,
             i);
+   wlock_unlock(impl->mTransport->mZmqSocketPublisher.mLock);
 
    /* Reset the message type for the next publish */
    zmqBridgeMamaMsgImpl_setMsgType(impl->mMamaBridgeMsg, ZMQ_MSG_PUB_SUB);

@@ -130,6 +130,12 @@ typedef enum zmqTransportDirection_ {
 } zmqTransportDirection;
 
 
+typedef struct zmqSocket_ {
+   void*       mSocket;
+   wLock       mLock;
+} zmqSocket;
+
+
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =
   =========================================================================*/
@@ -147,11 +153,11 @@ typedef struct zmqTransportBridge_ {
    const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mPubEndpoint;          // endpoint address for naming
    const char*             mSubEndpoint;          // endpoint address for naming
-   void*                   mZmqNamingPublisher;   // outgoing connections to nsd
-   void*                   mZmqNamingSubscriber;  // incoming connections from nsd
+   zmqSocket               mZmqNamingPublisher;   // outgoing connections to nsd
+   zmqSocket               mZmqNamingSubscriber;  // incoming connections from nsd
 
-   void*                   mZmqSocketPublisher;
-   void*                   mZmqSocketSubscriber;
+   zmqSocket               mZmqSocketPublisher;
+   zmqSocket               mZmqSocketSubscriber;
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
 

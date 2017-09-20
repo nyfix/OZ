@@ -303,7 +303,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    #endif
 
    /* subscribe to the topic */
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(&impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
 
@@ -409,30 +409,36 @@ mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscr
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaSubscriptionImpl_subscribe(void* socket, char* topic)
+// TODO: replace CALL_ZMQ_FUNC
+mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* topic)
 {
+   wlock_lock(socket->mLock);
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\1', sizeof(buf));
    memcpy(&buf[1], topic, strlen(topic));
-   CALL_ZMQ_FUNC(zmq_send(socket, buf, strlen(topic) + 1, 0));
+   CALL_ZMQ_FUNC(zmq_send(socket->mSocket, buf, strlen(topic) + 1, 0));
 #else
-   CALL_ZMQ_FUNC(zmq_setsockopt(socket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
+   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
 #endif
 
+   wlock_unlock(socket->mLock);
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(void* socket, char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, char* topic)
 {
+   wlock_lock(socket->mLock);
+
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\0', sizeof(buf));
    memcpy(&buf[1], topic, strlen(topic));
-   CALL_ZMQ_FUNC(zmq_send(socket, buf, strlen(topic) + 1, 0));
+   CALL_ZMQ_FUNC(zmq_send(socket->mSocket, buf, strlen(topic) + 1, 0));
 #else
-   CALL_ZMQ_FUNC(zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
+   CALL_ZMQ_FUNC(zmq_setsockopt (socket->mSocket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
 #endif
 
+   wlock_unlock(socket->mLock);
    return MAMA_STATUS_OK;
 }
