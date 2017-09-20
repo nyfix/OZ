@@ -412,7 +412,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscr
 // TODO: replace CALL_ZMQ_FUNC
 mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* topic)
 {
-   wlock_lock(socket->mLock);
+   WLOCK_LOCK(socket->mLock);
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\1', sizeof(buf));
@@ -422,13 +422,13 @@ mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* top
    CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
 #endif
 
-   wlock_unlock(socket->mLock);
+   WLOCK_UNLOCK(socket->mLock);
    return MAMA_STATUS_OK;
 }
 
 mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, char* topic)
 {
-   wlock_lock(socket->mLock);
+   WLOCK_LOCK(socket->mLock);
 
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
@@ -439,6 +439,6 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, char* t
    CALL_ZMQ_FUNC(zmq_setsockopt (socket->mSocket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
 #endif
 
-   wlock_unlock(socket->mLock);
+   WLOCK_UNLOCK(socket->mLock);
    return MAMA_STATUS_OK;
 }

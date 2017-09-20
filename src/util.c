@@ -5,6 +5,11 @@
 #include <wombat/wUuid.h>
 #include <mama/log.h>
 
+#include "util.h"
+
+void wlock_noop(wLock lock ) {}
+
+
 #define UUID_STRING_BUF_SIZE 37
 
 const char* zmq_generate_uuid()

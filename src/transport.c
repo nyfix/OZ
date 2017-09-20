@@ -369,9 +369,9 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       msg.mType = 'C';       // connect
       strncpy(msg.mPubEndpoint, impl->mPubEndpoint, sizeof(msg.mPubEndpoint) - 1);
       strncpy(msg.mSubEndpoint, impl->mSubEndpoint, sizeof(msg.mSubEndpoint) - 1);
-      //wlock_lock(impl->mZmqNamingPublisher.mLock);
+      //WLOCK_LOCK(impl->mZmqNamingPublisher.mLock);
       CALL_ZMQ_FUNC(zmq_send(impl->mZmqNamingPublisher.mSocket, &msg, sizeof(msg), 0));
-      //wlock_unlock(impl->mZmqNamingPublisher.mLock);
+      //WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
    }
 
    return MAMA_STATUS_OK;
@@ -773,7 +773,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueCallback(mamaQueue queue, voi
 
    /* Can't do anything without a subscriber */
    if (NULL == subscription) {
-      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
       goto exit;
    }
 
@@ -900,34 +900,36 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
     */
    while (1 == impl->mIsDispatching) {
 
-      wlock_lock(impl->mZmqSocketSubscriber.mLock);
 
       // zmq_poll is really slow?!
       // so try reading directly from data socket, and poll only if no msg ready
+      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
       int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, ZMQ_DONTWAIT);
+      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (size != -1) {
          ++impl->mNoPolls;
-         wlock_unlock(impl->mZmqSocketSubscriber.mLock);
          zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
          continue;
       }
 
       // poll on one or both
       zmq_pollitem_t items[] = {
-         { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN, 0},
-         { impl->mZmqNamingSubscriber.mSocket, 0, ZMQ_POLLIN, 0}
+         { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0},
+         { impl->mZmqNamingSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
       };
+      //WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
       int rc = zmq_poll(items, (impl->mIsNaming == 1) ? 2 : 1, 1);
+      //WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (rc < 0) {
-         wlock_unlock(impl->mZmqSocketSubscriber.mLock);
          break;
       }
       ++impl->mPolls;
 
       // got normal msg?
       if (items[0].revents & ZMQ_POLLIN) {
+         WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
-         wlock_unlock(impl->mZmqSocketSubscriber.mLock);
+         WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
          if (size != -1) {
             zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
          }
@@ -936,15 +938,16 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 
       // got naming msg?
       if (items[1].revents & ZMQ_POLLIN) {
+         WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber.mSocket, 0);
-         wlock_unlock(impl->mZmqSocketSubscriber.mLock);
+         WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
          if (size != -1) {
             zmqBridgeMamaTransportImpl_processNamingMsg(impl, &zmsg);
          }
          continue;
       }
 
-      wlock_unlock(impl->mZmqSocketSubscriber.mLock);
+      //WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
    }
 
    impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
