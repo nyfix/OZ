@@ -369,9 +369,9 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       msg.mType = 'C';       // connect
       strncpy(msg.mPubEndpoint, impl->mPubEndpoint, sizeof(msg.mPubEndpoint) - 1);
       strncpy(msg.mSubEndpoint, impl->mSubEndpoint, sizeof(msg.mSubEndpoint) - 1);
-      //WLOCK_LOCK(impl->mZmqNamingPublisher.mLock);
+      WLOCK_LOCK(impl->mZmqNamingPublisher.mLock);
       CALL_ZMQ_FUNC(zmq_send(impl->mZmqNamingPublisher.mSocket, &msg, sizeof(msg), 0));
-      //WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
+      WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
    }
 
    return MAMA_STATUS_OK;
@@ -886,10 +886,9 @@ const char* zmqBridgeMamaTransportImpl_getParameter(
    return returnVal;
 }
 
-void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
-{
-   zmqTransportBridge*     impl          = (zmqTransportBridge*)closure;
 
+void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
+{
    zmq_msg_t zmsg;
    zmq_msg_init(&zmsg);
 
@@ -899,7 +898,6 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
     * read - if it changes in the middle of the read, we don't actually care.
     */
    while (1 == impl->mIsDispatching) {
-
 
       // zmq_poll is really slow?!
       // so try reading directly from data socket, and poll only if no msg ready
@@ -917,9 +915,9 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
          { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0},
          { impl->mZmqNamingSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
       };
-      //WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int rc = zmq_poll(items, (impl->mIsNaming == 1) ? 2 : 1, 1);
-      //WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
+      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
+      int rc = zmq_poll(items, 2, -1);
+      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (rc < 0) {
          break;
       }
@@ -946,12 +944,47 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
          }
          continue;
       }
-
-      //WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
    }
 
    impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
    return NULL;
+}
+
+void* zmqBridgeMamaTransportImpl_dispatchNonNaming(zmqTransportBridge* impl)
+{
+   zmq_msg_t zmsg;
+   zmq_msg_init(&zmsg);
+
+   /*
+    * Check if we should be still dispatching.
+    * We shouldn't need to lock around this, as we're performing a simple value
+    * read - if it changes in the middle of the read, we don't actually care.
+    */
+   while (1 == impl->mIsDispatching) {
+
+      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
+      int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
+      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
+      if (size != -1) {
+         ++impl->mNoPolls;
+         zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
+         continue;
+      }
+   }
+
+   impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
+   return NULL;
+}
+
+void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
+{
+   zmqTransportBridge*     impl          = (zmqTransportBridge*)closure;
+   if (impl->mIsNaming) {
+      return zmqBridgeMamaTransportImpl_dispatchNaming(impl);
+   }
+   else {
+      return zmqBridgeMamaTransportImpl_dispatchNonNaming(impl);
+   }
 }
 
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueClosureCleanupCb(void* closure)

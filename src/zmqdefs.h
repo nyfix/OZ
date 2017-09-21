@@ -27,7 +27,7 @@
 
 #include "util.h"
 
-#define USE_XSUB
+//#define USE_XSUB
 #ifdef USE_XSUB
 #define  ZMQ_PUB_TYPE   ZMQ_XPUB
 #define  ZMQ_SUB_TYPE   ZMQ_XSUB
@@ -88,7 +88,7 @@ extern "C" {
 
 //
 // threads
-#define OPENMAMA_ZMQ_THREAD_SAFE
+//#define OPENMAMA_ZMQ_THREAD_SAFE
 #ifdef  OPENMAMA_ZMQ_THREAD_SAFE
 #define WLOCK_LOCK      wlock_lock
 #define WLOCK_UNLOCK    wlock_unlock
