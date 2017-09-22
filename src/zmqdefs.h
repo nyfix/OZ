@@ -113,11 +113,6 @@ extern "C" {
 #define     ZMQ_MSG_PROPERTY_LEN     1024
 
 
-typedef struct zmqBridgeMsgReplyHandle {
-   char                        mInboxName[ZMQ_MSG_PROPERTY_LEN];
-   char                        mReplyTo[ZMQ_MSG_PROPERTY_LEN];
-} zmqBridgeMsgReplyHandle;
-
 
 
 /* Message types */
@@ -183,6 +178,7 @@ typedef struct zmqTransportBridge_ {
    mama_status             mOmzmqDispatchStatus;
    endpointPool_t          mSubEndpoints;
    wList                   mWcEndpoints;
+   wtable_t                mInboxes;
    long int                mMemoryPoolSize;
    long int                mMemoryNodeSize;
 
@@ -192,6 +188,8 @@ typedef struct zmqTransportBridge_ {
    // misc stats
    long int                mNormalMessages;
    long int                mNamingMessages;
+   long int                mSubMessages;
+   long int                mInboxMessages;
    long int                mPolls;
    long int                mNoPolls;
 
@@ -248,6 +246,29 @@ typedef struct zmqNamingMsg {
    char                    mPubEndpoint[256];
    char                    mSubEndpoint[256];
 } zmqNamingMsg;
+
+
+// full reply handle is "INBOX.<replyAddr>.<inboxName>" where:
+// replyAddr is a uuid string (36 bytes)
+// inboxName is a uuid string (36 bytes)
+// so the whole thing is 5+1+36+1+36 = 79 (+1 for trailing null)
+// e.g., "_INBOX.15BD6852-91B0-4F4A-A2FB-5E63A1D24561.B68A5F70-A7FB-4816-B3E1-1DF7438E2FD2"
+#define ZMQ_REPLYHANDLE_SIZE              80
+// offset of inboxName in the string
+#define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   44
+
+typedef struct zmqInboxImpl {
+   void*                           mClosure;
+   void*                           mZmqQueue;
+   zmqTransportBridge*             mTransport;
+   const char*                     mReplyHandle;
+   mamaInboxMsgCallback            mMsgCB;
+   mamaInboxErrorCallback          mErrCB;
+   mamaInboxDestroyCallback        mOnInboxDestroyed;
+   mamaInbox                       mParent;
+} zmqInboxImpl;
+
+
 
 #if defined(__cplusplus)
 }

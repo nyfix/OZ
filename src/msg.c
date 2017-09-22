@@ -51,7 +51,7 @@ typedef struct zmqBridgeMsgImpl {
    mamaMsg                     mParent;
    zmqMsgType                  mMsgType;
    uint8_t                     mIsValid;
-   zmqBridgeMsgReplyHandle     mReplyHandle;
+   const char*                 mReplyHandle;
    char                        mSendSubject[ZMQ_MSG_PROPERTY_LEN];
    void*                       mSerializedBuffer;
    size_t                      mSerializedBufferSize;
@@ -83,72 +83,59 @@ static mama_status zmqBridgeMamaMsgImpl_setStringValue(char*          dest,
   =========================================================================*/
 
 /* Bridge specific implementations below here */
-mama_status
-zmqBridgeMamaMsg_create(msgBridge* msg, mamaMsg parent)
+mama_status zmqBridgeMamaMsg_create(msgBridge* msg, mamaMsg parent)
 {
-   zmqBridgeMsgImpl* impl   = NULL;
-   mama_status        status = MAMA_STATUS_OK;
-
    if (NULL == msg || NULL == parent) {
       return MAMA_STATUS_NULL_ARG;
    }
 
-   status = zmqBridgeMamaMsgImpl_createMsgOnly(msg);
+   mama_status status = zmqBridgeMamaMsgImpl_createMsgOnly(msg);
    if (MAMA_STATUS_OK != status) {
       return status;
    }
 
    /* Cast back to implementation to set parent */
-   impl = (zmqBridgeMsgImpl*) *msg;
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) *msg;
    impl->mParent       = parent;
 
    return MAMA_STATUS_OK;
 }
 
-int
-zmqBridgeMamaMsg_isFromInbox(msgBridge msg)
+int zmqBridgeMamaMsg_isFromInbox(msgBridge msg)
 {
    if (NULL == msg) {
       return 0;
    }
-
-
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
+
    if (ZMQ_MSG_INBOX_REQUEST == (impl->mMsgType)) {
       return 1;
    }
 
-   if (impl->mReplyHandle.mInboxName[0] != '\0') {
-      return 1;
-   }
-
-   if (impl->mReplyHandle.mReplyTo[0] != '\0') {
+   if ((impl->mReplyHandle != NULL) && (impl->mReplyHandle[0] != '\0')) {
       return 1;
    }
 
    return 0;
 }
 
-mama_status
-zmqBridgeMamaMsg_destroy(msgBridge msg, int destroyMsg)
+mama_status zmqBridgeMamaMsg_destroy(msgBridge msg, int destroyMsg)
 {
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
    }
-   /* Free the underlying implementation */
+
    free(msg);
 
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsg_destroyMiddlewareMsg(msgBridge msg)
+mama_status zmqBridgeMamaMsg_destroyMiddlewareMsg(msgBridge msg)
 {
    return zmqBridgeMamaMsg_destroy(msg, 1);
 }
 
-mama_status
-zmqBridgeMamaMsg_detach(msgBridge msg)
+mama_status zmqBridgeMamaMsg_detach(msgBridge msg)
 {
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
@@ -158,27 +145,25 @@ zmqBridgeMamaMsg_detach(msgBridge msg)
    return mamaMsgImpl_setMessageOwner(impl->mParent, 1);
 }
 
-mama_status
-zmqBridgeMamaMsg_getPlatformError(msgBridge msg, void** error)
+mama_status zmqBridgeMamaMsg_getPlatformError(msgBridge msg, void** error)
 {
    /* Null initialize the error return */
    if (NULL != error) {
       *error  = NULL;
    }
+
    return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
-mama_status
-zmqBridgeMamaMsg_setSendSubject(msgBridge   msg,
-                                const char* symbol,
-                                const char* subject)
+mama_status zmqBridgeMamaMsg_setSendSubject(msgBridge msg, const char* symbol, const char* subject)
 {
+   if (NULL == msg || NULL == symbol || (NULL == symbol && NULL == subject)) {
+      return MAMA_STATUS_NULL_ARG;
+   }
+
    zmqBridgeMsgImpl* impl     = (zmqBridgeMsgImpl*) msg;
    mama_status        status   = MAMA_STATUS_OK;
 
-   if (NULL == impl || NULL == symbol || (NULL == symbol && NULL == subject)) {
-      return MAMA_STATUS_NULL_ARG;
-   }
 
    status = zmqBridgeMamaMsgImpl_setStringValue(impl->mSendSubject, symbol);
    if (MAMA_STATUS_OK != status) {
@@ -199,79 +184,55 @@ zmqBridgeMamaMsg_setSendSubject(msgBridge   msg,
    return status;
 }
 
-mama_status
-zmqBridgeMamaMsg_getNativeHandle(msgBridge msg, void** result)
+mama_status zmqBridgeMamaMsg_getNativeHandle(msgBridge msg, void** result)
 {
-   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
-   if (NULL == impl || NULL == result) {
+   if (NULL == msg || NULL == result) {
       return MAMA_STATUS_NULL_ARG;
    }
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
+
    *result = impl;
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsg_duplicateReplyHandle(msgBridge msg, void** result)
+const char* zmqBridgeMamaMsg_getReplyHandle(msgBridge msg)
 {
-   zmqBridgeMsgImpl*          impl        = (zmqBridgeMsgImpl*) msg;
-   zmqBridgeMsgReplyHandle*   replyHandle = NULL;
+   if (NULL == msg) {
+      return NULL;
+   }
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
-   if (NULL == impl || NULL == result) {
+   return impl->mReplyHandle;
+}
+
+mama_status zmqBridgeMamaMsg_duplicateReplyHandle(msgBridge msg, void** handle)
+{
+   if (NULL == msg || NULL == handle) {
       return MAMA_STATUS_NULL_ARG;
    }
 
-   replyHandle = (zmqBridgeMsgReplyHandle*) calloc(1,
-                                                   sizeof(struct zmqBridgeMsgReplyHandle));
-
-   if (NULL == replyHandle) {
-      return MAMA_STATUS_NOMEM;
+   const char* replyHandle = zmqBridgeMamaMsg_getReplyHandle(msg);
+   if (replyHandle == NULL) {
+      return MAMA_STATUS_INVALID_ARG;
    }
 
-   zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(
-      replyHandle,
-      impl->mReplyHandle.mReplyTo);
-
-   zmqBridgeMamaMsgReplyHandleImpl_setInboxName(
-      replyHandle,
-      impl->mReplyHandle.mInboxName);
-
-   *result = replyHandle;
-
+   *handle = strdup(replyHandle);
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsg_copyReplyHandle(void* src, void** dest)
+mama_status zmqBridgeMamaMsg_copyReplyHandle(void* src, void** dest)
 {
-   zmqBridgeMsgReplyHandle* impl        = (zmqBridgeMsgReplyHandle*)src;
-   zmqBridgeMsgReplyHandle* replyHandle = NULL;
-
-   if (NULL == impl || NULL == dest) {
+   if (NULL == src || NULL == dest) {
       return MAMA_STATUS_NULL_ARG;
    }
 
-   replyHandle = (zmqBridgeMsgReplyHandle*) calloc(1,
-                                                   sizeof(struct zmqBridgeMsgReplyHandle));
-
-   if (NULL == replyHandle) {
-      return MAMA_STATUS_NOMEM;
-   }
-
-   zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(replyHandle,
-                                              impl->mReplyTo);
-
-   zmqBridgeMamaMsgReplyHandleImpl_setInboxName(replyHandle,
-                                                impl->mInboxName);
-
-   *dest = replyHandle;
-
+   *dest = strdup((const char*) src);
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsg_destroyReplyHandle(void* result)
+mama_status zmqBridgeMamaMsg_destroyReplyHandle(void* result)
 {
-   /* What do we do here if the replyHandle is attached to a message? */
+   // TODO: What do we do here if the replyHandle is attached to a message?
    if (NULL == result) {
       return MAMA_STATUS_NULL_ARG;
    }
@@ -280,32 +241,21 @@ zmqBridgeMamaMsg_destroyReplyHandle(void* result)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsgImpl_setReplyHandle(msgBridge msg, void* handle)
+mama_status zmqBridgeMamaMsgImpl_setReplyHandle(msgBridge msg, void* handle)
 {
-   /* Do we assume we now own the memory of the handle here? Should we
-    * free it when we have copied? Or indeed, do we need the copy? */
-   zmqBridgeMsgImpl*        impl        = (zmqBridgeMsgImpl*) msg;
-   zmqBridgeMsgReplyHandle* replyHandle =
-      (zmqBridgeMsgReplyHandle*) handle;
-
-   if (NULL == impl || NULL == replyHandle) {
+   if (NULL == msg || NULL == handle) {
       return MAMA_STATUS_NULL_ARG;
    }
 
-   zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(&impl->mReplyHandle,
-                                              replyHandle->mReplyTo);
-
-   zmqBridgeMamaMsgReplyHandleImpl_setInboxName(&impl->mReplyHandle,
-                                                replyHandle->mInboxName);
-
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
+   free((void*) impl->mReplyHandle);
+   impl->mReplyHandle = strdup((const char*) handle);
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsgImpl_setReplyHandleAndIncrement(msgBridge msg, void* result)
+mama_status zmqBridgeMamaMsgImpl_setReplyHandleAndIncrement(msgBridge msg, void* handle)
 {
-   return zmqBridgeMamaMsgImpl_setReplyHandle(msg, result);
+   return zmqBridgeMamaMsgImpl_setReplyHandle(msg, handle);
 }
 
 
@@ -350,57 +300,6 @@ mama_status zmqBridgeMamaMsgImpl_getMsgType(msgBridge     msg,
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaMsgImpl_setInboxName(msgBridge   msg,
-                                              const char* value)
-{
-   zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   return zmqBridgeMamaMsgReplyHandleImpl_setInboxName(
-             (void*) &impl->mReplyHandle,
-             value);
-}
-
-mama_status zmqBridgeMamaMsgImpl_getInboxName(msgBridge msg, char** value)
-{
-   zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-
-   return zmqBridgeMamaMsgReplyHandleImpl_getInboxName(
-             (void*) &impl->mReplyHandle,
-             value);
-}
-
-mama_status zmqBridgeMamaMsgImpl_setReplyTo(msgBridge     msg,
-                                            const char*   value)
-{
-   zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   return zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(
-             (void*) &impl->mReplyHandle,
-             value);
-}
-
-mama_status zmqBridgeMamaMsgImpl_getReplyTo(msgBridge     msg,
-                                            char**        value)
-{
-   zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   return zmqBridgeMamaMsgReplyHandleImpl_getReplyTo(
-             (void*) &impl->mReplyHandle,
-             value);
-}
 
 mama_status zmqBridgeMamaMsgImpl_getPayloadSize(msgBridge   msg,
                                                 size_t*     size)
@@ -426,61 +325,8 @@ mama_status zmqBridgeMamaMsgImpl_getSendSubject(msgBridge     msg,
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaMsgReplyHandleImpl_getInboxName(void*  replyHandle,
-                                                         char** value)
-{
-   zmqBridgeMsgReplyHandle* impl = (zmqBridgeMsgReplyHandle*)replyHandle;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-
-   *value = impl->mInboxName;
-   return MAMA_STATUS_OK;
-}
-
-mama_status zmqBridgeMamaMsgReplyHandleImpl_setInboxName(
-   void*       replyHandle,
-   const char* value)
-{
-   zmqBridgeMsgReplyHandle*  impl   = (zmqBridgeMsgReplyHandle*)replyHandle;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   return zmqBridgeMamaMsgImpl_setStringValue(impl->mInboxName,
-                                              value);
-}
-
-mama_status zmqBridgeMamaMsgReplyHandleImpl_getReplyTo(void*  replyHandle,
-                                                       char** value)
-{
-   zmqBridgeMsgReplyHandle* impl = (zmqBridgeMsgReplyHandle*) replyHandle;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-
-   *value = impl->mReplyTo;
-   return MAMA_STATUS_OK;
-}
-
-mama_status zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(
-   void*           replyHandle,
-   const char*     value)
-{
-   zmqBridgeMsgReplyHandle*  impl   =
-      (zmqBridgeMsgReplyHandle*) replyHandle;
-
-   if (NULL == impl) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   return zmqBridgeMamaMsgImpl_setStringValue(impl->mReplyTo, value);
-}
-
 /* Non-interface version of create which permits null parent */
-mama_status
-zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
+mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
 {
    zmqBridgeMsgImpl* impl = NULL;
 
@@ -509,13 +355,9 @@ zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
-                               mamaMsg        source,
-                               void**         target,
-                               size_t*        size)
+mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void** target, size_t* size)
 {
-   zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
    mama_size_t msgSize = 0;
    const void* msgBuffer = NULL;
    size_t msgSubjectByteCount = 0;
@@ -525,15 +367,15 @@ zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
    size_t serializedSize = 0;
 
    // Serialize payload
-   mama_status status = mamaMsg_getByteBuffer(source, &msgBuffer, &msgSize);
+   CALL_MAMA_FUNC(mamaMsg_getByteBuffer(source, &msgBuffer, &msgSize));
 
+   // TODO: no naked constants
    serializedSize = strlen(impl->mSendSubject) + 10 + msgSize;
 
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
-         serializedSize += strlen(impl->mReplyHandle.mInboxName) + 1;
-         serializedSize += strlen(impl->mReplyHandle.mReplyTo) + 1;
+         serializedSize += strlen(impl->mReplyHandle) + 1;
          break;
       case ZMQ_MSG_SUB_REQUEST:
       case ZMQ_MSG_PUB_SUB:
@@ -541,9 +383,7 @@ zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
          break;
    }
 
-   allocateBufferMemory(&impl->mSerializedBuffer,
-                        &impl->mSerializedBufferSize,
-                        serializedSize);
+   allocateBufferMemory(&impl->mSerializedBuffer, &impl->mSerializedBufferSize, serializedSize);
 
    // Ok great - we have a buffer now of appropriate size, let's populate it
    uint8_t* bufferPos = (uint8_t*)impl->mSerializedBuffer;
@@ -567,13 +407,10 @@ zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
-         // Copy across inbox name & reply address
-         msgInboxByteCount = strlen(impl->mReplyHandle.mInboxName) + 1;
-         memcpy(bufferPos, impl->mReplyHandle.mInboxName, msgInboxByteCount);
+         // Copy across reply handle
+         msgInboxByteCount = strlen(impl->mReplyHandle) + 1;
+         memcpy(bufferPos, impl->mReplyHandle, msgInboxByteCount);
          bufferPos += msgInboxByteCount;
-         msgReplyToByteCount = strlen(impl->mReplyHandle.mReplyTo) + 1;
-         memcpy(bufferPos, impl->mReplyHandle.mReplyTo, msgReplyToByteCount);
-         bufferPos += msgReplyToByteCount;
          break;
       case ZMQ_MSG_SUB_REQUEST:
       case ZMQ_MSG_PUB_SUB:
@@ -589,16 +426,12 @@ zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
    *target = impl->mSerializedBuffer;
    *size = serializedSize;
 
-   return status;
+   return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
-                                 const void*      source,
-                                 mama_size_t      size,
-                                 mamaMsg          target)
+mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, mama_size_t size, mamaMsg target)
 {
-   zmqBridgeMsgImpl*  impl        = (zmqBridgeMsgImpl*) msg;
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
    uint8_t* bufferPos = (uint8_t*)source;
 
@@ -619,12 +452,8 @@ zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
-         zmqBridgeMamaMsgImpl_setStringValue(impl->mReplyHandle.mInboxName,
-                                             (const char*)bufferPos);
-         bufferPos += strlen(impl->mReplyHandle.mInboxName) + 1;
-         zmqBridgeMamaMsgImpl_setStringValue(impl->mReplyHandle.mReplyTo,
-                                             (const char*)bufferPos);
-         bufferPos += strlen(impl->mReplyHandle.mReplyTo) + 1;
+         impl->mReplyHandle = strdup((const char*)bufferPos);
+         bufferPos += strlen(impl->mReplyHandle) + 1;
          break;
       case ZMQ_MSG_SUB_REQUEST:
       case ZMQ_MSG_PUB_SUB:
@@ -635,21 +464,9 @@ zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
    // Parse the payload into a MAMA Message
    size_t payloadSize = size - (bufferPos - (uint8_t*)source);
 
-   mama_log(MAMA_LOG_LEVEL_FINER,
-            "zmqBridgeMamaMsgImpl_deserialize(): "
-            "Received %lu bytes [payload=%lu; type=%d]",
-            size,
-            payloadSize,
-            impl->mMsgType);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
 
-   mama_status status;
-
-   status = mamaMsgImpl_setMsgBuffer(target,
-                                     (void*) bufferPos,
-                                     payloadSize,
-                                     *bufferPos);
-
-   return status;
+   return mamaMsgImpl_setMsgBuffer(target, (void*) bufferPos, payloadSize, *bufferPos);
 }
 
 /*=========================================================================

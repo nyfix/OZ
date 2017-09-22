@@ -169,7 +169,8 @@ static mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl);
  *
  * @return mama_status indicating whether the method succeeded or failed.
  */
-static void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueCallback(mamaQueue queue, void* closure);
+static void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void* closure);
+static void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, void* closure);
 
 /**
  * This is a local function for parsing string configuration parameters from the
@@ -242,9 +243,12 @@ mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_setSocketOptions(const char*
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket);
 
 // message processing
-mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_processNamingMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
-mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_processNormalMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
 
+mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
+mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
+memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* impl, void* queue, zmq_msg_t* zmsg);
 
 /*=========================================================================
   =               Public interface implementation functions               =
@@ -336,6 +340,14 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       free(impl);
       return MAMA_STATUS_NOMEM;
    }
+
+   impl->mInboxes = wtable_create("inboxes", 1024);
+   if (impl->mInboxes == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create inbox endpoints");
+      free(impl);
+      return MAMA_STATUS_NOMEM;
+   }
+
 
    status = endpointPool_create(&impl->mSubEndpoints, "mSubEndpoints");
    if (MAMA_STATUS_OK != status) {
@@ -757,11 +769,83 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
    return MAMA_STATUS_OK;
 }
 
-/**
- * Called when message removed from queue by dispatch thread
- *
- */
-void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueCallback(mamaQueue queue, void* closure)
+// Called when message removed from queue by dispatch thread
+// NOTE: Needs to check inbox, which may have been deleted after this event was queued but before it
+// was dequeued.
+void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, void* closure)
+{
+   memoryNode* node = (memoryNode*) closure;
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+
+
+   // find the subscription based on its identifier
+   zmqSubscription* subscription = NULL;
+   endpointPool_getEndpointByIdentifiers(tmsg->mSubEndpoints, tmsg->mSubject,
+                                         tmsg->mEndpointIdentifier, (endpoint_t*) &subscription);
+
+   /* Can't do anything without a subscriber */
+   if (NULL == subscription) {
+      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+      goto exit;
+   }
+
+   // TODO: re-evaluate -- possible race condition?
+   // It *appears* that the subscription is valid even after its mTransport member is set to NULL,
+   // so do this test first to avoid a SEGV dereferencing impl->mSubEndpoints below
+   /* Make sure that the subscription is processing messages */
+   if (1 != subscription->mIsNotMuted) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Skipping update - subscription %p is muted.", subscription);
+      goto exit;
+   }
+
+   /* This is the reuseable message stored on the associated MamaQueue */
+   mamaMsg tmpMsg = mamaQueueImpl_getMsg(subscription->mMamaQueue);
+   if (NULL == tmpMsg) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get cached mamaMsg from event queue.");
+      goto exit;
+   }
+
+   /* Get the bridge message from the mamaMsg */
+   msgBridge bridgeMsg;
+   mama_status status = mamaMsgImpl_getBridgeMsg(tmpMsg, &bridgeMsg);
+   if (MAMA_STATUS_OK != status) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get bridge message from cached queue mamaMsg [%s]", mamaStatus_stringForStatus(status));
+      goto exit;
+   }
+
+   /* Unpack this bridge message into a MAMA msg implementation */
+   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, tmsg->mNodeBuffer, tmsg->mNodeSize, tmpMsg);
+   if (MAMA_STATUS_OK != status) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaMsgImpl_deserialize() failed. [%s]", mamaStatus_stringForStatus(status));
+   }
+   else {
+      /* Process the message as normal */
+      status = mamaSubscription_processMsg(subscription->mMamaSubscription, tmpMsg);
+      if (MAMA_STATUS_OK != status) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "mamaSubscription_dispatchMsg() failed. [%s]", mamaStatus_stringForStatus(status));
+      }
+   }
+
+exit:
+   free(tmsg->mEndpointIdentifier);
+
+   // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
+   zmqQueueBridge* queueImpl = NULL;
+   mamaQueue_getNativeHandle(queue, (void**)&queueImpl);
+   if (queueImpl) {
+      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
+      if (pool) {
+         memoryPool_returnNode(pool, node);
+      }
+   }
+
+   return;
+}
+
+// Called when message removed from queue by dispatch thread
+// NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
+// was dequeued.
+void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void* closure)
 {
    memoryNode* node = (memoryNode*) closure;
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
@@ -810,7 +894,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueCallback(mamaQueue queue, voi
       /* Process the message as normal */
       status = mamaSubscription_processMsg(subscription->mMamaSubscription, tmpMsg);
       if (MAMA_STATUS_OK != status) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "mamaSubscription_processMsg() failed. [%s]", mamaStatus_stringForStatus(status));
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "mamaSubscription_dispatchMsg() failed. [%s]", mamaStatus_stringForStatus(status));
       }
    }
 
@@ -829,6 +913,7 @@ exit:
 
    return;
 }
+
 
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(
    char*       defaultVal,
@@ -906,7 +991,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
       WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (size != -1) {
          ++impl->mNoPolls;
-         zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
+         zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
          continue;
       }
 
@@ -929,7 +1014,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
          int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
          WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
          if (size != -1) {
-            zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
+            zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
          }
          continue;
       }
@@ -940,7 +1025,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
          int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber.mSocket, 0);
          WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
          if (size != -1) {
-            zmqBridgeMamaTransportImpl_processNamingMsg(impl, &zmsg);
+            zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
          }
          continue;
       }
@@ -967,7 +1052,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNonNaming(zmqTransportBridge* impl)
       WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (size != -1) {
          ++impl->mNoPolls;
-         zmqBridgeMamaTransportImpl_processNormalMsg(impl, &zmsg);
+         zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
          continue;
       }
    }
@@ -1208,19 +1293,17 @@ mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, zmqSoc
 }
 
 
-mama_status zmqBridgeMamaTransportImpl_getInboxSubject(mamaTransport transport, const char** inboxSubject)
+mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl, const char** inboxSubject)
 {
-   if ((transport == NULL) || (inboxSubject == NULL)) {
+   if ((impl == NULL) || (inboxSubject == NULL)) {
       return MAMA_STATUS_NULL_ARG;
    }
 
-   zmqTransportBridge* impl = NULL;
-   CALL_MAMA_FUNC(mamaTransport_getBridgeTransport(transport, (transportBridge*) &impl));
    *inboxSubject = impl->mInboxSubject;
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaTransportImpl_processNamingMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
+mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
 {
    impl->mNamingMessages++;
 
@@ -1242,12 +1325,56 @@ mama_status zmqBridgeMamaTransportImpl_processNamingMsg(zmqTransportBridge* impl
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaTransportImpl_processNormalMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
+mama_status zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
 {
    const char* subject = (char*) zmq_msg_data(zmsg);
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Got msg with subject %s", subject);
 
    impl->mNormalMessages++;
+
+   if (strcmp("_INBOX", subject) == 0) {
+      return zmqBridgeMamaTransportImpl_dispatchInboxMsg(impl, subject, zmsg);
+   }
+   else {
+      return zmqBridgeMamaTransportImpl_dispatchSubMsg(impl, subject, zmsg);
+   }
+}
+
+mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg)
+{
+   const char* inboxName = &subject[ZMQ_REPLYHANDLE_INBOXNAME_INDEX];
+   zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, inboxName);
+   if (inbox == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "discarding uninteresting message for subject %s", subject);
+      return MAMA_STATUS_NOT_FOUND;
+   }
+
+   /* Get the memory pool from the queue, creating if necessary */
+   queueBridge queueImpl = (queueBridge) inbox->mZmqQueue;
+   memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure(queueImpl);
+   if (NULL == pool) {
+      pool = memoryPool_create(impl->mMemoryPoolSize, impl->mMemoryNodeSize);
+      zmqBridgeMamaQueueImpl_setClosure(queueImpl, pool, zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
+   }
+
+   // TODO: can/should move following to zmqBridgeMamaTransportImpl_queueCallback?
+   // allocate/populate zmqTransportMsg
+   memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg) + zmq_msg_size(zmsg));
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
+   tmsg->mNodeSize     = zmq_msg_size(zmsg);
+   tmsg->mEndpointIdentifier = NULL;
+   memcpy(tmsg->mNodeBuffer, zmq_msg_data(zmsg), tmsg->mNodeSize);
+
+   // callback (queued) will release the message
+   zmqBridgeMamaQueue_enqueueEvent((queueBridge) queueImpl, zmqBridgeMamaTransportImpl_inboxCallback, node);
+
+   return MAMA_STATUS_OK;
+}
+
+mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg)
+{
+   impl->mSubMessages++;
 
    // get list of subscribers for this subject
    endpoint_t* subs = NULL;
@@ -1284,27 +1411,46 @@ mama_status zmqBridgeMamaTransportImpl_processNormalMsg(zmqTransportBridge* impl
          }
       }
 
-      /* Get the memory pool from the queue, creating if necessary */
-      queueBridge queueImpl = (queueBridge) subscription->mZmqQueue;
-      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure(queueImpl);
-      if (NULL == pool) {
-         pool = memoryPool_create(impl->mMemoryPoolSize, impl->mMemoryNodeSize);
-         zmqBridgeMamaQueueImpl_setClosure(queueImpl, pool, zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
-      }
-
-      // TODO: can/should move following to zmqBridgeMamaTransportImpl_queueCallback?
-      // allocate/populate zmqTransportMsg
-      memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg) + zmq_msg_size(zmsg));
+      memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, subscription->mZmqQueue, zmsg);
       zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-      tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
-      tmsg->mNodeSize     = zmq_msg_size(zmsg);
       tmsg->mSubEndpoints = impl->mSubEndpoints;
       tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
-      memcpy(tmsg->mNodeBuffer, zmq_msg_data(zmsg), tmsg->mNodeSize);
 
       // callback (queued) will release the message
-      zmqBridgeMamaQueue_enqueueEvent((queueBridge) queueImpl, zmqBridgeMamaTransportImpl_queueCallback, node);
+      zmqBridgeMamaQueue_enqueueEvent(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, node);
    }
 
    return MAMA_STATUS_OK;
 }
+
+
+memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* impl, void* queue, zmq_msg_t* zmsg)
+{
+   queueBridge queueImpl = (queueBridge) queue;
+   memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure(queueImpl);
+   if (NULL == pool) {
+      pool = memoryPool_create(impl->mMemoryPoolSize, impl->mMemoryNodeSize);
+      zmqBridgeMamaQueueImpl_setClosure(queueImpl, pool, zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
+   }
+
+   memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg) + zmq_msg_size(zmsg));
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
+   tmsg->mNodeSize     = zmq_msg_size(zmsg);
+   tmsg->mSubEndpoints = NULL;
+   tmsg->mEndpointIdentifier = NULL;
+   memcpy(tmsg->mNodeBuffer, zmq_msg_data(zmsg), tmsg->mNodeSize);
+
+   return node;
+}
+
+mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
+{
+   return wtable_insert(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX], inbox) >= 0 ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
+}
+
+mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
+{
+   return wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
+}
+

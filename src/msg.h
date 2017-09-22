@@ -159,74 +159,21 @@ zmqBridgeMamaMsgImpl_getSendSubject(msgBridge    msg,
                                     char**       value);
 
 /**
- * This will get the inbox name from the reply handle specified.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with reply handle's inbox name.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgReplyHandleImpl_getInboxName(void*       replyHandle,
-                                             char**      value);
-
-/**
- * This will set the inbox name for the reply handle specified.
- *
- * @param msg    The bridge message to update.
- * @param type   The inbox name to update the reply handle with.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgReplyHandleImpl_setInboxName(void*       replyHandle,
-                                             const char* value);
-
-/**
- * This will get the reply to URL from the reply handle specified.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with reply handle's reply to URL
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgReplyHandleImpl_getReplyTo(void*       replyHandle,
-                                           char**      value);
-
-/**
- * This will set the reply to URL for the reply handle specified.
- *
- * @param msg    The bridge message to update.
- * @param type   The reply to url to update the reply handle with.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgReplyHandleImpl_setReplyTo(void*       replyHandle,
-                                           const char* value);
-
-/**
  * This will create a bridge message but will not create a parent with it.
  *
  * @param msg    The bridge message to create.
  *
  * @return mama_status indicating whether the method succeeded or failed.
  */
-mama_status
-zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge*  msg);
+mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge*  msg);
 
-mama_status
-zmqBridgeMamaMsgImpl_serialize(msgBridge      msg,
-                               mamaMsg        source,
-                               void**         target,
-                               size_t*        size);
+mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void** target, size_t* size);
 
-mama_status
-zmqBridgeMamaMsgImpl_deserialize(msgBridge        msg,
-                                 const void*      source,
-                                 mama_size_t      size,
-                                 mamaMsg          target);
+mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, mama_size_t size, mamaMsg target);
+
+const char* zmqBridgeMamaMsg_getReplyHandle(msgBridge msg);
+
+
 #if defined(__cplusplus)
 }
 #endif

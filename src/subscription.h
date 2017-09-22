@@ -58,8 +58,6 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
 mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* topic);
 mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, char* topic);
 
-mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscriber);
-
 #if defined(__cplusplus)
 }
 #endif

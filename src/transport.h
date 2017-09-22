@@ -62,7 +62,11 @@ void
 zmqBridgeMamaTransportImpl_dumpMessagePool(zmqTransportBridge* impl);
 
 
-mama_status zmqBridgeMamaTransportImpl_getInboxSubject(mamaTransport transport, const char** inboxSubject);
+mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl, const char** inboxSubject);
+
+
+mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox);
+mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox);
 
 
 #if defined(__cplusplus)

@@ -375,40 +375,6 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
    }
 }
 
-// NOTE: this function is used only to remove the endpoint identifier from the endpoint collection, leaving the
-// subscription itself in place.
-mama_status zmqBridgeMamaSubscriptionImpl_destroyInbox(subscriptionBridge subscriber)
-{
-   if (NULL == subscriber) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-
-   zmqSubscription* impl = (zmqSubscription*) subscriber;
-   zmqTransportBridge* transportBridge = impl->mTransport;
-   if (NULL == transportBridge || NULL == transportBridge->mSubEndpoints
-       || NULL == impl->mSubjectKey) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-
-   /* Set the message meta data to reflect a subscription request */
-   zmqBridgeMamaMsgImpl_setMsgType(transportBridge->mMsg, ZMQ_MSG_SUB_REQUEST);
-
-   // TODO: revisit ...
-   // zmq sockets are not thread-safe (?!)
-   //CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge->mZmqSocketSubscriber, impl->mSubjectKey));
-
-   /* Remove the subscription from the transport's subscription pool. */
-   endpointPool_unregister(transportBridge->mSubEndpoints,
-                           impl->mSubjectKey,
-                           impl->mEndpointIdentifier);
-
-   /* Mark this subscription as invalid */
-   impl->mIsValid = 0;
-   impl->mIsNotMuted = 0;
-
-   return MAMA_STATUS_OK;
-}
-
 // TODO: replace CALL_ZMQ_FUNC
 mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* topic)
 {
