@@ -10,13 +10,12 @@
 void wlock_noop(wLock lock ) {}
 
 
-#define UUID_STRING_BUF_SIZE 37
 
 const char* zmq_generate_uuid()
 {
    wUuid tempUuid;
    wUuid_generate_time(tempUuid);
-   char uuidStringBuffer[UUID_STRING_BUF_SIZE];
+   char uuidStringBuffer[UUID_STRING_SIZE+1];
    wUuid_unparse(tempUuid, uuidStringBuffer);
 
    return strdup(uuidStringBuffer);

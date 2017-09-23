@@ -55,8 +55,8 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
 
 
 
-mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* topic);
-mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, char* topic);
+mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, const char* topic);
+mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, const char* topic);
 
 #if defined(__cplusplus)
 }

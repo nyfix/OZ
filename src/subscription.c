@@ -376,7 +376,7 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
 }
 
 // TODO: replace CALL_ZMQ_FUNC
-mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, const char* topic)
 {
    WLOCK_LOCK(socket->mLock);
 #ifdef USE_XSUB
@@ -392,7 +392,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, char* top
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, const char* topic)
 {
    WLOCK_LOCK(socket->mLock);
 

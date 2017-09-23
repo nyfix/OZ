@@ -78,6 +78,7 @@ typedef struct zmqPublisherBridge {
  */
 static mama_status zmqBridgeMamaPublisherImpl_buildSendSubject(zmqPublisherBridge* impl);
 
+mama_status zmqBridgeMamaPublisher_sendSubject(publisherBridge publisher, mamaMsg msg, const char* subject);
 
 /*=========================================================================
  =               Public interface implementation functions               =
@@ -157,6 +158,11 @@ mama_status zmqBridgeMamaPublisher_destroy(publisherBridge publisher)
 
 mama_status zmqBridgeMamaPublisher_send(publisherBridge publisher, mamaMsg msg)
 {
+   return zmqBridgeMamaPublisher_sendSubject(publisher, msg, NULL);
+}
+
+mama_status zmqBridgeMamaPublisher_sendSubject(publisherBridge publisher, mamaMsg msg, const char* subject)
+{
    if (NULL == publisher) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No publisher.");
       return MAMA_STATUS_NULL_ARG;
@@ -164,9 +170,14 @@ mama_status zmqBridgeMamaPublisher_send(publisherBridge publisher, mamaMsg msg)
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
    }
-
    zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
-   zmqBridgeMamaMsg_setSendSubject(impl->mMamaBridgeMsg, impl->mSubject, impl->mSource);
+
+   if (subject == NULL) {
+      zmqBridgeMamaMsg_setSendSubject(impl->mMamaBridgeMsg, impl->mSubject, impl->mSource);
+   }
+   else {
+      zmqBridgeMamaMsg_setSendSubject(impl->mMamaBridgeMsg, subject, NULL);
+   }
 
    // serialize the msg
    void* buf = NULL;
@@ -229,13 +240,11 @@ mama_status zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisherBridge publis
    zmqBridgeMamaMsgImpl_setMsgType(impl->mMamaBridgeMsg, ZMQ_MSG_INBOX_RESPONSE);
    // Set replyHandle so it will be serialized along with the rest of the message
    CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle(impl->mMamaBridgeMsg, replyHandle));
-   // Set the send subject to publish onto the replyAddress
-   CALL_MAMA_FUNC(zmqBridgeMamaMsg_setSendSubject(impl->mMamaBridgeMsg, (const char*) replyHandle, impl->mSource));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent inbox reply to %s", (const char*) replyHandle);
 
    /* Fire out the message to the inbox */
-   return zmqBridgeMamaPublisher_send(publisher, reply);
+   return zmqBridgeMamaPublisher_sendSubject(publisher, reply, (const char*) replyHandle);
 }
 
 /* Send a message from the specified inbox using the throttle. */

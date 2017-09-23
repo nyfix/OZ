@@ -42,6 +42,24 @@ extern "C" {
   =========================================================================*/
 
 /**
+ * This is the onMsg callback to call when a message is received for this inbox.
+ * This will in turn relay the message to the mamaInboxMsgCallback callback
+ * provided on inbox creation.
+ *
+ * @param subscription The MAMA subscription originating this callback.
+ * @param msg          The message received.
+ * @param closure      The closure passed to the mamaSubscription_create
+ *                     function (in this case, the inbox impl).
+ * @param itemClosure  The item closure for the subscription can be set with
+ *                     mamaSubscription_setItemClosure (not used in this case).
+ */
+void MAMACALLTYPE
+zmqBridgeMamaInboxImpl_onMsg(mamaSubscription    subscription,
+                             mamaMsg             msg,
+                             void*               closure,
+                             void*               itemClosure);
+
+/**
  * This function will return the topic on which to reply in order to reach the
  * supplied inbox.
  *

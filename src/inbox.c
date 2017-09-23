@@ -46,8 +46,6 @@ mamaSubscription_getSubscriptionBridge(
   =                              Macros                                   =
   =========================================================================*/
 
-#define                 UUID_STRING_BUF_SIZE                37
-
 
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =
@@ -57,23 +55,6 @@ mamaSubscription_getSubscriptionBridge(
   =                  Private implementation prototypes                    =
   =========================================================================*/
 
-/**
- * This is the onMsg callback to call when a message is received for this inbox.
- * This will in turn relay the message to the mamaInboxMsgCallback callback
- * provided on inbox creation.
- *
- * @param subscription The MAMA subscription originating this callback.
- * @param msg          The message received.
- * @param closure      The closure passed to the mamaSubscription_create
- *                     function (in this case, the inbox impl).
- * @param itemClosure  The item closure for the subscription can be set with
- *                     mamaSubscription_setItemClosure (not used in this case).
- */
-static void MAMACALLTYPE
-zmqBridgeMamaInboxImpl_onMsg(mamaSubscription    subscription,
-                             mamaMsg             msg,
-                             void*               closure,
-                             void*               itemClosure);
 
 /**
  * This is the onCreate callback to call when the inbox subscription is created.
@@ -147,6 +128,7 @@ mama_status zmqBridgeMamaInbox_createByIndex(inboxBridge* bridge, mamaTransport 
    }
 
    impl->mTransport = zmqBridgeMamaTransportImpl_getTransportBridge(transport);
+   impl->mMamaQueue = queue;
    mamaQueue_getNativeHandle(queue, &impl->mZmqQueue);
 
    // generate reply address
@@ -206,7 +188,7 @@ const char* zmqBridgeMamaInboxImpl_getReplyHandle(inboxBridge inbox)
   =========================================================================*/
 
 /* Inbox bridge callbacks */
-static void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
+void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
 {
    if (NULL == closure) {
       return;
