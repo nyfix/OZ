@@ -146,6 +146,7 @@
  *
  * @return mama_status indicating whether the method succeeded or failed.
  */
+static mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl);
 static mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl);
 
 /**
@@ -361,7 +362,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mIsValid = 1;
    *result = (transportBridge) impl;
 
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_start(impl));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_init(impl));
 
    // generate inbox subject and subscribe to it
    const char* uuid = zmq_generate_uuid();
@@ -387,6 +388,8 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       CALL_ZMQ_FUNC(zmq_send(impl->mZmqNamingPublisher.mSocket, &msg, sizeof(msg), 0));
       WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
    }
+
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_start(impl));
 
    return MAMA_STATUS_OK;
 }
@@ -668,7 +671,7 @@ mama_status zmqBridgeMamaTransportImpl_setupSocket(void* socket, const char* uri
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
+mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
 {
    if (NULL == impl) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR,"transport NULL");
@@ -733,6 +736,11 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
       }
    }
 
+   return MAMA_STATUS_OK;
+}
+
+mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
+{
    /* Set the transport bridge mIsDispatching to true. */
    impl->mIsDispatching = 1;
 
@@ -1032,11 +1040,34 @@ void* zmqBridgeMamaTransportImpl_dispatchNonNaming(zmqTransportBridge* impl)
    while (1 == impl->mIsDispatching) {
 
       WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
+      int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, ZMQ_DONTWAIT);
       WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (size != -1) {
          ++impl->mNoPolls;
          zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
+         continue;
+      }
+
+      // poll on one or both
+      zmq_pollitem_t items[] = {
+         { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
+      };
+      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
+      int rc = zmq_poll(items, 1, -1);
+      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
+      if (rc < 0) {
+         break;
+      }
+      ++impl->mPolls;
+
+      // got normal msg?
+      if (items[0].revents & ZMQ_POLLIN) {
+         WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
+         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
+         WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
+         if (size != -1) {
+            zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
+         }
          continue;
       }
    }

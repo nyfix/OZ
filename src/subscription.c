@@ -379,6 +379,7 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
 mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, const char* topic)
 {
    WLOCK_LOCK(socket->mLock);
+
 #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\1', sizeof(buf));
