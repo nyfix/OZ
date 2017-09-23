@@ -68,6 +68,8 @@ mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl,
 mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox);
 mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox);
 
+mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmqControlMsg* msg, int msgSize);
+
 
 #if defined(__cplusplus)
 }

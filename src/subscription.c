@@ -303,7 +303,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    #endif
 
    /* subscribe to the topic */
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(&impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, &impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
 
@@ -375,37 +375,60 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
    }
 }
 
+
+
 // TODO: replace CALL_ZMQ_FUNC
-mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqSocket* socket, const char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqTransportBridge* transport, zmqSocket* socket, const char* topic)
 {
+#ifdef ZMQ_CONTROL_SOCKET
+
+   zmqControlMsg msg;
+   msg.command = 'S';
+   strcpy(msg.arg1, topic);
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
+
+#else
+
    WLOCK_LOCK(socket->mLock);
 
-#ifdef USE_XSUB
+   #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\1', sizeof(buf));
    memcpy(&buf[1], topic, strlen(topic));
    CALL_ZMQ_FUNC(zmq_send(socket->mSocket, buf, strlen(topic) + 1, 0));
-#else
+   #else
    CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
-#endif
+   #endif
 
    WLOCK_UNLOCK(socket->mLock);
    return MAMA_STATUS_OK;
+
+#endif
 }
 
-mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqSocket* socket, const char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transport, zmqSocket* socket, const char* topic)
 {
+#ifdef ZMQ_CONTROL_SOCKET
+
+   zmqControlMsg msg;
+   msg.command = 'U';
+   strcpy(msg.arg1, topic);
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
+
+#else
+
    WLOCK_LOCK(socket->mLock);
 
-#ifdef USE_XSUB
+   #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
    memset(buf, '\0', sizeof(buf));
    memcpy(&buf[1], topic, strlen(topic));
    CALL_ZMQ_FUNC(zmq_send(socket->mSocket, buf, strlen(topic) + 1, 0));
-#else
+   #else
    CALL_ZMQ_FUNC(zmq_setsockopt (socket->mSocket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
-#endif
+   #endif
 
    WLOCK_UNLOCK(socket->mLock);
    return MAMA_STATUS_OK;
+#endif
 }

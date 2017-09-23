@@ -27,7 +27,9 @@
 
 #include "util.h"
 
-//#define USE_XSUB
+#define ZMQ_CONTROL_SOCKET
+
+#define USE_XSUB
 #ifdef USE_XSUB
 #define  ZMQ_PUB_TYPE   ZMQ_XPUB
 #define  ZMQ_SUB_TYPE   ZMQ_XSUB
@@ -35,6 +37,19 @@
 #define  ZMQ_PUB_TYPE   ZMQ_PUB
 #define  ZMQ_SUB_TYPE   ZMQ_SUB
 #endif
+
+//
+// threads
+#define OPENMAMA_ZMQ_THREAD_SAFE
+#ifdef  OPENMAMA_ZMQ_THREAD_SAFE
+#define WLOCK_LOCK      wlock_lock
+#define WLOCK_UNLOCK    wlock_unlock
+#else
+#define WLOCK_LOCK      wlock_noop
+#define WLOCK_UNLOCK    wlock_noop
+#endif
+
+
 
 // NOTE: following code uses (deprecated) gMamaLogLevel directly, rather than calling mama_getLogLevel
 // (which acquires a read lock on gMamaLogLevel)
@@ -86,18 +101,6 @@
 extern "C" {
 #endif
 
-//
-// threads
-#define OPENMAMA_ZMQ_THREAD_SAFE
-#ifdef  OPENMAMA_ZMQ_THREAD_SAFE
-#define WLOCK_LOCK      wlock_lock
-#define WLOCK_UNLOCK    wlock_unlock
-#else
-#define WLOCK_LOCK      wlock_noop
-#define WLOCK_UNLOCK    wlock_noop
-#endif
-
-
 
 
 /*=========================================================================
@@ -137,6 +140,7 @@ typedef enum zmqTransportDirection_ {
    ZMQ_TPORT_DIRECTION_OUTGOING
 } zmqTransportDirection;
 
+#define ZMQ_CONTROL_ENDPOINT  "inproc://control"
 
 typedef struct zmqSocket_ {
    void*       mSocket;
@@ -155,6 +159,8 @@ typedef struct zmqTransportBridge_ {
    void*                   mZmqContext;
    int                     mIsNaming;
    const char*             mPublishAddress;
+   // inproc socket for commands
+   zmqSocket               mZmqSocketControl;
 
    // naming transports only
    const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
@@ -190,6 +196,7 @@ typedef struct zmqTransportBridge_ {
    long int                mNamingMessages;
    long int                mSubMessages;
    long int                mInboxMessages;
+   long int                mControlMessages;
    long int                mPolls;
    long int                mNoPolls;
 
@@ -248,7 +255,10 @@ typedef struct zmqNamingMsg {
    char                    mSubEndpoint[256];
 } zmqNamingMsg;
 
-
+typedef struct zmqControlMsg {
+   char     command;
+   char     arg1[256];
+} zmqControlMsg;
 
 
 #define ZMQ_REPLYHANDLE_PREFIX            "_INBOX"

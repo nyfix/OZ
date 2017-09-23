@@ -247,6 +247,7 @@ mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* 
 // message processing
 mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
 mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
+mama_status zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg);
 
 mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
 mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
@@ -294,6 +295,9 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
 
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Naming messages = %ld", impl->mNamingMessages);
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Normal messages = %ld", impl->mNormalMessages);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Subscription messages = %ld", impl->mSubMessages);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Inbox messages = %ld", impl->mInboxMessages);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Control messages = %ld", impl->mControlMessages);
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Polls = %ld", impl->mPolls);
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No polls = %ld", impl->mNoPolls);
 
@@ -323,8 +327,11 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mName                 = name;
    impl->mNamingMessages       = 0;
    impl->mNormalMessages       = 0;
-   impl->mPolls       = 0;
-   impl->mNoPolls       = 0;
+   impl->mSubMessages          = 0;
+   impl->mInboxMessages        = 0;
+   impl->mControlMessages      = 0;
+   impl->mPolls                = 0;
+   impl->mNoPolls              = 0;
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Initializing Transport %s", impl->mName);
 
@@ -370,12 +377,12 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, uuid);
    free((void*) uuid);
    impl->mInboxSubject = strdup(temp);
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(&impl->mZmqSocketSubscriber, impl->mInboxSubject));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl, &impl->mZmqSocketSubscriber, impl->mInboxSubject));
 
    volatile int i;
    if (impl->mIsNaming) {
       // subscribe to naming msgs
-      CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(&impl->mZmqNamingSubscriber, "_NAMING"));
+      CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl, &impl->mZmqNamingSubscriber, "_NAMING"));
 
       // publish our endpoints
       zmqNamingMsg msg;
@@ -684,6 +691,11 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       return MAMA_STATUS_PLATFORM;
    }
 
+   // create command socket
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_PAIR));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqSocketControl));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqSocketControl,  ZMQ_CONTROL_ENDPOINT, NULL));
+
    // initialize pub/sub sockets
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketPublisher, ZMQ_PUB_TYPE));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setSocketOptions(impl->mName, &impl->mZmqSocketPublisher));
@@ -767,6 +779,10 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 
    /* Set the transportBridge mIsDispatching to false */
    impl->mIsDispatching = 0;
+
+   zmqControlMsg msg;
+   msg.command = 'X';
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(impl, &msg, sizeof(msg)));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Waiting on dispatch thread to terminate.");
 
@@ -989,19 +1005,31 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
 
       // poll on one or both
       zmq_pollitem_t items[] = {
+         { impl->mZmqSocketControl.mSocket, 0, ZMQ_POLLIN , 0},
          { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0},
          { impl->mZmqNamingSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
       };
       WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int rc = zmq_poll(items, 2, -1);
+      int rc = zmq_poll(items, 3, -1);
       WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (rc < 0) {
          break;
       }
       ++impl->mPolls;
 
-      // got normal msg?
+      // got command msg?
       if (items[0].revents & ZMQ_POLLIN) {
+         //WLOCK_LOCK(impl->mZmqSocketControl.mLock);
+         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, 0);
+         //WLOCK_UNLOCK(impl->mZmqSocketControl.mLock);
+         if (size != -1) {
+            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+         }
+         continue;
+      }
+
+      // got normal msg?
+      if (items[1].revents & ZMQ_POLLIN) {
          WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
          WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
@@ -1012,7 +1040,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
       }
 
       // got naming msg?
-      if (items[1].revents & ZMQ_POLLIN) {
+      if (items[2].revents & ZMQ_POLLIN) {
          WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber.mSocket, 0);
          WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
@@ -1050,18 +1078,30 @@ void* zmqBridgeMamaTransportImpl_dispatchNonNaming(zmqTransportBridge* impl)
 
       // poll on one or both
       zmq_pollitem_t items[] = {
+         { impl->mZmqSocketControl.mSocket, 0, ZMQ_POLLIN , 0},
          { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
       };
       WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int rc = zmq_poll(items, 1, -1);
+      int rc = zmq_poll(items, 2, -1);
       WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (rc < 0) {
          break;
       }
       ++impl->mPolls;
 
-      // got normal msg?
+      // got command msg?
       if (items[0].revents & ZMQ_POLLIN) {
+         //WLOCK_LOCK(impl->mZmqSocketControl.mLock);
+         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, 0);
+         //WLOCK_UNLOCK(impl->mZmqSocketControl.mLock);
+         if (size != -1) {
+            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+         }
+         continue;
+      }
+
+      // got normal msg?
+      if (items[1].revents & ZMQ_POLLIN) {
          WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
          WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
@@ -1318,6 +1358,43 @@ mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl,
    return MAMA_STATUS_OK;
 }
 
+mama_status zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
+{
+   impl->mControlMessages++;
+
+   zmqControlMsg* pMsg = zmq_msg_data(zmsg);
+   // TODO: fix Q&D copy/paste
+   if (pMsg->command == 'S') {
+      const char* topic = pMsg->arg1;
+      // subscribe
+      #ifdef USE_XSUB
+      char buf[MAX_SUBJECT_LENGTH + 1];
+      memset(buf, '\1', sizeof(buf));
+      memcpy(&buf[1], topic, strlen(topic));
+      CALL_ZMQ_FUNC(zmq_send(impl->mZmqSocketSubscriber.mSocket, buf, strlen(topic) + 1, 0));
+      #else
+      CALL_ZMQ_FUNC(zmq_setsockopt (socket->mSocket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
+      #endif
+   }
+   else if (pMsg->command == 'U') {
+      const char* topic = pMsg->arg1;
+      // subscribe
+      #ifdef USE_XSUB
+      char buf[MAX_SUBJECT_LENGTH + 1];
+      memset(buf, '\0', sizeof(buf));
+      memcpy(&buf[1], topic, strlen(topic));
+      CALL_ZMQ_FUNC(zmq_send(impl->mZmqSocketSubscriber.mSocket, buf, strlen(topic) + 1, 0));
+      #else
+      CALL_ZMQ_FUNC(zmq_setsockopt (socket->mSocket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
+      #endif
+   }
+   else if (pMsg->command == 'X') {
+      impl->mIsDispatching = 0;
+   }
+   return MAMA_STATUS_OK;
+}
+
+
 mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
 {
    impl->mNamingMessages++;
@@ -1458,3 +1535,34 @@ mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl,
    return wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
 }
 
+
+
+mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmqControlMsg* msg, int msgSize)
+{
+   mama_status status = MAMA_STATUS_OK;
+   void* temp = zmq_socket(impl->mZmqContext, ZMQ_PAIR);
+   if (temp == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket failed %d(%s)", errno, zmq_strerror(errno));
+      return MAMA_STATUS_PLATFORM;
+   }
+
+   int rc = zmq_connect(temp, ZMQ_CONTROL_ENDPOINT);
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect failed trying to connect to '%s' %d(%s)", ZMQ_CONTROL_ENDPOINT, errno, zmq_strerror(errno));
+      status = MAMA_STATUS_PLATFORM;
+      goto close;
+   }
+
+   int i = zmq_send(temp, msg, msgSize, 0);
+   if (i <= 0) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
+      status = MAMA_STATUS_PLATFORM;
+   }
+
+   zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
+
+close:
+   zmq_close(temp);
+
+   return status;
+}
