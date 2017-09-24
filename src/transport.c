@@ -391,9 +391,9 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       msg.mType = 'C';       // connect
       strncpy(msg.mPubEndpoint, impl->mPubEndpoint, sizeof(msg.mPubEndpoint) - 1);
       strncpy(msg.mSubEndpoint, impl->mSubEndpoint, sizeof(msg.mSubEndpoint) - 1);
-      WLOCK_LOCK(impl->mZmqNamingPublisher.mLock);
+      //WLOCK_LOCK(impl->mZmqNamingPublisher.mLock);
       CALL_ZMQ_FUNC(zmq_send(impl->mZmqNamingPublisher.mSocket, &msg, sizeof(msg), 0));
-      WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
+      //WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
    }
 
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_start(impl));
@@ -980,8 +980,10 @@ const char* zmqBridgeMamaTransportImpl_getParameter(
 }
 
 
-void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
+void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 {
+   zmqTransportBridge* impl = (zmqTransportBridge*)closure;
+
    zmq_msg_t zmsg;
    zmq_msg_init(&zmsg);
 
@@ -994,24 +996,20 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
 
       // zmq_poll is really slow?!
       // so try reading directly from data socket, and poll only if no msg ready
-      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
       int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, ZMQ_DONTWAIT);
-      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
       if (size != -1) {
          ++impl->mNoPolls;
          zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
          continue;
       }
 
-      // poll on one or both
+      // no normal msg, so poll
       zmq_pollitem_t items[] = {
          { impl->mZmqSocketControl.mSocket, 0, ZMQ_POLLIN , 0},
          { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0},
          { impl->mZmqNamingSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
       };
-      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int rc = zmq_poll(items, 3, -1);
-      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
+      int rc = zmq_poll(items, impl->mIsNaming ? 3 : 2, -1);
       if (rc < 0) {
          break;
       }
@@ -1019,9 +1017,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
 
       // got command msg?
       if (items[0].revents & ZMQ_POLLIN) {
-         //WLOCK_LOCK(impl->mZmqSocketControl.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, 0);
-         //WLOCK_UNLOCK(impl->mZmqSocketControl.mLock);
          if (size != -1) {
             zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
          }
@@ -1030,9 +1026,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
 
       // got normal msg?
       if (items[1].revents & ZMQ_POLLIN) {
-         WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
-         WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
          if (size != -1) {
             zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
          }
@@ -1041,9 +1035,7 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
 
       // got naming msg?
       if (items[2].revents & ZMQ_POLLIN) {
-         WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
          int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber.mSocket, 0);
-         WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
          if (size != -1) {
             zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
          }
@@ -1053,78 +1045,6 @@ void* zmqBridgeMamaTransportImpl_dispatchNaming(zmqTransportBridge* impl)
 
    impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
    return NULL;
-}
-
-void* zmqBridgeMamaTransportImpl_dispatchNonNaming(zmqTransportBridge* impl)
-{
-   zmq_msg_t zmsg;
-   zmq_msg_init(&zmsg);
-
-   /*
-    * Check if we should be still dispatching.
-    * We shouldn't need to lock around this, as we're performing a simple value
-    * read - if it changes in the middle of the read, we don't actually care.
-    */
-   while (1 == impl->mIsDispatching) {
-
-      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, ZMQ_DONTWAIT);
-      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
-      if (size != -1) {
-         ++impl->mNoPolls;
-         zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
-         continue;
-      }
-
-      // poll on one or both
-      zmq_pollitem_t items[] = {
-         { impl->mZmqSocketControl.mSocket, 0, ZMQ_POLLIN , 0},
-         { impl->mZmqSocketSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
-      };
-      WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-      int rc = zmq_poll(items, 2, -1);
-      WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
-      if (rc < 0) {
-         break;
-      }
-      ++impl->mPolls;
-
-      // got command msg?
-      if (items[0].revents & ZMQ_POLLIN) {
-         //WLOCK_LOCK(impl->mZmqSocketControl.mLock);
-         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, 0);
-         //WLOCK_UNLOCK(impl->mZmqSocketControl.mLock);
-         if (size != -1) {
-            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
-         }
-         continue;
-      }
-
-      // got normal msg?
-      if (items[1].revents & ZMQ_POLLIN) {
-         WLOCK_LOCK(impl->mZmqSocketSubscriber.mLock);
-         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketSubscriber.mSocket, 0);
-         WLOCK_UNLOCK(impl->mZmqSocketSubscriber.mLock);
-         if (size != -1) {
-            zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
-         }
-         continue;
-      }
-   }
-
-   impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
-   return NULL;
-}
-
-void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
-{
-   zmqTransportBridge*     impl          = (zmqTransportBridge*)closure;
-   if (impl->mIsNaming) {
-      return zmqBridgeMamaTransportImpl_dispatchNaming(impl);
-   }
-   else {
-      return zmqBridgeMamaTransportImpl_dispatchNonNaming(impl);
-   }
 }
 
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueClosureCleanupCb(void* closure)
