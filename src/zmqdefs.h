@@ -29,7 +29,7 @@
 
 #define ZMQ_CONTROL_SOCKET
 
-#define USE_XSUB
+//#define USE_XSUB
 #ifdef USE_XSUB
 #define  ZMQ_PUB_TYPE   ZMQ_XPUB
 #define  ZMQ_SUB_TYPE   ZMQ_XSUB
@@ -248,9 +248,12 @@ typedef struct zmqQueueBridge {
    void*                   mZmqSocketDealer;
 } zmqQueueBridge;
 
+#define ZMQ_NAMING_PREFIX            "_NAMING"
 typedef struct zmqNamingMsg {
-   char                    mTopic[256];
    unsigned char           mType;
+   char                    mHost[MAXHOSTNAMELEN + 1];
+   int                     mPid;
+   char                    mTopic[256];
    char                    mPubEndpoint[256];
    char                    mSubEndpoint[256];
 } zmqNamingMsg;
