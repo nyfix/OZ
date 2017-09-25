@@ -238,25 +238,38 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNonNamingParams(zmqTransportBridge* impl);
 
 // socket helpers
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char* uri, const char** endpointName);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const char* uri);
-mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type);
+// sets socket options as specified in Mama configuration file
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, zmqSocket* socket);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket);
 
 // message processing
+// The dispatch... functions all run on main dispatch thread, and thus can access the control, normal and
+// naming (if applicable) sockets without restriction.
 mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
 mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
-mama_status zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
 
-mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
-mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
-memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* impl, void* queue, zmq_msg_t* zmsg);
+memoryNode* MAMACALLTYPE zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* impl, void* queue, zmq_msg_t* zmsg);
 
-mama_status zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic);
-mama_status zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* topic);
+// These subscribe methods operate directly on the zmq socket, and as such should only be called
+// from the dispatch thread.
+// To subscribe from any other thread, you need to use the zmqBridgeMamaSubscriptionImpl_subscribe function, which
+// posts a message to the control socket.
+// NOTE: The subscribe method is controlled by the USE_XSUB preprocessor symbol.
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* topic);
 
-mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl);
+
+// "Sometimes" it is necessary to trigger the processing of outstanding commands against a
+// zmq socket.
+// see https://github.com/zeromq/libzmq/issues/2267
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_kickSocket(void* socket);
 
 /*=========================================================================
   =               Public interface implementation functions               =
@@ -1196,9 +1209,7 @@ mama_status zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const ch
       return MAMA_STATUS_PLATFORM;
    }
 
-   // see https://github.com/zeromq/libzmq/issues/2267
-   zmq_pollitem_t pollitems [] = { { socket->mSocket, 0, ZMQ_POLLIN, 0 } };
-   CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
 
    return MAMA_STATUS_OK;
 }
@@ -1212,9 +1223,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    }
 
    // TODO: superfuous on bind?
-   // see https://github.com/zeromq/libzmq/issues/2267
-   //zmq_pollitem_t pollitems [] = { { socket->mSocket, 0, ZMQ_POLLIN, 0 } };
-   //CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
+   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
 
    if (endpointName != NULL) {
       char temp[1024];
@@ -1281,6 +1290,14 @@ mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl,
 }
 
 
+mama_status zmqBridgeMamaTransportImpl_kickSocket(void* socket)
+{
+   // see https://github.com/zeromq/libzmq/issues/2267
+   zmq_pollitem_t pollitems [] = { { socket, 0, ZMQ_POLLIN, 0 } };
+   CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
+   return MAMA_STATUS_OK;
+}
+
 
 mama_status zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic)
 {
@@ -1294,6 +1311,10 @@ mama_status zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic
    #else
    CALL_ZMQ_FUNC(zmq_setsockopt (socket, ZMQ_SUBSCRIBE, topic, strlen(topic)));
    #endif
+
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket));
+
+   return MAMA_STATUS_OK;
 }
 
 mama_status zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* topic)
@@ -1308,6 +1329,10 @@ mama_status zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* top
    #else
    CALL_ZMQ_FUNC(zmq_setsockopt (socket, ZMQ_UNSUBSCRIBE, topic, strlen(topic)));
    #endif
+
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket));
+
+   return MAMA_STATUS_OK;
 }
 
 
@@ -1494,9 +1519,7 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
       goto close;
    }
 
-   // see https://github.com/zeromq/libzmq/issues/2267
-   zmq_pollitem_t pollitems [] = { { temp, 0, ZMQ_POLLIN, 0 } };
-   CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
 
    int i = zmq_send(temp, msg, msgSize, ZMQ_DONTWAIT);
    if (i <= 0) {
