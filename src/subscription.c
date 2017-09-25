@@ -303,7 +303,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    #endif
 
    /* subscribe to the topic */
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, &impl->mTransport->mZmqSocketSubscriber, impl->mSubjectKey));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, impl->mSubjectKey));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
 
@@ -376,8 +376,10 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
 }
 
 
-
-mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqTransportBridge* transport, zmqSocket* socket, const char* topic)
+// This subscribe call actually sends a control msg to the transport's control socket.
+// The purpose is to allow applications to subscribe and unsubscribe in a thread-safe manner.
+// Any subscriptions created this way will be issued against the transport's default sub socket.
+mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqTransportBridge* transport, const char* topic)
 {
    zmqControlMsg msg;
    msg.command = 'S';
@@ -385,7 +387,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqTransportBridge* transpor
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
 }
 
-mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transport, zmqSocket* socket, const char* topic)
+mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transport, const char* topic)
 {
    zmqControlMsg msg;
    msg.command = 'U';

@@ -250,10 +250,10 @@ typedef struct zmqQueueBridge {
 
 #define ZMQ_NAMING_PREFIX            "_NAMING"
 typedef struct zmqNamingMsg {
+   char                    mTopic[256];
    unsigned char           mType;
    char                    mHost[MAXHOSTNAMELEN + 1];
    int                     mPid;
-   char                    mTopic[256];
    char                    mPubEndpoint[256];
    char                    mSubEndpoint[256];
 } zmqNamingMsg;
