@@ -26,6 +26,8 @@
   =                             Includes                                  =
   =========================================================================*/
 
+#include <assert.h>
+
 #include <mama/mama.h>
 #include <queueimpl.h>
 #include <msgimpl.h>
@@ -239,6 +241,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNonNamingParams(zmqTransportB
 
 // socket helpers
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_closeSocket(void* socket);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char* uri, const char** endpointName);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const char* uri);
 // sets socket options as specified in Mama configuration file
@@ -299,12 +302,13 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    impl  = (zmqTransportBridge*) transport;
    status = zmqBridgeMamaTransportImpl_stop(impl);
 
-   zmq_close(impl->mZmqSocketPublisher.mSocket);
-   zmq_close(impl->mZmqSocketSubscriber.mSocket);
-
+   // close sockets
+   zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqSocketPublisher.mSocket);
+   zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqSocketSubscriber.mSocket);
+   zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqSocketControl.mSocket);
    if (impl->mIsNaming) {
-      zmq_close(impl->mZmqNamingPublisher.mSocket);
-      zmq_close(impl->mZmqNamingSubscriber.mSocket);
+      zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqNamingPublisher.mSocket);
+      zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqNamingSubscriber.mSocket);
    }
 
    zmq_ctx_destroy(impl->mZmqContext);
@@ -1250,6 +1254,18 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    return MAMA_STATUS_OK;
 }
 
+mama_status zmqBridgeMamaTransportImpl_closeSocket(void* socket)
+{
+   int linger = 0;
+   int rc = zmq_setsockopt(socket, ZMQ_LINGER, &linger, sizeof(linger));
+   assert(rc == 0);
+   zmq_close(socket);
+   assert(rc == 0);
+
+   return MAMA_STATUS_OK;
+}
+
+
 mama_status zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket)
 {
    int disableReconnect = -1;
@@ -1400,6 +1416,8 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* imp
 
 mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg)
 {
+   impl->mInboxMessages++;
+
    const char* inboxName = &subject[ZMQ_REPLYHANDLE_INBOXNAME_INDEX];
    zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, inboxName);
    if (inbox == NULL) {
@@ -1521,16 +1539,16 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
 
-   int i = zmq_send(temp, msg, msgSize, ZMQ_DONTWAIT);
+   int i = zmq_send(temp, msg, msgSize, 0);
    if (i <= 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
 
-   //zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
+   zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
 
 close:
-   //zmq_close(temp);
+   zmq_close(temp);
 
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "command=%c arg1=%s", msg->command, msg->arg1);
 
@@ -1557,3 +1575,5 @@ mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl
 
    return MAMA_STATUS_OK;
 }
+
+
