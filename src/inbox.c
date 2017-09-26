@@ -161,8 +161,17 @@ mama_status zmqBridgeMamaInbox_destroy(inboxBridge inbox)
    }
    zmqInboxImpl* impl = (zmqInboxImpl*) inbox;
 
-   // register the inbox with the transport
+   // unregister the inbox with the transport
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unregisterInbox(impl->mTransport, impl));
+
+    if (NULL != impl->mOnInboxDestroyed) {
+        // calls mamaInbox_onInboxDestroyed, which decrements the queue's object count
+        // to enable graceful shutdown
+        (*impl->mOnInboxDestroyed)(impl->mParent, impl->mClosure);
+    }
+
+   free((void*) impl->mReplyHandle);
+   free(impl);
 
    return MAMA_STATUS_OK;
 }
@@ -231,9 +240,6 @@ static void MAMACALLTYPE zmqBridgeMamaInboxImpl_onDestroy(mamaSubscription subsc
    if (NULL != impl->mOnInboxDestroyed) {
       (impl->mOnInboxDestroyed)(impl->mParent, impl->mClosure);
    }
-
-   free((void*) impl->mReplyHandle);
-   free(impl);
 }
 
 /* Calls the implementation's error callback on execution */
