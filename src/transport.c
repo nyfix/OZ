@@ -1314,7 +1314,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    }
 
    // TODO: superfuous on bind?
-   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
 
    if (endpointName != NULL) {
       char temp[1024];
