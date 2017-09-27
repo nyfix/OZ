@@ -1659,6 +1659,9 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
       status = MAMA_STATUS_PLATFORM;
    }
 
+   // this hangs ... zmq_poll deadlocked in this thread and dispatch thread
+   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
+
    //zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
 
 close:
