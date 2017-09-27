@@ -47,6 +47,9 @@
 zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mamaQueue queue,
    mamaMsgCallbacks callback, mamaSubscription subscription, void* closure);
 
+
+mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, const char* source, const char*symbol);
+
 mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const char* source, const char* symbol);
 
 /*=========================================================================
@@ -122,19 +125,21 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
    }
    *wcPos = '\0';
 
+   theRegex[strlen(theRegex)-1] = '\0';
+   impl->mOrigRegex = strdup(theRegex+1);
+
    // create regex to match against
    impl->mRegexTopic = calloc(1, sizeof(regex_t));
-   int rc = regcomp(impl->mRegexTopic, theRegex, REG_NOSUB);
+   int rc = regcomp(impl->mRegexTopic, impl->mOrigRegex, REG_NOSUB | REG_EXTENDED);
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to compile regex: %s", theRegex);
       free(impl);
       return MAMA_STATUS_INVALID_ARG;
    }
-   impl->mOrigRegex = strdup(theRegex);
 
    // TODO: depending on resolution of https://github.com/OpenMAMA/OpenMAMA/issues/324
    // may need/want to pass source?
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_create(impl, NULL, theSource));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_createWildcard(impl, NULL, theSource));
 
    *subscriber = (subscriptionBridge) impl;
    return MAMA_STATUS_OK;
@@ -173,12 +178,14 @@ zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
    destroyCb       = impl->mMamaCallback.onDestroy;
    transportBridge = impl->mTransport;
 
-   /* Remove the subscription from the transport's subscription pool. */
-   if (NULL != transportBridge && NULL != transportBridge->mSubEndpoints
-       && NULL != impl->mSubjectKey) {
-      endpointPool_unregister(transportBridge->mSubEndpoints,
-                              impl->mSubjectKey,
-                              impl->mEndpointIdentifier);
+   if (impl->mIsWildcard == 0) {
+      /* Remove the subscription from the transport's subscription pool. */
+      if (NULL != transportBridge && NULL != transportBridge->mSubEndpoints
+          && NULL != impl->mSubjectKey) {
+         endpointPool_unregister(transportBridge->mSubEndpoints,
+                                 impl->mSubjectKey,
+                                 impl->mEndpointIdentifier);
+      }
    }
 
    if (NULL != impl->mSubjectKey) {
@@ -186,7 +193,7 @@ zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
    }
 
    if (NULL != impl->mEndpointIdentifier) {
-      free((void*)impl->mEndpointIdentifier);
+      //free((void*)impl->mEndpointIdentifier);
    }
 
    free(impl);
@@ -281,6 +288,29 @@ zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mam
 
    return impl;
 }
+mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, const char* source, const char*symbol)
+{
+   /* Use a standard centralized method to determine a topic key */
+   zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
+
+   impl->mEndpointIdentifier = zmq_generate_uuid();
+
+   // add this to list of wildcards
+   zmqSubscription** pSub = (zmqSubscription**) list_allocate_element(impl->mTransport->mWcEndpoints);
+   *pSub  = impl;
+   list_push_back(impl->mTransport->mWcEndpoints, pSub);
+
+   /* subscribe to the topic */
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, impl->mSubjectKey));
+
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
+
+   /* Mark this subscription as valid */
+   impl->mIsValid = 1;
+
+   return MAMA_STATUS_OK;
+}
+
 
 mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const char* source, const char*symbol)
 {

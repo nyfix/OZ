@@ -135,7 +135,9 @@ mama_status zmqBridgeMamaInbox_createByIndex(inboxBridge* bridge, mamaTransport 
    const char* inboxSubject;
    zmqBridgeMamaTransportImpl_getInboxSubject(impl->mTransport, &inboxSubject);
    char replyHandle[ZMQ_REPLYHANDLE_SIZE];
-   sprintf(replyHandle, "%s.%s", inboxSubject, zmq_generate_uuid());
+   const char* uuid = zmq_generate_uuid();
+   sprintf(replyHandle, "%s.%s", inboxSubject, uuid);
+   free((void*) uuid);
    impl->mReplyHandle = strdup(replyHandle);
 
    /* Initialize the remaining members for the zmq inbox implementation */

@@ -140,6 +140,15 @@ typedef enum zmqTransportDirection_ {
    ZMQ_TPORT_DIRECTION_OUTGOING
 } zmqTransportDirection;
 
+
+//#define ZMQ_CONTROL_USEPAIRS
+#ifdef  ZMQ_CONTROL_USEPAIRS
+#define ZMQ_CONTROL_LISTENER  ZMQ_PAIR
+#define ZMQ_CONTROL_SENDER    ZMQ_PAIR
+#else
+#define ZMQ_CONTROL_LISTENER  ZMQ_SUB
+#define ZMQ_CONTROL_SENDER    ZMQ_PUB
+#endif
 #define ZMQ_CONTROL_ENDPOINT  "inproc://control"
 
 typedef struct zmqSocket_ {

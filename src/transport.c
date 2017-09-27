@@ -367,7 +367,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    }
 
    // create wildcard endpoints
-   impl->mWcEndpoints = list_create(sizeof(zmqSubscription));
+   impl->mWcEndpoints = list_create(sizeof(zmqSubscription*));
    if (impl->mWcEndpoints == INVALID_LIST) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create wildcard endpoints");
       free(impl);
@@ -706,8 +706,11 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    // create command socket
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_SUB));
-   CALL_ZMQ_FUNC(zmq_setsockopt (impl->mZmqSocketControl.mSocket, ZMQ_SUBSCRIBE, "", 0));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_CONTROL_LISTENER));
+   #ifndef  ZMQ_CONTROL_USEPAIRS
+   // if using pub/sub for control, need to subscribe to get any messages
+   CALL_ZMQ_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqSocketControl.mSocket, ""));
+   #endif
    //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqSocketControl));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqSocketControl,  ZMQ_CONTROL_ENDPOINT, NULL));
 
@@ -941,6 +944,90 @@ exit:
    return;
 }
 
+typedef struct zmqFindWildcardClosure {
+   const char*       mEndpointIdentifier;
+   zmqSubscription*  mSubscription;
+} zmqFindWildcardClosure;
+
+void zmqBridgeMamaTransportImpl_findWildcard(wList dummy, zmqSubscription** pSubscription, zmqFindWildcardClosure* closure)
+{
+   zmqSubscription* subscription = *pSubscription;
+
+   if (strcmp(subscription->mEndpointIdentifier, closure->mEndpointIdentifier) == 0) {
+      closure->mSubscription = subscription;
+   }
+}
+
+// Called when message removed from queue by dispatch thread
+// NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
+// was dequeued.
+void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* closure)
+{
+   memoryNode* node = (memoryNode*) closure;
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+
+   // is this subscription still in the list?
+   zmqFindWildcardClosure findClosure;
+   findClosure.mEndpointIdentifier = tmsg->mEndpointIdentifier;
+   findClosure.mSubscription = NULL;
+   list_for_each(tmsg->mTransport->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_findWildcard, &findClosure);
+   if (findClosure.mSubscription == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+      goto exit;
+   }
+   zmqSubscription* subscription = findClosure.mSubscription;
+
+   // TODO: re-evaluate -- possible race condition?
+   // It *appears* that the subscription is valid even after its mTransport member is set to NULL,
+   // so do this test first to avoid a SEGV dereferencing impl->mSubEndpoints below
+   /* Make sure that the subscription is processing messages */
+   if (1 != subscription->mIsNotMuted) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Skipping update - subscription %p is muted.", subscription);
+      goto exit;
+   }
+
+   /* This is the reuseable message stored on the associated MamaQueue */
+   mamaMsg tmpMsg = mamaQueueImpl_getMsg(subscription->mMamaQueue);
+   if (NULL == tmpMsg) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get cached mamaMsg from event queue.");
+      goto exit;
+   }
+
+   /* Get the bridge message from the mamaMsg */
+   msgBridge bridgeMsg;
+   mama_status status = mamaMsgImpl_getBridgeMsg(tmpMsg, &bridgeMsg);
+   if (MAMA_STATUS_OK != status) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get bridge message from cached queue mamaMsg [%s]", mamaStatus_stringForStatus(status));
+      goto exit;
+   }
+
+   /* Unpack this bridge message into a MAMA msg implementation */
+   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, tmsg->mNodeBuffer, tmsg->mNodeSize, tmpMsg);
+   if (MAMA_STATUS_OK != status) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaMsgImpl_deserialize() failed. [%s]", mamaStatus_stringForStatus(status));
+   }
+   else {
+      status = mamaSubscription_processWildCardMsg(subscription->mMamaSubscription, tmpMsg, tmsg->mSubject, subscription->mClosure);
+      if (MAMA_STATUS_OK != status) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "mamaSubscription_processMsg() failed. [%s]", mamaStatus_stringForStatus(status));
+      }
+   }
+
+exit:
+   free(tmsg->mEndpointIdentifier);
+
+   // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
+   zmqQueueBridge* queueImpl = NULL;
+   mamaQueue_getNativeHandle(queue, (void**)&queueImpl);
+   if (queueImpl) {
+      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
+      if (pool) {
+         memoryPool_returnNode(pool, node);
+      }
+   }
+
+   return;
+}
 
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(
    char*       defaultVal,
@@ -1436,9 +1523,44 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
    return MAMA_STATUS_OK;
 }
 
+typedef struct zmqWildcardClosure {
+   const char* subject;
+   zmq_msg_t*  zmsg;
+} zmqWildcardClosure;
+
+void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pSubscription, zmqWildcardClosure* closure)
+{
+   zmqSubscription* subscription = *pSubscription;
+
+   // check subject up to size of subscribed topic
+   if (strncmp(subscription->mSubjectKey, closure->subject, strlen(subscription->mSubjectKey)) != 0) {
+      return;
+   }
+
+   // topics match -- check regex
+   if (regexec(subscription->mRegexTopic, closure->subject, 0, NULL, 0) != 0) {
+      return;
+   }
+
+   // it's a match
+   memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(subscription->mTransport, subscription->mZmqQueue, closure->zmsg);
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   tmsg->mSubEndpoints = NULL;
+   tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
+
+   // callback (queued) will release the message
+   zmqBridgeMamaQueue_enqueueEvent(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_wcCallback, node);
+}
+
 mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg)
 {
    impl->mSubMessages++;
+
+   // process wilcard subscriptions
+   zmqWildcardClosure wcClosure;
+   wcClosure.subject = subject;
+   wcClosure.zmsg = zmsg;
+   list_for_each(impl->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_matchWildcards, &wcClosure);
 
    // get list of subscribers for this subject
    endpoint_t* subs = NULL;
@@ -1465,14 +1587,6 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
       if (1 != subscription->mIsNotMuted) {
          MAMA_LOG(MAMA_LOG_LEVEL_WARN, "muted - not queueing update for symbol %s", subject);
          return MAMA_STATUS_NOT_FOUND;
-      }
-
-      if (subscription->mIsWildcard) {
-         int rc = regexec(subscription->mRegexTopic, subject, 0, NULL, REG_NOSUB);
-         if (rc != 0) {
-            MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "wildcard regex (%s) didnt match subject (%s)", subscription->mOrigRegex, subject);
-            return MAMA_STATUS_NOT_FOUND;
-         }
       }
 
       memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, subscription->mZmqQueue, zmsg);
@@ -1524,7 +1638,7 @@ mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl,
 mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmqControlMsg* msg, int msgSize)
 {
    mama_status status = MAMA_STATUS_OK;
-   void* temp = zmq_socket(impl->mZmqContext, ZMQ_PUB);
+   void* temp = zmq_socket(impl->mZmqContext, ZMQ_CONTROL_SENDER);
    if (temp == NULL) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket failed %d(%s)", errno, zmq_strerror(errno));
       return MAMA_STATUS_PLATFORM;
@@ -1545,7 +1659,7 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
       status = MAMA_STATUS_PLATFORM;
    }
 
-   zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
+   //zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
 
 close:
    zmq_close(temp);
