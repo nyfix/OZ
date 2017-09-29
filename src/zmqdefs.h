@@ -27,8 +27,6 @@
 
 #include "util.h"
 
-#define ZMQ_CONTROL_SOCKET
-
 //#define USE_XSUB
 #ifdef USE_XSUB
 #define  ZMQ_PUB_TYPE   ZMQ_XPUB
@@ -261,6 +259,7 @@ typedef struct zmqQueueBridge {
 typedef struct zmqNamingMsg {
    char                    mTopic[256];
    unsigned char           mType;
+   char                    mProgName[256];
    char                    mHost[MAXHOSTNAMELEN + 1];
    int                     mPid;
    char                    mPubEndpoint[256];
