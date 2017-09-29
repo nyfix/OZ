@@ -1666,6 +1666,7 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
       goto close;
    }
 
+   // this *appears* to be necessary, at least when using pub/sub sockets for inproc
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
 
    int i = zmq_send(temp, msg, msgSize, 0);
