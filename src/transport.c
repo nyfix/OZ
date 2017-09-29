@@ -958,14 +958,34 @@ typedef struct zmqFindWildcardClosure {
    zmqSubscription*  mSubscription;
 } zmqFindWildcardClosure;
 
+void zmqBridgeMamaTransportImpl_removeWildcard(wList wcList, zmqSubscription** pSubscription, zmqFindWildcardClosure* closure)
+{
+   zmqSubscription* subscription = *pSubscription;
+   if (strcmp(subscription->mEndpointIdentifier, closure->mEndpointIdentifier) == 0) {
+      list_remove_element(wcList, pSubscription);
+      list_free_element(wcList, pSubscription);
+   }
+}
+
+mama_status zmqBridgeMamaTransportImpl_unregisterWildcard(zmqTransportBridge* impl, zmqSubscription* subscription)
+{
+   zmqFindWildcardClosure findClosure;
+   findClosure.mEndpointIdentifier = subscription->mEndpointIdentifier;
+   findClosure.mSubscription = NULL;
+   list_for_each(impl->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_removeWildcard, &findClosure);
+}
+
+
 void zmqBridgeMamaTransportImpl_findWildcard(wList dummy, zmqSubscription** pSubscription, zmqFindWildcardClosure* closure)
 {
    zmqSubscription* subscription = *pSubscription;
-
    if (strcmp(subscription->mEndpointIdentifier, closure->mEndpointIdentifier) == 0) {
       closure->mSubscription = subscription;
    }
 }
+
+
+
 
 // Called when message removed from queue by dispatch thread
 // NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
@@ -981,9 +1001,10 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
    findClosure.mSubscription = NULL;
    list_for_each(tmsg->mTransport->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_findWildcard, &findClosure);
    if (findClosure.mSubscription == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
       goto exit;
    }
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Found wildcard subscriber for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
    zmqSubscription* subscription = findClosure.mSubscription;
 
    // TODO: re-evaluate -- possible race condition?

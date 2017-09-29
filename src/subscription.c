@@ -159,50 +159,43 @@ zmqBridgeMamaSubscription_mute(subscriptionBridge subscriber)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
+mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
 {
-   zmqSubscription*             impl            = NULL;
-   zmqTransportBridge*          transportBridge = NULL;
-   mamaSubscription             parent          = NULL;
-   void*                        closure         = NULL;
-   wombat_subscriptionDestroyCB destroyCb       = NULL;
-
    if (NULL == subscriber) {
       return MAMA_STATUS_NULL_ARG;
    }
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
 
-   impl            = (zmqSubscription*) subscriber;
-   parent          = impl->mMamaSubscription;
-   closure         = impl->mClosure;
-   destroyCb       = impl->mMamaCallback.onDestroy;
-   transportBridge = impl->mTransport;
+   zmqTransportBridge* transportBridge = impl->mTransport;
 
    if (impl->mIsWildcard == 0) {
       /* Remove the subscription from the transport's subscription pool. */
-      if (NULL != transportBridge && NULL != transportBridge->mSubEndpoints
-          && NULL != impl->mSubjectKey) {
-         endpointPool_unregister(transportBridge->mSubEndpoints,
-                                 impl->mSubjectKey,
-                                 impl->mEndpointIdentifier);
+      if (NULL != transportBridge && NULL != transportBridge->mSubEndpoints && NULL != impl->mSubjectKey) {
+         endpointPool_unregister(transportBridge->mSubEndpoints, impl->mSubjectKey, impl->mEndpointIdentifier);
+      }
+   }
+   else {
+      if (NULL != transportBridge && NULL != impl->mEndpointIdentifier) {
+         zmqBridgeMamaTransportImpl_unregisterWildcard(transportBridge, impl);
       }
    }
 
    if (NULL != impl->mSubjectKey) {
       free(impl->mSubjectKey);
    }
-
    if (NULL != impl->mEndpointIdentifier) {
-      //free((void*)impl->mEndpointIdentifier);
+      free((void*)impl->mEndpointIdentifier);
    }
-
    free(impl);
 
    /*
     * Invoke the subscription callback to inform that the bridge has been
     * destroyed.
     */
+   wombat_subscriptionDestroyCB destroyCb = impl->mMamaCallback.onDestroy;
    if (NULL != destroyCb) {
+      mamaSubscription parent = impl->mMamaSubscription;
+      void* closure = impl->mClosure;
       (*(wombat_subscriptionDestroyCB)destroyCb)(parent, closure);
    }
 
