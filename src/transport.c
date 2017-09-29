@@ -1132,9 +1132,11 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 
       // got command msg?
       if (items[0].revents & ZMQ_POLLIN) {
-         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, 0);
-         if (size != -1) {
+         // TODO: zmq_poll is supposed to be level-triggered, not edge-triggered, so this should not be necessary?
+         int size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, ZMQ_DONTWAIT);
+         while (size != -1) {
             zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+            size = zmq_msg_recv(&zmsg, impl->mZmqSocketControl.mSocket, ZMQ_DONTWAIT);
          }
          continue;
       }
