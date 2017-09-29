@@ -1375,7 +1375,9 @@ mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, zmqSoc
    ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          SNDTIMEO,           atoi);
    //ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RATE,               atoi);
    //ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  uint64_t,     AFFINITY,           atoll);
+   #if ZMQ_VERSION_MINOR >= 2
    ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  const char*,  IDENTITY,                );
+   #endif
    //ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int64_t,      MAXMSGSIZE,         atoll);
 
    return MAMA_STATUS_OK;
