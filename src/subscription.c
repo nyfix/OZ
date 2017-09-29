@@ -303,7 +303,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, 
    /* subscribe to the topic */
    CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, impl->mSubjectKey));
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "created interest for %s.", impl->mSubjectKey);
 
    /* Mark this subscription as valid */
    impl->mIsValid = 1;
@@ -335,7 +335,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    /* subscribe to the topic */
    CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, impl->mSubjectKey));
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "created interest for %s.", impl->mSubjectKey);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "created interest for %s.", impl->mSubjectKey);
 
    /* Mark this subscription as valid */
    impl->mIsValid = 1;

@@ -26,6 +26,8 @@
   =                             Includes                                  =
   =========================================================================*/
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 
 #include <mama/mama.h>
@@ -337,6 +339,11 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    if (NULL == result || NULL == name || NULL == parent) {
       return MAMA_STATUS_NULL_ARG;
    }
+
+   int major, minor, patch;
+   zmq_version(&major, &minor, &patch);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Using libzmq version %d.%d.%d", major, minor, patch);
+
 
    impl = (zmqTransportBridge*) calloc(1, sizeof(zmqTransportBridge));
 
@@ -1299,8 +1306,10 @@ mama_status zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const ch
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect failed trying to connect to '%s' %d(%s)", uri, errno, zmq_strerror(errno));
       return MAMA_STATUS_PLATFORM;
    }
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect(%x) connected to %s", socket->mSocket, uri);
 
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll(%x) complete", socket->mSocket, uri);
 
    return MAMA_STATUS_OK;
 }
@@ -1469,7 +1478,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "type=%c host=%s pid=%d topic=%s pub=%s sub=%s", pMsg->mType, pMsg->mHost, pMsg->mPid, pMsg->mTopic, pMsg->mPubEndpoint, pMsg->mSubEndpoint);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "type=%c prog=%s host=%s pid=%d topic=%s pub=%s sub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mPid, pMsg->mTopic, pMsg->mPubEndpoint, pMsg->mSubEndpoint);
 
    if (pMsg->mType == 'C') {
       // connect
@@ -1682,6 +1691,7 @@ mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl
    memset(&msg, '\0', sizeof(msg));
    strcpy(msg.mTopic, ZMQ_NAMING_PREFIX);
    msg.mType = 'C';       // connect
+   strcpy(msg.mProgName, program_invocation_short_name);
    gethostname(msg.mHost, sizeof(msg.mHost));
    msg.mPid = getpid();
    strncpy(msg.mPubEndpoint, impl->mPubEndpoint, sizeof(msg.mPubEndpoint) - 1);
@@ -1690,7 +1700,7 @@ mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl
    CALL_ZMQ_FUNC(zmq_send(impl->mZmqNamingPublisher.mSocket, &msg, sizeof(msg), 0));
    //WLOCK_UNLOCK(impl->mZmqNamingPublisher.mLock);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "host=%s pid=%d pub=%s sub=%s", msg.mHost, msg.mPid, msg.mPubEndpoint, msg.mSubEndpoint);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "prog=%s host=%s pid=%d pub=%s sub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mPubEndpoint, msg.mSubEndpoint);
 
    return MAMA_STATUS_OK;
 }
