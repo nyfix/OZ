@@ -31,6 +31,8 @@
 #include <assert.h>
 
 #include <mama/mama.h>
+#include <wombat/wInterlocked.h>
+
 #include <queueimpl.h>
 #include <msgimpl.h>
 #include <queueimpl.h>
@@ -782,7 +784,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
 mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
 {
    /* Set the transport bridge mIsDispatching to true. */
-   impl->mIsDispatching = 1;
+   wInterlocked_set(1, &impl->mIsDispatching);
 
    /* Initialize dispatch thread */
    int rc = wthread_create(&(impl->mOmzmqDispatchThread),
@@ -806,7 +808,7 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
    mama_status     status = MAMA_STATUS_OK;
 
    /* Set the transportBridge mIsDispatching to false */
-   impl->mIsDispatching = 0;
+   wInterlocked_set(0, &impl->mIsDispatching);
 
    zmqControlMsg msg;
    memset(&msg, '\0', sizeof(msg));
@@ -1105,7 +1107,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
     * We shouldn't need to lock around this, as we're performing a simple value
     * read - if it changes in the middle of the read, we don't actually care.
     */
-   while (1 == impl->mIsDispatching) {
+   while (1 == wInterlocked_read(&impl->mIsDispatching)) {
 
       // zmq_poll is really slow?!
       // so try reading directly from data socket, and poll only if no msg ready
@@ -1466,7 +1468,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* im
       return zmqBridgeMamaTransportImpl_unsubscribe(impl->mZmqSocketSubscriber.mSocket, pMsg->arg1);
    }
    else if (pMsg->command == 'X') {
-      impl->mIsDispatching = 0;
+      wInterlocked_set(0, &impl->mIsDispatching);
    }
    return MAMA_STATUS_OK;
 }

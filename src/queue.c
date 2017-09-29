@@ -27,6 +27,7 @@
   =========================================================================*/
 
 #include <mama/mama.h>
+#include <wombat/wInterlocked.h>
 #include <wombat/queue.h>
 #include <bridge.h>
 #include "queueimpl.h"
@@ -236,7 +237,7 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
    /* Lock for dispatching */
    wthread_mutex_lock(&impl->mDispatchLock);
 
-   impl->mIsDispatching = 1;
+   wInterlocked_set(1, &impl->mIsDispatching);
 
    /*
     * Continually dispatch as long as the calling application wants dispatching
@@ -256,7 +257,7 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
                                          ZMQ_QUEUE_DISPATCH_TIMEOUT);
    }
    while ((WOMBAT_QUEUE_OK == status || WOMBAT_QUEUE_TIMEOUT == status)
-          && impl->mIsDispatching);
+          && wInterlocked_read(&impl->mIsDispatching) == 1);
 
    /* Unlock the dispatch lock */
    wthread_mutex_unlock(&impl->mDispatchLock);
@@ -378,7 +379,7 @@ zmqBridgeMamaQueue_stopDispatch(queueBridge queue)
    CHECK_QUEUE(impl);
 
    /* Tell this implementation to stop dispatching */
-   impl->mIsDispatching = 0;
+   wInterlocked_set(0, &impl->mIsDispatching);
 
    return MAMA_STATUS_OK;
 }
