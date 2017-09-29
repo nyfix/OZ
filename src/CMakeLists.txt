@@ -7,7 +7,10 @@ include_directories(${EVENT_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)
 
 link_directories(${MAMA_ROOT}/lib)
+# version 4.2 and later put shared object in lib64
 link_directories(${ZMQ_ROOT}/lib64)
+# version 4.1 and earlier put shared object in lib64
+#link_directories(${ZMQ_ROOT}/lib)
 link_directories(${EVENT_ROOT}/lib)
 
 add_definitions(-DBRIDGE -DMAMA_DLL)
