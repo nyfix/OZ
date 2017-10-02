@@ -1333,8 +1333,8 @@ mama_status zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const ch
    }
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect(%x) connected to %s", socket->mSocket, uri);
 
+   // interferes w/inproc?
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll(%x) complete", socket->mSocket, uri);
 
    return MAMA_STATUS_OK;
 }
@@ -1348,7 +1348,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    }
 
    // TODO: superfuous on bind?
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
+   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket));
 
    if (endpointName != NULL) {
       char temp[1024];
@@ -1433,7 +1433,9 @@ mama_status zmqBridgeMamaTransportImpl_kickSocket(void* socket)
 {
    // see https://github.com/zeromq/libzmq/issues/2267
    zmq_pollitem_t pollitems [] = { { socket, 0, ZMQ_POLLIN, 0 } };
-   CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
+   int rc = zmq_poll(pollitems, 1, 1);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll(%x) complete, rc=%d", socket, rc);
+
    return MAMA_STATUS_OK;
 }
 
@@ -1562,6 +1564,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
 typedef struct zmqWildcardClosure {
    const char* subject;
    zmq_msg_t*  zmsg;
+   int         found;
 } zmqWildcardClosure;
 
 void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pSubscription, zmqWildcardClosure* closure)
@@ -1579,6 +1582,7 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
    }
 
    // it's a match
+   closure->found++;
    memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(subscription->mTransport, subscription->mZmqQueue, closure->zmsg);
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
    tmsg->mSubEndpoints = NULL;
@@ -1596,7 +1600,9 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
    zmqWildcardClosure wcClosure;
    wcClosure.subject = subject;
    wcClosure.zmsg = zmsg;
+   wcClosure.found = 0;
    list_for_each(impl->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_matchWildcards, &wcClosure);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Found %d wildcard matches for %s", wcClosure.found, subject);
 
    // get list of subscribers for this subject
    endpoint_t* subs = NULL;
@@ -1607,10 +1613,13 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
       return MAMA_STATUS_SYSTEM_ERROR;
    }
    if (0 == subCount) {
-      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "discarding uninteresting message for subject %s", subject);
+      if (wcClosure.found == 0) {
+         MAMA_LOG(MAMA_LOG_LEVEL_WARN, "discarding uninteresting message for subject %s", subject);
+      }
       return MAMA_STATUS_NOT_FOUND;
    }
 
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Found %d non-wildcard matches for %s", subCount, subject);
    // process each subscriber
    for (size_t subInc = 0; subInc < subCount; subInc++) {
       zmqSubscription*  subscription = (zmqSubscription*)subs[subInc];
@@ -1697,7 +1706,7 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
    }
 
    // this hangs ... zmq_poll deadlocked in this thread and dispatch thread
-   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
 
    //zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
 
