@@ -210,9 +210,15 @@ void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, ma
    msgBridge tmp;
    mamaMsgImpl_getBridgeMsg(msg, &tmp);
    const char* msgReplyHandle = zmqBridgeMamaMsg_getReplyHandle(tmp);
-   if (strcmp(impl->mReplyHandle, msgReplyHandle) != 0) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Discarding msg w/replyHandle(%s) which does not match our replyHandle(%s)", msgReplyHandle, impl->mReplyHandle);
-      return;
+   if (msgReplyHandle == NULL) {
+      // TODO: this should never happen?!
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Got inbox msg w/no reply handle for (%s)", impl->mReplyHandle);
+   }
+   else {
+      if (strcmp(impl->mReplyHandle, msgReplyHandle) != 0) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Discarding msg w/replyHandle(%s) which does not match our replyHandle(%s)", msgReplyHandle, impl->mReplyHandle);
+         return;
+      }
    }
 
    /* If a message callback is defined, call it */
