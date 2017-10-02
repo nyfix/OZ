@@ -1682,6 +1682,8 @@ mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl,
 
 mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmqControlMsg* msg, int msgSize)
 {
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "command=%c arg1=%s", msg->command, msg->arg1);
+
    mama_status status = MAMA_STATUS_OK;
    void* temp = zmq_socket(impl->mZmqContext, ZMQ_CONTROL_SENDER);
    if (temp == NULL) {
@@ -1712,8 +1714,6 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 
 close:
    zmq_close(temp);
-
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "command=%c arg1=%s", msg->command, msg->arg1);
 
    return status;
 }
