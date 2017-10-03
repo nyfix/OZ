@@ -273,7 +273,7 @@ typedef struct zmqControlMsg {
 
 
 #define ZMQ_REPLYHANDLE_PREFIX            "_INBOX"
-// full reply handle is "INBOX.<replyAddr>.<inboxName>" where:
+// full reply handle is "_INBOX.<replyAddr>.<inboxName>" where:
 // replyAddr is a uuid string (36 bytes)
 // inboxName is a uuid string (36 bytes)
 // so the whole thing is 6+1+36+1+36 = 80 (+1 for trailing null)

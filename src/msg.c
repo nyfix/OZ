@@ -124,7 +124,10 @@ mama_status zmqBridgeMamaMsg_destroy(msgBridge msg, int destroyMsg)
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
    }
+   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
+   free((void*) impl->mSerializedBuffer);
+   free((void*) impl->mReplyHandle);
    free(msg);
 
    return MAMA_STATUS_OK;
@@ -448,6 +451,11 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    // Set the message type
    impl->mMsgType = (zmqMsgType) * bufferPos;
    bufferPos++;
+
+   if (impl->mReplyHandle) {
+      free((void*) impl->mReplyHandle);
+      impl->mReplyHandle = NULL;
+   }
 
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:

@@ -224,10 +224,16 @@ mama_status zmqBridgeMamaPublisher_sendReplyToInbox(publisherBridge publisher, v
    status = zmqBridgeMamaMsg_duplicateReplyHandle(bridgeMsg, (void**) &replyHandle);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle[%s]", mamaStatus_stringForStatus(status));
-      return status;
+   }
+   else {
+      status = zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisher, (void*) replyHandle, reply);
+      if (MAMA_STATUS_OK != status) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not send reply to [%s]", mamaStatus_stringForStatus(status));
+      }
    }
 
-   return zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisher, (void*) replyHandle, reply);
+   free((void*) replyHandle);
+   return status;
 }
 
 mama_status zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisherBridge publisher, void* replyHandle, mamaMsg reply)

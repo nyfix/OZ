@@ -245,7 +245,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNonNamingParams(zmqTransportB
 
 // socket helpers
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type);
-mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_closeSocket(void* socket);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_closeSocket(zmqSocket* socket);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char* uri, const char** endpointName);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const char* uri);
 // sets socket options as specified in Mama configuration file
@@ -304,20 +304,32 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    }
 
    impl  = (zmqTransportBridge*) transport;
+
+   // stop the dispatcher(s)
    status = zmqBridgeMamaTransportImpl_stop(impl);
 
-   // close sockets
-   zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqSocketPublisher.mSocket);
-   zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqSocketSubscriber.mSocket);
-   zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqSocketControl.mSocket);
+   // shtudown zmq
+   zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqSocketPublisher);
+   zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqSocketSubscriber);
+   zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqSocketControl);
    if (impl->mIsNaming) {
-      zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqNamingPublisher.mSocket);
-      zmqBridgeMamaTransportImpl_closeSocket(impl->mZmqNamingSubscriber.mSocket);
+      zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqNamingPublisher);
+      zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqNamingSubscriber);
    }
-
    zmq_ctx_destroy(impl->mZmqContext);
 
+   // free memory
    endpointPool_destroy(impl->mSubEndpoints);
+   wtable_destroy(impl->mInboxes);
+   list_destroy(impl->mWcEndpoints, NULL, NULL);
+   free((void*) impl->mInboxSubject);
+   free((void*) impl->mPubEndpoint);
+   free((void*) impl->mSubEndpoint);
+
+   for (int i = 0; (i < ZMQ_MAX_NAMING_URIS); ++i) {
+      free((void*) impl->mOutgoingNamingAddress[i]);
+      free((void*) impl->mIncomingNamingAddress[i]);
+   }
 
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Naming messages = %ld", impl->mNamingMessages);
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Normal messages = %ld", impl->mNormalMessages);
@@ -327,7 +339,6 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Polls = %ld", impl->mPolls);
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No polls = %ld", impl->mNoPolls);
 
-   // TODO: lots of stuff in impl is allocated on heap and should be freeed
    free(impl);
 
    return status;
@@ -1375,13 +1386,15 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaTransportImpl_closeSocket(void* socket)
+mama_status zmqBridgeMamaTransportImpl_closeSocket(zmqSocket* socket)
 {
    int linger = 0;
-   int rc = zmq_setsockopt(socket, ZMQ_LINGER, &linger, sizeof(linger));
+   int rc = zmq_setsockopt(socket->mSocket, ZMQ_LINGER, &linger, sizeof(linger));
    assert(rc == 0);
-   zmq_close(socket);
+   zmq_close(socket->mSocket);
    assert(rc == 0);
+
+   wlock_destroy(socket->mLock);
 
    return MAMA_STATUS_OK;
 }
@@ -1656,6 +1669,7 @@ memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* imp
       zmqBridgeMamaQueueImpl_setClosure(queueImpl, pool, zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
    }
 
+   // mNodeBuffer consists of zmqTransportMsg followed by a copy of the zmq data
    memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg) + zmq_msg_size(zmsg));
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
    tmsg->mTransport    = impl;

@@ -180,14 +180,6 @@ mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
       }
    }
 
-   if (NULL != impl->mSubjectKey) {
-      free(impl->mSubjectKey);
-   }
-   if (NULL != impl->mEndpointIdentifier) {
-      free((void*)impl->mEndpointIdentifier);
-   }
-   free(impl);
-
    /*
     * Invoke the subscription callback to inform that the bridge has been
     * destroyed.
@@ -198,6 +190,23 @@ mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
       void* closure = impl->mClosure;
       (*(wombat_subscriptionDestroyCB)destroyCb)(parent, closure);
    }
+
+   if (NULL != impl->mSubjectKey) {
+      free(impl->mSubjectKey);
+   }
+   if (NULL != impl->mEndpointIdentifier) {
+      free((void*)impl->mEndpointIdentifier);
+   }
+   if (NULL != impl->mOrigRegex) {
+      free((void*)impl->mOrigRegex);
+   }
+   if (NULL != impl->mRegexTopic) {
+      regfree(impl->mRegexTopic);
+      free((void*)impl->mRegexTopic);
+   }
+
+
+   free(impl);
 
    return MAMA_STATUS_OK;
 }
