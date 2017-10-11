@@ -50,7 +50,10 @@
 #include "zmqbridgefunctions.h"
 #include "util.h"
 #include "inbox.h"
+
+#define ZMQ_BUILD_DRAFT_API
 #include <zmq.h>
+
 #include <errno.h>
 #include <wombat/mempool.h>
 #include <wombat/memnode.h>
@@ -726,8 +729,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    // create command socket
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_SUB));
-   CALL_ZMQ_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqSocketControl.mSocket, ""));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_SERVER));
+   //CALL_ZMQ_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqSocketControl.mSocket, ""));
    //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqSocketControl));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqSocketControl,  ZMQ_CONTROL_ENDPOINT, NULL));
 
@@ -1704,14 +1707,14 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
    // zmq sockets are not thread-safe, so each thread must have its own
    static __thread void* sock = NULL;
    if (sock == NULL) {
-      sock = zmq_socket(impl->mZmqContext, ZMQ_PUB);
+      sock = zmq_socket(impl->mZmqContext, ZMQ_CLIENT);
       if (sock == NULL) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket failed %d(%s)", errno, zmq_strerror(errno));
          return MAMA_STATUS_PLATFORM;
       }
 
       CALL_ZMQ_FUNC(zmq_connect(sock, ZMQ_CONTROL_ENDPOINT));
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(sock));
+      //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(sock));
    }
 
    int i = zmq_send(sock, msg, msgSize, 0);
