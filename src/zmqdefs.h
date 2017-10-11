@@ -139,17 +139,6 @@ typedef enum zmqTransportDirection_ {
 } zmqTransportDirection;
 
 
-// PAIR sockets have problems:
-// w/zmq3 send deadlocks on poll
-// w/zmq4 send returns EINTR if poll is active
-#define ZMQ_CONTROL_USEPAIRS
-#ifdef  ZMQ_CONTROL_USEPAIRS
-#define ZMQ_CONTROL_LISTENER  ZMQ_PAIR
-#define ZMQ_CONTROL_SENDER    ZMQ_PAIR
-#else
-#define ZMQ_CONTROL_LISTENER  ZMQ_SUB
-#define ZMQ_CONTROL_SENDER    ZMQ_PUB
-#endif
 #define ZMQ_CONTROL_ENDPOINT  "inproc://control"
 
 typedef struct zmqSocket_ {
