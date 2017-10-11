@@ -316,7 +316,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
       zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqNamingPublisher);
       zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqNamingSubscriber);
    }
-   zmq_ctx_destroy(impl->mZmqContext);
+   zmq_ctx_shutdown(impl->mZmqContext);
 
    // free memory
    endpointPool_destroy(impl->mSubEndpoints);
@@ -726,11 +726,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    // create command socket
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_CONTROL_LISTENER));
-   #ifndef  ZMQ_CONTROL_USEPAIRS
-   // if using pub/sub for control, need to subscribe to get any messages
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqSocketControl, ZMQ_SUB));
    CALL_ZMQ_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqSocketControl.mSocket, ""));
-   #endif
    //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqSocketControl));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqSocketControl,  ZMQ_CONTROL_ENDPOINT, NULL));
 
@@ -1508,6 +1505,12 @@ mama_status zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* im
    else if (pMsg->command == 'X') {
       wInterlocked_set(0, &impl->mIsDispatching);
    }
+   else if (pMsg->command == 'N') {
+   }
+   else {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unknown command=%c", pMsg->command);
+   }
+
    return MAMA_STATUS_OK;
 }
 
@@ -1698,38 +1701,26 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 {
    MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "command=%c arg1=%s", msg->command, msg->arg1);
 
-   mama_status status = MAMA_STATUS_OK;
-   void* temp = zmq_socket(impl->mZmqContext, ZMQ_CONTROL_SENDER);
-   if (temp == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket failed %d(%s)", errno, zmq_strerror(errno));
+   // zmq sockets are not thread-safe, so each thread must have its own
+   static __thread void* sock = NULL;
+   if (sock == NULL) {
+      sock = zmq_socket(impl->mZmqContext, ZMQ_PUB);
+      if (sock == NULL) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket failed %d(%s)", errno, zmq_strerror(errno));
+         return MAMA_STATUS_PLATFORM;
+      }
+
+      CALL_ZMQ_FUNC(zmq_connect(sock, ZMQ_CONTROL_ENDPOINT));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(sock));
+   }
+
+   int i = zmq_send(sock, msg, msgSize, 0);
+   if (i <= 0) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
       return MAMA_STATUS_PLATFORM;
    }
 
-   int rc = zmq_connect(temp, ZMQ_CONTROL_ENDPOINT);
-   if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect failed trying to connect to '%s' %d(%s)", ZMQ_CONTROL_ENDPOINT, errno, zmq_strerror(errno));
-      status = MAMA_STATUS_PLATFORM;
-      goto close;
-   }
-
-   // this *appears* to be necessary, at least when using pub/sub sockets for inproc
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
-
-   int i = zmq_send(temp, msg, msgSize, 0);
-   if (i <= 0) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
-      status = MAMA_STATUS_PLATFORM;
-   }
-
-   // this hangs ... zmq_poll deadlocked in this thread and dispatch thread
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(temp));
-
-   //zmq_disconnect(temp, ZMQ_CONTROL_ENDPOINT);
-
-close:
-   zmq_close(temp);
-
-   return status;
+   return MAMA_STATUS_OK;
 }
 
 
