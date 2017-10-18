@@ -104,16 +104,11 @@ extern "C" {
 /*=========================================================================
   =                              Macros                                   =
   =========================================================================*/
-
-/* Maximum topic length */
-#define     MAX_SUBJECT_LENGTH              256
-#define     ZMQ_MAX_NAMING_URIS             8
-#define     ZMQ_MAX_INCOMING_URIS           256
-#define     ZMQ_MAX_OUTGOING_URIS           256
-
-#define     ZMQ_MSG_PROPERTY_LEN     1024
-
-
+#define     MAX_SUBJECT_LENGTH               256         // topic size
+#define     ZMQ_MAX_NAMING_URIS              8           // proxy processes for naming messages
+#define     ZMQ_MAX_INCOMING_URIS            256         // incoming connections from other processes
+#define     ZMQ_MAX_OUTGOING_URIS            256         // outgoing connections to other processes
+#define     ZMQ_MAX_ENDPOINT_LENGTH          256         // enpoint string
 
 
 /* Message types */
@@ -158,19 +153,22 @@ typedef struct zmqTransportBridge_ {
    void*                   mZmqContext;
    int                     mIsNaming;
    const char*             mPublishAddress;
-   // inproc socket for commands
-   zmqSocket               mZmqSocketControl;
+
+   // inproc socket for inter-thread commands
+   zmqSocket               mZmqControlSubscriber;
+   zmqSocket               mZmqControlPublisher;
 
    // naming transports only
    const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mPubEndpoint;          // endpoint address for naming
    const char*             mSubEndpoint;          // endpoint address for naming
-   zmqSocket               mZmqNamingPublisher;   // outgoing connections to nsd
-   zmqSocket               mZmqNamingSubscriber;  // incoming connections from nsd
+   zmqSocket               mZmqNamingPublisher;   // outgoing connections to proxy
+   zmqSocket               mZmqNamingSubscriber;  // incoming connections from proxy
 
-   zmqSocket               mZmqSocketPublisher;
-   zmqSocket               mZmqSocketSubscriber;
+   // "data" sockets for normal messaging
+   zmqSocket               mZmqDataPublisher;
+   zmqSocket               mZmqDataSubscriber;
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
 
@@ -246,13 +244,13 @@ typedef struct zmqQueueBridge {
 
 #define ZMQ_NAMING_PREFIX            "_NAMING"
 typedef struct zmqNamingMsg {
-   char                    mTopic[256];
+   char                    mTopic[MAX_SUBJECT_LENGTH];
    unsigned char           mType;
    char                    mProgName[256];
    char                    mHost[MAXHOSTNAMELEN + 1];
    int                     mPid;
-   char                    mPubEndpoint[256];
-   char                    mSubEndpoint[256];
+   char                    mPubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];
+   char                    mSubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];
 } zmqNamingMsg;
 
 typedef struct zmqControlMsg {

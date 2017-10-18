@@ -103,7 +103,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
 
    // stupid api ... symbol is NULL, source contains source.symbol
    // make a copy of the whole mess
-   char temp[1024];
+   char temp[MAX_SUBJECT_LENGTH];
    strcpy(temp, source);
    // replace "." with null
    char* dotPos = strchr(temp, '.');
@@ -415,7 +415,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqTransportBridge* transpor
 {
    zmqControlMsg msg;
    msg.command = 'S';
-   strcpy(msg.arg1, topic);
+   wmStrSizeCpy(msg.arg1, topic, sizeof(msg.arg1));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
 }
 
@@ -423,6 +423,6 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transp
 {
    zmqControlMsg msg;
    msg.command = 'U';
-   strcpy(msg.arg1, topic);
+   wmStrSizeCpy(msg.arg1, topic, sizeof(msg.arg1));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
 }

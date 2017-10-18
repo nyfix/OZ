@@ -188,11 +188,11 @@ mama_status zmqBridgeMamaPublisher_sendSubject(publisherBridge publisher, mamaMs
    CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_getPayloadSize(impl->mMamaBridgeMsg, &payloadSize));
 
    // send it
-   WLOCK_LOCK(impl->mTransport->mZmqSocketPublisher.mLock);
-   int i = zmq_send(impl->mTransport->mZmqSocketPublisher.mSocket, buf, bufSize, 0);
+   WLOCK_LOCK(impl->mTransport->mZmqDataPublisher.mLock);
+   int i = zmq_send(impl->mTransport->mZmqDataPublisher.mSocket, buf, bufSize, 0);
    //MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Sent msg w/subject[%s] [%d bytes=msgSize(%lu)+payload(%lu)]",buf, i, bufSize, payloadSize);
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Sent msg w/subject:%s", buf);
-   WLOCK_UNLOCK(impl->mTransport->mZmqSocketPublisher.mLock);
+   WLOCK_UNLOCK(impl->mTransport->mZmqDataPublisher.mLock);
 
    // TODO: ????
    /* Reset the message type for the next publish */

@@ -49,7 +49,7 @@ static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
 
 /* Version identifiers */
 #define             ZMQ_BRIDGE_NAME            "zmq"
-#define             ZMQ_BRIDGE_VERSION         "1.0"
+#define             ZMQ_BRIDGE_VERSION         "2.0"
 
 /* Name to be given to the default queue. Should be bridge-specific. */
 #define             ZMQ_DEFAULT_QUEUE_NAME     "ZMQ_DEFAULT_MAMA_QUEUE"
@@ -177,7 +177,14 @@ zmqBridge_stop(mamaQueue defaultEventQueue)
 const char*
 zmqBridge_getVersion(void)
 {
-   return ZMQ_BRIDGE_VERSION;
+   static char versionStr[1024];
+
+   int major, minor, patch;
+   zmq_version(&major, &minor, &patch);
+
+   sprintf(versionStr, "%s version %s using libzmq version %d.%d.%d", zmqBridge_getName(), ZMQ_BRIDGE_VERSION, major, minor, patch);
+
+   return versionStr;
 }
 
 const char*

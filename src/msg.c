@@ -52,7 +52,7 @@ typedef struct zmqBridgeMsgImpl {
    zmqMsgType                  mMsgType;
    uint8_t                     mIsValid;
    const char*                 mReplyHandle;
-   char                        mSendSubject[ZMQ_MSG_PROPERTY_LEN];
+   char                        mSendSubject[MAX_SUBJECT_LENGTH];
    void*                       mSerializedBuffer;
    size_t                      mSerializedBufferSize;
    size_t                      mPayloadSize;
@@ -63,19 +63,6 @@ typedef struct zmqBridgeMsgImpl {
   =                  Private implementation prototypes                    =
   =========================================================================*/
 
-/**
- * This is a local convenience function to avoid duplicate code when copying
- * a provided string to a supplied buffer.
- *
- * @param dest  The destination for the string to be set to.
- * @param value The value to set the destination string to. Node that if this
- *              is longer than ZMQ_MSG_PROPERTY_LEN, an error will be
- *              returned.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-static mama_status zmqBridgeMamaMsgImpl_setStringValue(char*          dest,
-                                                       const char*    value);
 
 
 /*=========================================================================
@@ -168,12 +155,8 @@ mama_status zmqBridgeMamaMsg_setSendSubject(msgBridge msg, const char* symbol, c
    mama_status        status   = MAMA_STATUS_OK;
 
 
-   status = zmqBridgeMamaMsgImpl_setStringValue(impl->mSendSubject, symbol);
-   if (MAMA_STATUS_OK != status) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaMsg_setSendSubject(): "
-               "Could not set send subject: %s",
-               mamaStatus_stringForStatus(status));
+   if (wmStrSizeCpy(impl->mSendSubject, symbol, sizeof(impl->mSendSubject)) != strlen(symbol)) {
+      mama_log(MAMA_LOG_LEVEL_ERROR, "Could not set send subject: %s", symbol);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -475,29 +458,5 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
 
    return mamaMsgImpl_setMsgBuffer(target, (void*) bufferPos, payloadSize, *bufferPos);
-}
-
-/*=========================================================================
-  =                  Private implementation functions                     =
-  =========================================================================*/
-
-mama_status zmqBridgeMamaMsgImpl_setStringValue(char*         dest,
-                                                const char*   value)
-{
-   strncpy(dest, value, ZMQ_MSG_PROPERTY_LEN);
-
-   /* ISO C - remaining bytes from strncpy are null unless overrun occurred */
-   if (dest[ZMQ_MSG_PROPERTY_LEN - 1] != '\0') {
-      /* Terminate string to at least make it usable (though truncated) */
-      dest[ZMQ_MSG_PROPERTY_LEN - 1] = '\0';
-      mama_log(MAMA_LOG_LEVEL_WARN,
-               "zmqBridgeMamaMsgImpl_setStringValue(): "
-               "Unable to set value '%s': Property too long for buffer. ",
-               "Truncated to '%s'",
-               value,
-               dest);
-      return MAMA_STATUS_PROPERTY_TOO_LONG;
-   }
-   return MAMA_STATUS_OK;
 }
 
