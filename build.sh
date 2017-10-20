@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 PACKAGE=OpenMAMA-zmq
 VERSION=nyfix
