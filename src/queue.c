@@ -26,10 +26,13 @@
   =                             Includes                                  =
   =========================================================================*/
 
+// MAMA includes
 #include <mama/mama.h>
 #include <wombat/wInterlocked.h>
 #include <wombat/queue.h>
 #include <bridge.h>
+
+// local includes
 #include "queueimpl.h"
 #include "zmqbridgefunctions.h"
 #include "zmqdefs.h"
@@ -95,9 +98,7 @@ zmqBridgeMamaQueue_create(queueBridge* queue,
    /* Allocate memory for the zmq queue implementation */
    impl = (zmqQueueBridge*) calloc(1, sizeof(zmqQueueBridge));
    if (NULL == impl) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_create (): "
-               "Failed to allocate memory for queue.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to allocate memory for queue.");
       return MAMA_STATUS_NOMEM;
    }
 
@@ -110,9 +111,7 @@ zmqBridgeMamaQueue_create(queueBridge* queue,
    /* Allocate and create the wombat queue */
    underlyingStatus = wombatQueue_allocate(&impl->mQueue);
    if (WOMBAT_QUEUE_OK != underlyingStatus) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_create (): "
-               "Failed to allocate memory for underlying queue.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to allocate memory for underlying queue.");
       free(impl);
       return MAMA_STATUS_NOMEM;
    }
@@ -122,9 +121,7 @@ zmqBridgeMamaQueue_create(queueBridge* queue,
                                          ZMQ_QUEUE_INITIAL_SIZE,
                                          ZMQ_QUEUE_CHUNK_SIZE);
    if (WOMBAT_QUEUE_OK != underlyingStatus) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_create (): "
-               "Failed to create underlying queue.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create underlying queue.");
       wombatQueue_deallocate(impl->mQueue);
       free(impl);
       return MAMA_STATUS_PLATFORM;
@@ -152,9 +149,7 @@ zmqBridgeMamaQueue_create_usingNative(queueBridge* queue,
    /* Allocate memory for the zmq bridge implementation */
    impl = (zmqQueueBridge*) calloc(1, sizeof(zmqQueueBridge));
    if (NULL == impl) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_create_usingNative (): "
-               "Failed to allocate memory for queue.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to allocate memory for queue.");
       return MAMA_STATUS_NOMEM;
    }
 
@@ -192,10 +187,7 @@ zmqBridgeMamaQueue_destroy(queueBridge queue)
    free(impl);
 
    if (WOMBAT_QUEUE_OK != status) {
-      mama_log(MAMA_LOG_LEVEL_WARN,
-               "zmqBridgeMamaQueue_destroy (): "
-               "Failed to destroy wombat queue (%d).",
-               status);
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Failed to destroy wombat queue (%d).", status);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -264,10 +256,7 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
 
    /* Timeout is encountered after each dispatch and so is expected here */
    if (WOMBAT_QUEUE_OK != status && WOMBAT_QUEUE_TIMEOUT != status) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_dispatch (): "
-               "Failed to dispatch Zmq Middleware queue (%d). ",
-               status);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to dispatch Zmq Middleware queue (%d). ", status);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -294,10 +283,7 @@ zmqBridgeMamaQueue_timedDispatch(queueBridge queue, uint64_t timeout)
 
    /* If dispatch failed, report here */
    if (WOMBAT_QUEUE_OK != status && WOMBAT_QUEUE_TIMEOUT != status) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_timedDispatch (): "
-               "Failed to dispatch Qpid Middleware queue (%d).",
-               status);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to dispatch Middleware queue (%d).", status);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -322,10 +308,7 @@ zmqBridgeMamaQueue_dispatchEvent(queueBridge queue)
 
    /* If dispatch failed, report here */
    if (WOMBAT_QUEUE_OK != status && WOMBAT_QUEUE_TIMEOUT != status) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_dispatchEvent (): "
-               "Failed to dispatch Middleware queue (%d).",
-               status);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to dispatch Middleware queue (%d).",  status);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -360,10 +343,7 @@ zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
 
    /* If dispatch failed, report here */
    if (WOMBAT_QUEUE_OK != status) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaQueue_enqueueEvent (): "
-               "Failed to enqueueEvent (%d). Callback: %p; Closure: %p",
-               status, callback, closure);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to enqueueEvent (%d). Callback: %p; Closure: %p", status, callback, closure);
       return MAMA_STATUS_PLATFORM;
    }
 

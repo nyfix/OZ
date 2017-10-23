@@ -26,12 +26,16 @@
   =                             Includes                                  =
   =========================================================================*/
 
+// MAMA includes
 #include <mama/mama.h>
 #include <mama/io.h>
 #include <wombat/port.h>
-#include "io.h"
 #include <event.h>
+
+// local includes
 #include "zmqbridgefunctions.h"
+#include "io.h"
+#include "util.h"
 
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =
@@ -58,7 +62,7 @@ typedef struct zmqIoEventImpl {
  * Global static container to hold instance-wide information not otherwise
  * available in this interface.
  */
-static zmqIoImpl       gQpidIoContainer;
+static zmqIoImpl       gZmqIoContainer;
 
 
 /*=========================================================================
@@ -133,13 +137,13 @@ zmqBridgeMamaIo_create(ioBridge*   result,
 
    event_add(&impl->mEvent, NULL);
 
-   event_base_set(gQpidIoContainer.mEventBase, &impl->mEvent);
+   event_base_set(gZmqIoContainer.mEventBase, &impl->mEvent);
 
    /* If this is the first event since base was emptied or created */
-   if (0 == gQpidIoContainer.mEventsRegistered) {
-      wsem_post(&gQpidIoContainer.mResumeDispatching);
+   if (0 == gZmqIoContainer.mEventsRegistered) {
+      wsem_post(&gZmqIoContainer.mResumeDispatching);
    }
-   gQpidIoContainer.mEventsRegistered++;
+   gZmqIoContainer.mEventsRegistered++;
 
    *result = (ioBridge)impl;
 
@@ -157,7 +161,7 @@ zmqBridgeMamaIo_destroy(ioBridge io)
    event_del(&impl->mEvent);
 
    free(impl);
-   gQpidIoContainer.mEventsRegistered--;
+   gZmqIoContainer.mEventsRegistered--;
 
    return MAMA_STATUS_OK;
 }
@@ -186,18 +190,17 @@ mama_status
 zmqBridgeMamaIoImpl_start()
 {
    int threadResult                        = 0;
-   gQpidIoContainer.mEventsRegistered      = 0;
-   gQpidIoContainer.mActive                = 1;
-   gQpidIoContainer.mEventBase             = event_init();
+   gZmqIoContainer.mEventsRegistered      = 0;
+   gZmqIoContainer.mActive                = 1;
+   gZmqIoContainer.mEventBase             = event_init();
 
-   wsem_init(&gQpidIoContainer.mResumeDispatching, 0, 0);
-   threadResult = wthread_create(&gQpidIoContainer.mDispatchThread,
+   wsem_init(&gZmqIoContainer.mResumeDispatching, 0, 0);
+   threadResult = wthread_create(&gZmqIoContainer.mDispatchThread,
                                  NULL,
                                  zmqBridgeMamaIoImpl_dispatchThread,
-                                 gQpidIoContainer.mEventBase);
+                                 gZmqIoContainer.mEventBase);
    if (0 != threadResult) {
-      mama_log(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaIoImpl_initialize(): "
-               "wthread_create returned %d", threadResult);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "wthread_create returned %d", threadResult);
       return MAMA_STATUS_PLATFORM;
    }
    return MAMA_STATUS_OK;
@@ -206,20 +209,20 @@ zmqBridgeMamaIoImpl_start()
 mama_status
 zmqBridgeMamaIoImpl_stop()
 {
-   gQpidIoContainer.mActive = 0;
+   gZmqIoContainer.mActive = 0;
 
    /* Alert the semaphore so the dispatch loop can exit */
-   wsem_post(&gQpidIoContainer.mResumeDispatching);
+   wsem_post(&gZmqIoContainer.mResumeDispatching);
 
    /* Tell the event loop to exit */
-   event_base_loopexit(gQpidIoContainer.mEventBase, NULL);
+   event_base_loopexit(gZmqIoContainer.mEventBase, NULL);
 
    /* Join with the dispatch thread - it should exit shortly */
-   wthread_join(gQpidIoContainer.mDispatchThread, NULL);
-   wsem_destroy(&gQpidIoContainer.mResumeDispatching);
+   wthread_join(gZmqIoContainer.mDispatchThread, NULL);
+   wsem_destroy(&gZmqIoContainer.mResumeDispatching);
 
    /* Free the main event base */
-   event_base_free(gQpidIoContainer.mEventBase);
+   event_base_free(gZmqIoContainer.mEventBase);
 
    return MAMA_STATUS_OK;
 }
@@ -235,17 +238,17 @@ zmqBridgeMamaIoImpl_dispatchThread(void* closure)
    int             dispatchResult = 0;
 
    /* Wait on the first event to register before starting dispatching */
-   wsem_wait(&gQpidIoContainer.mResumeDispatching);
+   wsem_wait(&gZmqIoContainer.mResumeDispatching);
 
-   while (0 != gQpidIoContainer.mActive) {
-      dispatchResult = event_base_loop(gQpidIoContainer.mEventBase,
+   while (0 != gZmqIoContainer.mActive) {
+      dispatchResult = event_base_loop(gZmqIoContainer.mEventBase,
                                        EVLOOP_NONBLOCK | EVLOOP_ONCE);
 
       /* If no events are currently registered */
       if (1 == dispatchResult) {
          /* Wait until they are */
-         gQpidIoContainer.mEventsRegistered = 0;
-         wsem_wait(&gQpidIoContainer.mResumeDispatching);
+         gZmqIoContainer.mEventsRegistered = 0;
+         wsem_wait(&gZmqIoContainer.mResumeDispatching);
       }
    }
    return NULL;

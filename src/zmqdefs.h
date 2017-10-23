@@ -47,17 +47,6 @@
 #define WLOCK_UNLOCK    wlock_noop
 #endif
 
-
-
-// NOTE: following code uses (deprecated) gMamaLogLevel directly, rather than calling mama_getLogLevel
-// (which acquires a read lock on gMamaLogLevel)
-#define MAMA_LOG(l, ...)                                                      \
-   do {                                                                       \
-      if (gMamaLogLevel >= l) {                                               \
-         mama_log_helper(l, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__); \
-      }                                                                       \
-   } while(0)
-
 // call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
 #define CALL_MAMA_FUNC(x)                                                                  \
    do {                                                                                    \

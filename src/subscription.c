@@ -26,13 +26,19 @@
   =                             Includes                                  =
   =========================================================================*/
 
+// system includes
 #include <string.h>
+#include <errno.h>
+
+// MAMA includes
 #include <mama/mama.h>
 #include <subscriptionimpl.h>
 #include <transportimpl.h>
 #include <msgimpl.h>
 #include <queueimpl.h>
 #include <wombat/queue.h>
+
+// local includes
 #include "transport.h"
 #include "zmqdefs.h"
 #include "subscription.h"
@@ -40,8 +46,8 @@
 #include "zmqbridgefunctions.h"
 #include "msg.h"
 #include "util.h"
+
 #include <zmq.h>
-#include <errno.h>
 
 
 zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mamaQueue queue,
@@ -361,16 +367,14 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
    size_t      written        = 0;
 
    if (NULL != root) {
-      mama_log(MAMA_LOG_LEVEL_FINEST,
-               "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): R.");
+      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): R.");
       written         = snprintf(subjectPos, bytesRemaining, "%s", root);
       subjectPos     += written;
       bytesRemaining -= written;
    }
 
    if (NULL != source) {
-      mama_log(MAMA_LOG_LEVEL_FINEST,
-               "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): S.");
+      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): S.");
       /* If these are not the first bytes, prepend with a period */
       if (subjectPos != subject) {
          written     = snprintf(subjectPos, bytesRemaining, ".%s", source);
@@ -383,8 +387,7 @@ zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
    }
 
    if (NULL != topic) {
-      mama_log(MAMA_LOG_LEVEL_FINEST,
-               "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): T.");
+      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): T.");
       /* If these are not the first bytes, prepend with a period */
       if (subjectPos != subject) {
          snprintf(subjectPos, bytesRemaining, ".%s", topic);

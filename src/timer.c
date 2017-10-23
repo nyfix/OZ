@@ -26,11 +26,15 @@
   =                             Includes                                  =
   =========================================================================*/
 
+// MAMA includes
 #include <mama/mama.h>
 #include <mama/timer.h>
 #include <timers.h>
 #include <wombat/queue.h>
+
+// local includes
 #include "zmqbridgefunctions.h"
+#include "util.h"
 
 
 /*=========================================================================
@@ -149,8 +153,7 @@ zmqBridgeMamaTimer_create(timerBridge*  result,
                              &timeout,
                              impl);
    if (0 != timerResult) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "Failed to create Qpid underlying timer [%d].", timerResult);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create underlying timer [%d].", timerResult);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -177,9 +180,7 @@ zmqBridgeMamaTimer_destroy(timerBridge timer)
    /* Destroy the timer element */
    timerResult = destroyTimer(gOmzmqTimerHeap, impl->mTimerElement);
    if (0 != timerResult) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "Failed to destroy Qpid underlying timer [%d].",
-               timerResult);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to destroy underlying timer [%d].", timerResult);
       returnStatus = MAMA_STATUS_PLATFORM;
    }
 
@@ -219,8 +220,7 @@ zmqBridgeMamaTimer_reset(timerBridge timer)
                              &timeout,
                              impl);
    if (0 != timerResult) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "Failed to reset Qpid underlying timer [%d].", timerResult);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to reset underlying timer [%d].", timerResult);
       return MAMA_STATUS_PLATFORM;
    }
 

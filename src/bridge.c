@@ -26,10 +26,16 @@
   =                             Includes                                  =
   =========================================================================*/
 
+// MAMA includes
 #include <mama/mama.h>
 #include <timers.h>
+
+// local includes
 #include "io.h"
 #include "zmqbridgefunctions.h"
+#include "util.h"
+
+#include <zmq.h>
 
 
 /*=========================================================================
@@ -84,9 +90,7 @@ zmqBridge_open(mamaBridge bridgeImpl)
    /* Create the default event queue */
    status = mamaQueue_create(&bridge->mDefaultEventQueue, bridgeImpl);
    if (MAMA_STATUS_OK != status) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridge_open(): Failed to create zmq queue (%s).",
-               mamaStatus_stringForStatus(status));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create zmq queue (%s).", mamaStatus_stringForStatus(status));
       return status;
    }
 
@@ -96,15 +100,13 @@ zmqBridge_open(mamaBridge bridgeImpl)
 
    /* Create the timer heap */
    if (0 != createTimerHeap(&gOmzmqTimerHeap)) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridge_open(): Failed to initialize timers.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to initialize timers.");
       return MAMA_STATUS_PLATFORM;
    }
 
    /* Start the dispatch timer heap which will create a new thread */
    if (0 != startDispatchTimerHeap(gOmzmqTimerHeap)) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridge_open(): Failed to start timer thread.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to start timer thread.");
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -130,8 +132,7 @@ zmqBridge_close(mamaBridge bridgeImpl)
       /* The timer heap allows us to access it's thread ID for joining */
       timerThread = timerHeapGetTid(gOmzmqTimerHeap);
       if (0 != destroyHeap(gOmzmqTimerHeap)) {
-         mama_log(MAMA_LOG_LEVEL_ERROR,
-                  "zmqBridge_close(): Failed to destroy zmq timer heap.");
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to destroy zmq timer heap.");
          status = MAMA_STATUS_PLATFORM;
       }
       /* The timer thread expects us to be responsible for terminating it */
@@ -153,8 +154,7 @@ mama_status
 zmqBridge_start(mamaQueue defaultEventQueue)
 {
    if (NULL == defaultEventQueue) {
-      mama_log(MAMA_LOG_LEVEL_FINER,
-               "zmqBridge_start(): defaultEventQueue is NULL");
+      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "defaultEventQueue is NULL");
       return MAMA_STATUS_NULL_ARG;
    }
 
@@ -166,8 +166,7 @@ mama_status
 zmqBridge_stop(mamaQueue defaultEventQueue)
 {
    if (NULL == defaultEventQueue) {
-      mama_log(MAMA_LOG_LEVEL_FINER,
-               "zmqBridge_start(): defaultEventQueue is NULL");
+      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "defaultEventQueue is NULL");
       return MAMA_STATUS_NULL_ARG;
    }
 

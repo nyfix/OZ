@@ -156,7 +156,7 @@ mama_status zmqBridgeMamaMsg_setSendSubject(msgBridge msg, const char* symbol, c
 
 
    if (wmStrSizeCpy(impl->mSendSubject, symbol, sizeof(impl->mSendSubject)) != strlen(symbol)) {
-      mama_log(MAMA_LOG_LEVEL_ERROR, "Could not set send subject: %s", symbol);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not set send subject: %s", symbol);
       return MAMA_STATUS_PLATFORM;
    }
 
@@ -326,9 +326,7 @@ mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
    /* Allocate memory for the implementation struct */
    impl = (zmqBridgeMsgImpl*) calloc(1, sizeof(zmqBridgeMsgImpl));
    if (NULL == impl) {
-      mama_log(MAMA_LOG_LEVEL_ERROR,
-               "zmqBridgeMamaMsg_create (): "
-               "Failed to allocate memory for bridge message.");
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to allocate memory for bridge message.");
       return MAMA_STATUS_NOMEM;
    }
 
