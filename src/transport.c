@@ -801,6 +801,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
 mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
 {
    /* Set the transport bridge mIsDispatching to true. */
+   wInterlocked_initialize(&impl->mIsDispatching);
    wInterlocked_set(1, &impl->mIsDispatching);
 
    /* Initialize dispatch thread */

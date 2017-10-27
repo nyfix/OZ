@@ -229,6 +229,7 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
    /* Lock for dispatching */
    wthread_mutex_lock(&impl->mDispatchLock);
 
+   wInterlocked_initialize(&impl->mIsDispatching);
    wInterlocked_set(1, &impl->mIsDispatching);
 
    /*
@@ -247,6 +248,9 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
                                          NULL,
                                          NULL,
                                          ZMQ_QUEUE_DISPATCH_TIMEOUT);
+      // TODO: for debugging
+      int queueSize;
+      wombatQueue_getSize(impl->mQueue, &queueSize);
    }
    while ((WOMBAT_QUEUE_OK == status || WOMBAT_QUEUE_TIMEOUT == status)
           && wInterlocked_read(&impl->mIsDispatching) == 1);
