@@ -970,7 +970,7 @@ void zmqBridgeMamaTransportImpl_removeWildcard(wList wcList, zmqSubscription** p
    }
 }
 
-mama_status zmqBridgeMamaTransportImpl_unregisterWildcard(zmqTransportBridge* impl, zmqSubscription* subscription)
+void zmqBridgeMamaTransportImpl_unregisterWildcard(zmqTransportBridge* impl, zmqSubscription* subscription)
 {
    zmqFindWildcardClosure findClosure;
    findClosure.mEndpointIdentifier = subscription->mEndpointIdentifier;

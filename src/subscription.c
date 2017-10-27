@@ -420,6 +420,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_subscribe(zmqTransportBridge* transpor
    msg.command = 'S';
    wmStrSizeCpy(msg.arg1, topic, sizeof(msg.arg1));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
+   return MAMA_STATUS_OK;
 }
 
 mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transport, const char* topic)
@@ -428,4 +429,5 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transp
    msg.command = 'U';
    wmStrSizeCpy(msg.arg1, topic, sizeof(msg.arg1));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
+   return MAMA_STATUS_OK;
 }

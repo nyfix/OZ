@@ -117,7 +117,6 @@ typedef enum zmqTransportType_ {
 } zmqTransportType;
 
 typedef enum zmqTransportDirection_ {
-   ZMQ_TPORT_DIRECTION_DONTCARE,
    ZMQ_TPORT_DIRECTION_INCOMING,
    ZMQ_TPORT_DIRECTION_OUTGOING
 } zmqTransportDirection;
