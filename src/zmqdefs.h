@@ -225,9 +225,6 @@ typedef struct zmqQueueBridge {
    void*                   mClosure;
    wthread_mutex_t         mDispatchLock;
    zmqQueueClosureCleanup  mClosureCleanupCb;
-   void*                   mZmqContext;
-   void*                   mZmqSocketWorker;
-   void*                   mZmqSocketDealer;
 } zmqQueueBridge;
 
 #define ZMQ_NAMING_PREFIX            "_NAMING"
