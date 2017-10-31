@@ -342,24 +342,18 @@ mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
 mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void** target, size_t* size)
 {
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
-   mama_size_t msgSize = 0;
-   const void* msgBuffer = NULL;
-   size_t msgSubjectByteCount = 0;
-   size_t msgInboxByteCount = 0;
-   size_t msgReplyToByteCount = 0;
-   size_t msgTargetSubjectByteCount = 0;
-   size_t serializedSize = 0;
 
    // Serialize payload
-   CALL_MAMA_FUNC(mamaMsg_getByteBuffer(source, &msgBuffer, &msgSize));
+   const void* payloadBuffer;
+   mama_size_t payloadSize;
+   CALL_MAMA_FUNC(mamaMsg_getByteBuffer(source, &payloadBuffer, &payloadSize));
 
-   // TODO: no naked constants
-   serializedSize = strlen(impl->mSendSubject) + 10 + msgSize;
-
+   // get size of buffer needed
+   size_t serializedSize = (strlen(impl->mSendSubject) + 1) + sizeof(impl->mMsgType) + payloadSize;
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
-         serializedSize += strlen(impl->mReplyHandle) + 1;
+         serializedSize += (strlen(impl->mReplyHandle) + 1);
          break;
       case ZMQ_MSG_SUB_REQUEST:
       case ZMQ_MSG_PUB_SUB:
@@ -373,7 +367,7 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
    uint8_t* bufferPos = (uint8_t*)impl->mSerializedBuffer;
 
    // Copy across the subject
-   msgSubjectByteCount = strlen(impl->mSendSubject) + 1;
+   size_t msgSubjectByteCount = strlen(impl->mSendSubject) + 1;
    memcpy(bufferPos, impl->mSendSubject, msgSubjectByteCount);
    bufferPos += msgSubjectByteCount;
 
@@ -388,6 +382,8 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
    *bufferPos = (uint8_t) impl->mMsgType;
    bufferPos++;
 
+   // Copy across reply handle if appropriate
+   size_t msgInboxByteCount;
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
@@ -403,8 +399,8 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
    }
 
    // Copy across the payload
-   memcpy((void*)bufferPos, msgBuffer, msgSize);
-   impl->mPayloadSize = msgSize;
+   memcpy((void*)bufferPos, payloadBuffer, payloadSize);
+   impl->mPayloadSize = payloadSize;
 
    // Populate return pointers
    *target = impl->mSerializedBuffer;
@@ -433,11 +429,11 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    impl->mMsgType = (zmqMsgType) * bufferPos;
    bufferPos++;
 
+   // set reply handle
    if (impl->mReplyHandle) {
       free((void*) impl->mReplyHandle);
       impl->mReplyHandle = NULL;
    }
-
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
