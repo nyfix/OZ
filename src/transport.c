@@ -318,6 +318,8 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
 
    // stop the dispatcher(s)
    status = zmqBridgeMamaTransportImpl_stop(impl);
+   wsem_destroy(&impl->mIsReady);
+   wsem_destroy(&impl->mNamingConnected);
 
    // shtudown zmq
    zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqDataPublisher);
@@ -328,7 +330,6 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
       zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqNamingPublisher);
       zmqBridgeMamaTransportImpl_closeSocket(&impl->mZmqNamingSubscriber);
    }
-   //zmq_ctx_shutdown(impl->mZmqContext);
    zmq_ctx_term(impl->mZmqContext);
 
    // free memory
@@ -373,6 +374,8 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mOmzmqDispatchThread  = 0;
    impl->mOmzmqDispatchStatus  = MAMA_STATUS_OK;
    impl->mName                 = name;
+
+   wsem_init(&impl->mIsReady, 0, 0);
 
    // initialize counters
    impl->mNamingMessages       = 0;
@@ -800,10 +803,6 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
 
 mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
 {
-   /* Set the transport bridge mIsDispatching to true. */
-   wInterlocked_initialize(&impl->mIsDispatching);
-   wInterlocked_set(1, &impl->mIsDispatching);
-
    /* Initialize dispatch thread */
    int rc = wthread_create(&(impl->mOmzmqDispatchThread), NULL, zmqBridgeMamaTransportImpl_dispatchThread, impl);
    if (0 != rc) {
@@ -817,6 +816,10 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
 
 mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 {
+   // make sure that transport has started before we try to stop it
+   // prevents a race condition on mIsDispatching
+   wsem_wait(&impl->mIsReady);
+
    zmqControlMsg msg;
    memset(&msg, '\0', sizeof(msg));
    msg.command = 'X';
@@ -1111,6 +1114,14 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 
    zmq_msg_t zmsg;
    zmq_msg_init(&zmsg);
+
+   /* Set the transport bridge mIsDispatching to true. */
+   wInterlocked_initialize(&impl->mIsDispatching);
+   wInterlocked_set(1, &impl->mIsDispatching);
+
+   // force _stop method to wait for this
+   // prevents a race condition on mIsDispatching
+   wsem_post(&impl->mIsReady);
 
    // Check if we should be still dispatching.
    while (1 == wInterlocked_read(&impl->mIsDispatching)) {
@@ -1498,6 +1509,15 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    if (pMsg->mType == 'C') {
       // connect
+
+      // is this our msg?
+      if ((strcmp(pMsg->mSubEndpoint, impl->mSubEndpoint) == 0) && (strcmp(pMsg->mPubEndpoint, impl->mPubEndpoint) == 0)) {
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling event");
+         wsem_post(&impl->mNamingConnected);
+         // NOTE: dont connect to self (avoid duplicate msgs)
+         return MAMA_STATUS_OK;
+      }
+
       // NOTE: multiple connections to same endpoint are silently ignored (see https://github.com/zeromq/libzmq/issues/788)
       // NOTE: dont connect to self (avoid duplicate msgs)
       if (strcmp(pMsg->mSubEndpoint, impl->mSubEndpoint) != 0)
@@ -1517,7 +1537,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 mama_status zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg)
 {
    const char* subject = (char*) zmq_msg_data(zmsg);
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Got msg with subject %s", subject);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Got msg with subject %s", subject);
 
    impl->mNormalMessages++;
 
@@ -1691,7 +1711,7 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 }
 
 
-mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl)
+mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl)
 {
    // publish our endpoints
    zmqNamingMsg msg;
@@ -1711,6 +1731,22 @@ mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl
       return MAMA_STATUS_PLATFORM;
    }
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully published endpoints: prog=%s host=%s pid=%d pub=%s sub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mPubEndpoint, msg.mSubEndpoint);
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(impl->mZmqNamingPublisher.mSocket));
+
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Sent endpoint msg: prog=%s host=%s pid=%d pub=%s sub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mPubEndpoint, msg.mSubEndpoint);
    return MAMA_STATUS_OK;
 }
+
+mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl)
+{
+   // publish endpoint message continuously every 100ms until it is received on naming socket
+   wsem_init(&impl->mNamingConnected, 0, 0);
+
+   do {
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl));
+   } while ((wsem_timedwait(&impl->mNamingConnected, 100) != 0) && (errno == ETIMEDOUT));
+
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully published endpoints");
+   return MAMA_STATUS_OK;
+}
+

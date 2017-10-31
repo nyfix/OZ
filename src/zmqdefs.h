@@ -135,6 +135,8 @@ typedef struct zmqSocket_ {
   =========================================================================*/
 
 typedef struct zmqTransportBridge_ {
+   wsem_t                  mIsReady;
+   wsem_t                  mNamingConnected;
    int                     mIsValid;
    mamaTransport           mTransport;
    msgBridge               mMsg;
