@@ -492,7 +492,7 @@ zmqBridgeMamaMsg_duplicateReplyHandle(msgBridge msg, void** result);
 
 MAMAExpDLL
 extern mama_status
-zmqBridgeMamaMsg_copyReplyHandle(void* src, void** dest);
+zmqBridgeMamaMsg_copyReplyHandle(const void* src, void** dest);
 
 MAMAExpDLL
 extern mama_status

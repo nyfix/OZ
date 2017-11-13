@@ -204,12 +204,11 @@ mama_status zmqBridgeMamaMsg_duplicateReplyHandle(msgBridge msg, void** handle)
       return MAMA_STATUS_INVALID_ARG;
    }
 
-   *handle = strdup(replyHandle);
-   return MAMA_STATUS_OK;
+   return zmqBridgeMamaMsg_copyReplyHandle(replyHandle, handle);
 }
 
 
-mama_status zmqBridgeMamaMsg_copyReplyHandle(void* src, void** dest)
+mama_status zmqBridgeMamaMsg_copyReplyHandle(const void* src, void** dest)
 {
    if (NULL == src || NULL == dest) {
       return MAMA_STATUS_NULL_ARG;
