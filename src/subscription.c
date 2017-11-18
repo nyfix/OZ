@@ -53,22 +53,19 @@
 zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mamaQueue queue,
    mamaMsgCallbacks callback, mamaSubscription subscription, void* closure);
 
-
 mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, const char* source, const char*symbol);
 
 mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const char* source, const char* symbol);
+
+mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char** mamaTopic, int* isWildcard);
 
 /*=========================================================================
   =               Public interface implementation functions               =
   =========================================================================*/
 mama_status zmqBridgeMamaSubscription_create(subscriptionBridge* subscriber,
-                                 const char*         source,
-                                 const char*         symbol,
-                                 mamaTransport       tport,
-                                 mamaQueue           queue,
-                                 mamaMsgCallbacks    callback,
-                                 mamaSubscription    subscription,
-                                 void*               closure)
+     const char* source, const char* symbol,
+     mamaTransport tport, mamaQueue queue,
+     mamaMsgCallbacks callback, mamaSubscription    subscription, void* closure)
 {
    if (NULL == subscriber || NULL == subscription || NULL == tport) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "something NULL");
@@ -86,14 +83,12 @@ mama_status zmqBridgeMamaSubscription_create(subscriptionBridge* subscriber,
    return MAMA_STATUS_OK;
 }
 
-mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     subscriber,
-                                         const char*             source,
-                                         const char*             symbol,
-                                         mamaTransport           tport,
-                                         mamaQueue               queue,
-                                         mamaMsgCallbacks        callback,
-                                         mamaSubscription        subscription,
-                                         void*                   closure)
+
+mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscriber,
+   const char* source, const char* symbol,
+   mamaTransport tport, mamaQueue queue,
+   mamaMsgCallbacks callback, mamaSubscription subscription,
+   void* closure)
 {
    if (NULL == subscriber || NULL == subscription || NULL == tport) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "something NULL");
@@ -112,7 +107,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
    char temp[MAX_SUBJECT_LENGTH];
    strcpy(temp, source);
    // replace "." with null
-   char* dotPos = strchr(temp, '.');
+   char* dotPos = strchr(temp, '?');
    if (dotPos == NULL) {
       return MAMA_STATUS_INVALID_ARG;
    }
@@ -122,17 +117,43 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
    char* theSource = temp;
    char* theRegex = dotPos +1;
 
+   char* origSource = strdup(theSource);
+   char* origRegex = strdup(theRegex);
+
    // zmq only does prefix matching, so subscribe to everything up to the first wildcard
    // TODO: for now, only deal with embedded (not final) wildcards
    char* wcPos = strchr(theSource, '*');
+   if (wcPos == NULL) {
+      wcPos = strstr(theSource, "//.");
+   }
    if (wcPos == NULL) {
       free(impl);
       return MAMA_STATUS_INVALID_ARG;
    }
    *wcPos = '\0';
 
+   #if 1
+   // trim anchors
    theRegex[strlen(theRegex)-1] = '\0';
    impl->mOrigRegex = strdup(theRegex+1);
+   #else
+   // dont trim anchors
+   impl->mOrigRegex = strdup(theRegex);
+   #endif
+
+   #if 1
+   // do our own conversion
+   const char* regex2;
+   int isWildcard;
+   mama_status status = zmqBridgeMamaSubscriptionImpl_regex(origSource, &regex2, &isWildcard);
+   #endif
+
+   #if 1
+   // use our own conversion
+   impl->mOrigRegex = strdup(regex2);
+   #endif
+
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "\t%s\t%s\t%s\t%s\t%s", origSource, origRegex, theSource, impl->mOrigRegex, regex2);
 
    // create regex to match against
    impl->mRegexTopic = calloc(1, sizeof(regex_t));
@@ -148,22 +169,26 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge*     sub
    CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_createWildcard(impl, NULL, theSource));
 
    *subscriber = (subscriptionBridge) impl;
+
+   free(origSource);
+   free(origRegex);
+
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaSubscription_mute(subscriptionBridge subscriber)
-{
-   zmqSubscription* impl = (zmqSubscription*) subscriber;
 
-   if (NULL == impl) {
+mama_status zmqBridgeMamaSubscription_mute(subscriptionBridge subscriber)
+{
+   if (NULL == subscriber) {
       return MAMA_STATUS_NULL_ARG;
    }
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
 
    impl->mIsNotMuted = 0;
 
    return MAMA_STATUS_OK;
 }
+
 
 mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
 {
@@ -171,7 +196,6 @@ mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
       return MAMA_STATUS_NULL_ARG;
    }
    zmqSubscription* impl = (zmqSubscription*) subscriber;
-
    zmqTransportBridge* transportBridge = impl->mTransport;
 
    if (impl->mIsWildcard == 0) {
@@ -197,70 +221,66 @@ mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
       (*(wombat_subscriptionDestroyCB)destroyCb)(parent, closure);
    }
 
-   if (NULL != impl->mSubjectKey) {
-      free(impl->mSubjectKey);
-   }
-   if (NULL != impl->mEndpointIdentifier) {
-      free((void*)impl->mEndpointIdentifier);
-   }
-   if (NULL != impl->mOrigRegex) {
-      free((void*)impl->mOrigRegex);
-   }
+   free(impl->mSubjectKey);
+   free((void*)impl->mEndpointIdentifier);
+   free((void*)impl->mOrigRegex);
    if (NULL != impl->mRegexTopic) {
       regfree(impl->mRegexTopic);
       free((void*)impl->mRegexTopic);
    }
-
 
    free(impl);
 
    return MAMA_STATUS_OK;
 }
 
-int
-zmqBridgeMamaSubscription_isValid(subscriptionBridge subscriber)
+
+int zmqBridgeMamaSubscription_isValid(subscriptionBridge subscriber)
 {
+   if (NULL == subscriber) {
+      return 0;
+   }
    zmqSubscription* impl = (zmqSubscription*) subscriber;
 
-   if (NULL != impl) {
-      return impl->mIsValid;
-   }
-   return 0;
+   return impl->mIsValid;
 }
 
-int
-zmqBridgeMamaSubscription_hasWildcards(subscriptionBridge subscriber)
+
+int zmqBridgeMamaSubscription_hasWildcards(subscriptionBridge subscriber)
 {
-   return 0;
+   if (NULL == subscriber) {
+      return 0;
+   }
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
+
+   return impl->mIsWildcard;
 }
 
-mama_status
-zmqBridgeMamaSubscription_getPlatformError(subscriptionBridge subscriber,
-                                           void** error)
+
+mama_status zmqBridgeMamaSubscription_getPlatformError(subscriptionBridge subscriber, void** error)
 {
    return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
 
-int
-zmqBridgeMamaSubscription_isTportDisconnected(subscriptionBridge subscriber)
+int zmqBridgeMamaSubscription_isTportDisconnected(subscriptionBridge subscriber)
 {
-   zmqSubscription* impl = (zmqSubscription*) subscriber;
-   if (NULL == impl) {
+   if (NULL == subscriber) {
       return 1;
    }
+   zmqSubscription* impl = (zmqSubscription*) subscriber;
+
    return impl->mIsTportDisconnected;
 }
 
-mama_status
-zmqBridgeMamaSubscription_setTopicClosure(subscriptionBridge subscriber,
-                                          void*              closure)
+
+mama_status zmqBridgeMamaSubscription_setTopicClosure(subscriptionBridge subscriber, void* closure)
 {
    return MAMA_STATUS_NOT_IMPLEMENTED;
 }
 
-mama_status
-zmqBridgeMamaSubscription_muteCurrentTopic(subscriptionBridge subscriber)
+
+mama_status zmqBridgeMamaSubscription_muteCurrentTopic(subscriptionBridge subscriber)
 {
    /* As there is one topic per subscription, this can act as an alias */
    return zmqBridgeMamaSubscription_mute(subscriber);
@@ -270,7 +290,6 @@ zmqBridgeMamaSubscription_muteCurrentTopic(subscriptionBridge subscriber)
 /*=========================================================================
   =                  Private implementation functions                      =
   =========================================================================*/
-
 
 zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mamaQueue queue,
    mamaMsgCallbacks callback, mamaSubscription subscription, void* closure)
@@ -296,6 +315,8 @@ zmqSubscription* zmqBridgeMamaSubscriptionImpl_allocate(mamaTransport tport, mam
 
    return impl;
 }
+
+
 mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, const char* source, const char*symbol)
 {
    /* Use a standard centralized method to determine a topic key */
@@ -325,20 +346,9 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    /* Use a standard centralized method to determine a topic key */
    zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
 
-   // endpointPool_registerWithoutIdentifier uses address as key, but addresses can be reused...
-   #if 1
    impl->mEndpointIdentifier = zmq_generate_uuid();
    endpointPool_registerWithIdentifier(impl->mTransport->mSubEndpoints,
-                                       impl->mSubjectKey,
-                                       impl->mEndpointIdentifier,
-                                       impl);
-   #else
-   /* Register the endpoint */
-   endpointPool_registerWithoutIdentifier(impl->mTransport->mSubEndpoints,
-                                          impl->mSubjectKey,
-                                          &impl->mEndpointIdentifier,
-                                          impl);
-   #endif
+      impl->mSubjectKey, impl->mEndpointIdentifier, impl);
 
    /* subscribe to the topic */
    CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_subscribe(impl->mTransport, impl->mSubjectKey));
@@ -351,15 +361,13 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    return MAMA_STATUS_OK;
 }
 
+
 /*
  * Internal function to ensure that the topic names are always calculated
  * in a particular way
  */
-mama_status
-zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
-                                                 const char*  source,
-                                                 const char*  topic,
-                                                 char**       keyTarget)
+mama_status zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
+   const char*  source, const char*  topic, char**       keyTarget)
 {
    char        subject[MAX_SUBJECT_LENGTH];
    char*       subjectPos     = subject;
@@ -429,5 +437,58 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transp
    msg.command = 'U';
    wmStrSizeCpy(msg.arg1, topic, sizeof(msg.arg1));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
+   return MAMA_STATUS_OK;
+}
+
+
+// converts Transact subject (hierarchical topic, as per WS-Topic) to Mama topic (extended regular expression)
+mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char** mamaTopic, int* isWildcard)
+{
+   // copy input
+   char inTopic[MAX_SUBJECT_LENGTH*2];
+   strcpy(inTopic, wsTopic);
+   char* end = inTopic+strlen(inTopic);     // trailing null
+
+   // initialize regex
+   char regex[1024] = "^";       // anchor at beginning
+
+/*
+   // check for special trailing delimiter -- convert to single wildcard if found
+   if (strcmp(&inTopic[l-3], "//.") == 0) {
+      strcpy(&inTopic[l-3], "/*");
+   }
+*/
+   *isWildcard = 0;
+
+   char* p = inTopic;
+   while (p < end) {
+      // check for wildcards
+      char* q = strchr(p, '*');
+      if (q == NULL) {
+         // no (more) wildcards
+         break;
+//         strcat(regex, p);
+//         strcat(regex, "$");
+//         *mamaTopic = strdup(regex);
+//         return MAMA_STATUS_OK;
+      }
+
+      *isWildcard = 1;
+      *q = '\0';
+      strcat(regex, p);
+      strcat(regex, "[^/]+");    // replace wildcard with regex (any char other than "/")
+      p = q+1;
+   }
+   strcat(regex, p);
+
+   // check for special trailing wildcard -- convert to "super" wildcard if found
+   int l = strlen(regex);
+   if (strcmp(&regex[l-3], "//.") == 0) {
+      *isWildcard = 1;
+      strcpy(&regex[l-3], "/.*");
+   }
+
+   strcat(regex, "$");        // anchor at end
+   *mamaTopic = strdup(regex);
    return MAMA_STATUS_OK;
 }
