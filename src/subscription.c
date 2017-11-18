@@ -445,41 +445,32 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transp
 mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char** mamaTopic, int* isWildcard)
 {
    // copy input
+   // TODO: check len
    char inTopic[MAX_SUBJECT_LENGTH*2];
    strcpy(inTopic, wsTopic);
-   char* end = inTopic+strlen(inTopic);     // trailing null
 
-   // initialize regex
+   // TODO: check len
    char regex[1024] = "^";       // anchor at beginning
 
-/*
-   // check for special trailing delimiter -- convert to single wildcard if found
-   if (strcmp(&inTopic[l-3], "//.") == 0) {
-      strcpy(&inTopic[l-3], "/*");
-   }
-*/
    *isWildcard = 0;
 
    char* p = inTopic;
+   char* end = p+strlen(p);      // trailing null
+
    while (p < end) {
-      // check for wildcards
-      char* q = strchr(p, '*');
+      char* q = strchr(p, '*');  // find wildcard char
       if (q == NULL) {
-         // no (more) wildcards
-         break;
-//         strcat(regex, p);
-//         strcat(regex, "$");
-//         *mamaTopic = strdup(regex);
-//         return MAMA_STATUS_OK;
+         break;                  // no (more) wildcards
       }
 
       *isWildcard = 1;
-      *q = '\0';
-      strcat(regex, p);
-      strcat(regex, "[^/]+");    // replace wildcard with regex (any char other than "/")
-      p = q+1;
+      *q = '\0';                 // overwrite wildcard w/null
+      strcat(regex, p);          // append string up to wildcard
+      strcat(regex, "[^/]+");    // append regex (any char other than "/")
+      p = q+1;                   // advance past wildcard
    }
-   strcat(regex, p);
+
+   strcat(regex, p);             // append whatever is left of topic
 
    // check for special trailing wildcard -- convert to "super" wildcard if found
    int l = strlen(regex);
@@ -488,7 +479,8 @@ mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char*
       strcpy(&regex[l-3], "/.*");
    }
 
-   strcat(regex, "$");        // anchor at end
+   strcat(regex, "$");           // anchor at end
+
    *mamaTopic = strdup(regex);
    return MAMA_STATUS_OK;
 }
