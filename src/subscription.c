@@ -101,77 +101,43 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
       return MAMA_STATUS_NULL_ARG;
    }
    impl->mIsWildcard          = 1;
-
    // stupid api ... symbol is NULL, source contains source.symbol
-   // make a copy of the whole mess
-   char temp[MAX_SUBJECT_LENGTH];
-   strcpy(temp, source);
-   // replace "." with null
-   char* dotPos = strchr(temp, '?');
-   if (dotPos == NULL) {
-      return MAMA_STATUS_INVALID_ARG;
+   impl->mOrigRegex = strdup(source);
+
+   // generate zmq prefix from regex
+   char* prefix = (char*) alloca(strlen(impl->mOrigRegex)+1);
+   strcpy(prefix, impl->mOrigRegex);
+   if (prefix[0] == '^') {
+      ++prefix;                                  // skip beginning anchor
    }
-   *dotPos = '\0';
-
-   // now we have original topic in theSource, regex in theRegex
-   char* theSource = temp;
-   char* theRegex = dotPos +1;
-
-   char* origSource = strdup(theSource);
-   char* origRegex = strdup(theRegex);
-
-   // zmq only does prefix matching, so subscribe to everything up to the first wildcard
-   // TODO: for now, only deal with embedded (not final) wildcards
-   char* wcPos = strchr(theSource, '*');
-   if (wcPos == NULL) {
-      wcPos = strstr(theSource, "//.");
+   char* regexPos = strstr(prefix, "[^/]+");     // find wildcard regex?
+   if (regexPos != NULL) {
+      *regexPos = '\0';                          // overwrite with null
    }
-   if (wcPos == NULL) {
-      free(impl);
-      return MAMA_STATUS_INVALID_ARG;
+   else {
+      int l = strlen(prefix);
+      if (strcmp(&prefix[l-3], "/.*") == 0) {   // find trailing "super" wildcard?
+         prefix[l-2] = '\0';                    // overwrite with null
+      }
    }
-   *wcPos = '\0';
+   impl->mSubjectKey = strdup(prefix);
 
-   #if 1
-   // trim anchors
-   theRegex[strlen(theRegex)-1] = '\0';
-   impl->mOrigRegex = strdup(theRegex+1);
-   #else
-   // dont trim anchors
-   impl->mOrigRegex = strdup(theRegex);
-   #endif
-
-   #if 1
-   // do our own conversion
-   const char* regex2;
-   int isWildcard;
-   mama_status status = zmqBridgeMamaSubscriptionImpl_regex(origSource, &regex2, &isWildcard);
-   #endif
-
-   #if 1
-   // use our own conversion
-   impl->mOrigRegex = strdup(regex2);
-   #endif
-
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "\t%s\t%s\t%s\t%s\t%s", origSource, origRegex, theSource, impl->mOrigRegex, regex2);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "\t%s\t%s", source, impl->mSubjectKey);
 
    // create regex to match against
    impl->mRegexTopic = calloc(1, sizeof(regex_t));
    int rc = regcomp(impl->mRegexTopic, impl->mOrigRegex, REG_NOSUB | REG_EXTENDED);
    if (rc != 0) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to compile regex: %s", theRegex);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to compile regex: %s", impl->mOrigRegex);
       free(impl);
       return MAMA_STATUS_INVALID_ARG;
    }
 
    // TODO: depending on resolution of https://github.com/OpenMAMA/OpenMAMA/issues/324
    // may need/want to pass source?
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_createWildcard(impl, NULL, theSource));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_createWildcard(impl, NULL, impl->mSubjectKey));
 
    *subscriber = (subscriptionBridge) impl;
-
-   free(origSource);
-   free(origRegex);
 
    return MAMA_STATUS_OK;
 }
