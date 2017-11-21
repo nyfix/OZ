@@ -357,13 +357,14 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
    switch (impl->mMsgType) {
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
-         serializedSize += (strlen(impl->mReplyHandle) + 1);
+         serializedSize += strlen(impl->mReplyHandle);
          break;
       case ZMQ_MSG_SUB_REQUEST:
       case ZMQ_MSG_PUB_SUB:
       default:
          break;
    }
+   serializedSize++;          // trailing null
 
    allocateBufferMemory(&impl->mSerializedBuffer, &impl->mSerializedBufferSize, serializedSize);
 
@@ -392,7 +393,7 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
       case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
          // Copy across reply handle
-         msgInboxByteCount = strlen(impl->mReplyHandle) + 1;
+         msgInboxByteCount = strlen(impl->mReplyHandle);
          memcpy(bufferPos, impl->mReplyHandle, msgInboxByteCount);
          bufferPos += msgInboxByteCount;
          break;
@@ -401,6 +402,8 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
       default:
          break;
    }
+   *bufferPos = '\0';         // trailing null for reply handle (even if not present)
+   bufferPos++;
 
    // Copy across the payload
    memcpy((void*)bufferPos, payloadBuffer, payloadSize);
@@ -442,22 +445,17 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
       free((void*) impl->mReplyHandle);
       impl->mReplyHandle = NULL;
    }
-   switch (impl->mMsgType) {
-      case ZMQ_MSG_INBOX_REQUEST:
-      case ZMQ_MSG_INBOX_RESPONSE:
-         impl->mReplyHandle = strdup((const char*)bufferPos);
-         bufferPos += strlen(impl->mReplyHandle) + 1;
-         break;
-      case ZMQ_MSG_SUB_REQUEST:
-      case ZMQ_MSG_PUB_SUB:
-      default:
-         break;
+   // always copy reply handle if present
+   if (*bufferPos != '\0') {
+      impl->mReplyHandle = strdup((const char*)bufferPos);
+      bufferPos += strlen(impl->mReplyHandle);
    }
+   bufferPos++;                     // trailing null for reply handle (even if not present)
 
    // Parse the payload into a MAMA Message
    size_t payloadSize = size - (bufferPos - (uint8_t*)source);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
 
    return mamaMsgImpl_setMsgBuffer(target, (void*) bufferPos, payloadSize, *bufferPos);
 }
