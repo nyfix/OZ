@@ -90,7 +90,7 @@ int zmqBridgeMamaMsg_isFromInbox(msgBridge msg)
       return 1;
    }
 
-   if ((impl->mReplyHandle != NULL) && (impl->mReplyHandle[0] != '\0')) {
+   if (strlen(impl->mReplyHandle) != 0) {
       return 1;
    }
 
@@ -106,7 +106,6 @@ mama_status zmqBridgeMamaMsg_destroy(msgBridge msg, int destroyMsg)
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
    free((void*) impl->mSerializedBuffer);
-   free((void*) impl->mReplyHandle);
    free(msg);
 
    return MAMA_STATUS_OK;
@@ -230,15 +229,12 @@ mama_status zmqBridgeMamaMsgImpl_setReplyHandle(msgBridge msg, void* handle)
    }
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
-   if (impl->mReplyHandle != NULL) {
-      if (strcmp((const char*) handle, impl->mReplyHandle) != 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "changing reply addr from (%s) to (%s)", impl->mReplyHandle, (const char*) handle);
-         assert(0);
-      }
+   // TODO: compare first?
+   if (strcmp(impl->mReplyHandle, (const char*) handle) != 0) {
+      strcpy(impl->mReplyHandle, (const char*) handle);
    }
 
-   free((void*) impl->mReplyHandle);
-   impl->mReplyHandle = strdup((const char*) handle);
+
    return MAMA_STATUS_OK;
 }
 
@@ -433,20 +429,13 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    bufferPos+=sizeof(impl->mMsgType);
 
    // set reply handle
-   if (impl->mReplyHandle) {
-      free((void*) impl->mReplyHandle);
-      impl->mReplyHandle = NULL;
-   }
-   // always copy reply handle if present
-   if (*bufferPos != '\0') {
-      impl->mReplyHandle = strdup((const char*)bufferPos);
-      bufferPos += strlen(impl->mReplyHandle);
-   }
+   // TODO: check/replace strcpy's
+   strcpy(impl->mReplyHandle, (const char*)bufferPos);
+   bufferPos += strlen(bufferPos);
    bufferPos++;                     // trailing null for reply handle (even if not present)
-
    // Parse the payload into a MAMA Message
    int payloadSize = size - (bufferPos - (uint8_t*)source);
-   assert(payloadSize >= 0);
+   assert(payloadSize > 0);
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
 
@@ -459,7 +448,7 @@ mama_status zmqBridgeMamaMsgImpl_init(zmqBridgeMsgImpl* msg)
    msg->mParent = NULL;
    msg->mMsgType = ZMQ_MSG_PUB_SUB;
    msg->mIsValid = 1;
-   msg->mReplyHandle = NULL;
+   strcpy(msg->mReplyHandle, "");
    strcpy(msg->mSendSubject, "");
    msg->mSerializedBuffer = NULL;
    msg->mSerializedBufferSize = 0;

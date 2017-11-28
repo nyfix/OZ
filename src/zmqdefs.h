@@ -270,14 +270,14 @@ typedef struct zmqInboxImpl {
 
 
 typedef struct zmqBridgeMsgImpl {
-   mamaMsg                     mParent;
-   uint8_t                     mMsgType;
-   uint8_t                     mIsValid;
-   const char*                 mReplyHandle;
-   char                        mSendSubject[MAX_SUBJECT_LENGTH];
-   void*                       mSerializedBuffer;
-   size_t                      mSerializedBufferSize;
-   size_t                      mPayloadSize;
+   mamaMsg             mParent;
+   uint8_t             mMsgType;
+   uint8_t             mIsValid;
+   char                mReplyHandle[ZMQ_REPLYHANDLE_SIZE];
+   char                mSendSubject[MAX_SUBJECT_LENGTH];
+   void*               mSerializedBuffer;
+   size_t              mSerializedBufferSize;
+   size_t              mPayloadSize;
 } zmqBridgeMsgImpl;
 
 

@@ -215,7 +215,7 @@ void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, ma
    msgBridge tmp;
    mamaMsgImpl_getBridgeMsg(msg, &tmp);
    const char* msgReplyHandle = zmqBridgeMamaMsg_getReplyHandle(tmp);
-   if (msgReplyHandle == NULL) {
+   if ((msgReplyHandle == NULL) || (strlen(msgReplyHandle) == 0)) {
       // TODO: this should never happen?!
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Got inbox msg w/no reply handle for (%s)", impl->mReplyHandle);
       assert(0);
