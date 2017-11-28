@@ -28,10 +28,13 @@
 // system includes
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 // Mama includes
 #include <mama/mama.h>
 #include <msgimpl.h>
 #include <wombat/memnode.h>
+
 // local includes
 #include "transport.h"
 #include "msg.h"
@@ -47,17 +50,6 @@
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =
   =========================================================================*/
-
-typedef struct zmqBridgeMsgImpl {
-   mamaMsg                     mParent;
-   uint8_t                     mMsgType;
-   uint8_t                     mIsValid;
-   const char*                 mReplyHandle;
-   char                        mSendSubject[MAX_SUBJECT_LENGTH];
-   void*                       mSerializedBuffer;
-   size_t                      mSerializedBufferSize;
-   size_t                      mPayloadSize;
-} zmqBridgeMsgImpl;
 
 
 /*=========================================================================
@@ -238,6 +230,13 @@ mama_status zmqBridgeMamaMsgImpl_setReplyHandle(msgBridge msg, void* handle)
    }
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
+   if (impl->mReplyHandle != NULL) {
+      if (strcmp((const char*) handle, impl->mReplyHandle) != 0) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "changing reply addr from (%s) to (%s)", impl->mReplyHandle, (const char*) handle);
+         assert(0);
+      }
+   }
+
    free((void*) impl->mReplyHandle);
    impl->mReplyHandle = strdup((const char*) handle);
    return MAMA_STATUS_OK;
@@ -330,13 +329,10 @@ mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
       return MAMA_STATUS_NOMEM;
    }
 
-   /* Back reference the parent message */
-   impl->mIsValid      = 1;
-
    /* Populate the msgBridge pointer with the implementation */
    *msg = (msgBridge) impl;
 
-   return MAMA_STATUS_OK;
+   return zmqBridgeMamaMsgImpl_init(impl);
 }
 
 
@@ -359,8 +355,6 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
       case ZMQ_MSG_INBOX_RESPONSE:
          serializedSize += strlen(impl->mReplyHandle);
          break;
-      case ZMQ_MSG_SUB_REQUEST:
-      case ZMQ_MSG_PUB_SUB:
       default:
          break;
    }
@@ -370,6 +364,7 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
 
    // Ok great - we have a buffer now of appropriate size, let's populate it
    uint8_t* bufferPos = (uint8_t*)impl->mSerializedBuffer;
+
 
    // Copy across the subject
    size_t msgSubjectByteCount = strlen(impl->mSendSubject) + 1;
@@ -390,15 +385,12 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
    // Copy across reply handle if appropriate
    size_t msgInboxByteCount;
    switch (impl->mMsgType) {
-      case ZMQ_MSG_INBOX_REQUEST:
       case ZMQ_MSG_INBOX_RESPONSE:
-         // Copy across reply handle
+      case ZMQ_MSG_INBOX_REQUEST:
          msgInboxByteCount = strlen(impl->mReplyHandle);
          memcpy(bufferPos, impl->mReplyHandle, msgInboxByteCount);
          bufferPos += msgInboxByteCount;
          break;
-      case ZMQ_MSG_SUB_REQUEST:
-      case ZMQ_MSG_PUB_SUB:
       default:
          break;
    }
@@ -453,9 +445,43 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    bufferPos++;                     // trailing null for reply handle (even if not present)
 
    // Parse the payload into a MAMA Message
-   size_t payloadSize = size - (bufferPos - (uint8_t*)source);
+   int payloadSize = size - (bufferPos - (uint8_t*)source);
+   assert(payloadSize >= 0);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Received %lu bytes [payload=%lu; type=%d]", size, payloadSize, impl->mMsgType);
 
    return mamaMsgImpl_setMsgBuffer(target, (void*) bufferPos, payloadSize, *bufferPos);
+}
+
+
+mama_status zmqBridgeMamaMsgImpl_init(zmqBridgeMsgImpl* msg)
+{
+   msg->mParent = NULL;
+   msg->mMsgType = ZMQ_MSG_PUB_SUB;
+   msg->mIsValid = 1;
+   msg->mReplyHandle = NULL;
+   strcpy(msg->mSendSubject, "");
+   msg->mSerializedBuffer = NULL;
+   msg->mSerializedBufferSize = 0;
+   msg->mPayloadSize = 0;
+
+   return MAMA_STATUS_OK;
+}
+
+
+msgBridge zmqBridgeMamaMsgImpl_getBridgeMsg(mamaMsg mamaMsg)
+{
+   if (mamaMsg == NULL) {
+      return NULL;
+   }
+
+   /* Get the bridge message from the mamaMsg */
+   msgBridge bridgeMsg;
+   mama_status status = mamaMsgImpl_getBridgeMsg(mamaMsg, &bridgeMsg);
+   if (MAMA_STATUS_OK != status) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get bridge message from mamaMsg [%s]", mamaStatus_stringForStatus(status));
+      return NULL;
+   }
+
+   return bridgeMsg;
 }

@@ -105,7 +105,6 @@ typedef enum zmqMsgType_ {
    ZMQ_MSG_PUB_SUB        =              0x00,
    ZMQ_MSG_INBOX_REQUEST,
    ZMQ_MSG_INBOX_RESPONSE,
-   ZMQ_MSG_SUB_REQUEST
 } zmqMsgType;
 
 typedef enum zmqTransportType_ {
@@ -267,6 +266,19 @@ typedef struct zmqInboxImpl {
    mamaInboxDestroyCallback        mOnInboxDestroyed;
    mamaInbox                       mParent;
 } zmqInboxImpl;
+
+
+
+typedef struct zmqBridgeMsgImpl {
+   mamaMsg                     mParent;
+   uint8_t                     mMsgType;
+   uint8_t                     mIsValid;
+   const char*                 mReplyHandle;
+   char                        mSendSubject[MAX_SUBJECT_LENGTH];
+   void*                       mSerializedBuffer;
+   size_t                      mSerializedBufferSize;
+   size_t                      mPayloadSize;
+} zmqBridgeMsgImpl;
 
 
 

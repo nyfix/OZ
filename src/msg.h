@@ -173,6 +173,10 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
 
 const char* zmqBridgeMamaMsg_getReplyHandle(msgBridge msg);
 
+msgBridge zmqBridgeMamaMsgImpl_getBridgeMsg(mamaMsg mamaMsg);
+
+mama_status zmqBridgeMamaMsgImpl_init(zmqBridgeMsgImpl* msg);
+
 
 #if defined(__cplusplus)
 }

@@ -26,14 +26,20 @@
  =                             Includes                                  =
  =========================================================================*/
 
+// system includes
 #include <string.h>
+#include <errno.h>
+#include <assert.h>
 
+// MAMA includes
 #include <mama/mama.h>
 #include <mama/inbox.h>
 #include <mama/publisher.h>
 #include <bridge.h>
 #include <inboximpl.h>
 #include <msgimpl.h>
+
+// local includes
 #include "transport.h"
 #include "zmqdefs.h"
 #include "msg.h"
@@ -41,7 +47,7 @@
 #include "subscription.h"
 #include "endpointpool.h"
 #include "zmqbridgefunctions.h"
-#include <errno.h>
+
 #include <zmq.h>
 
 /*=========================================================================
@@ -54,7 +60,6 @@ typedef struct zmqPublisherBridge {
    const char*             mSource;
    const char*             mRoot;
    const char*             mSubject;
-   msgBridge               mMamaBridgeMsg;
    mamaPublisher           mParent;
    mamaPublisherCallbacks  mCallbacks;
    void*                   mCallbackClosure;
@@ -79,6 +84,8 @@ typedef struct zmqPublisherBridge {
 static mama_status zmqBridgeMamaPublisherImpl_buildSendSubject(zmqPublisherBridge* impl);
 
 mama_status zmqBridgeMamaPublisher_sendSubject(publisherBridge publisher, mamaMsg msg, const char* subject);
+
+mama_status zmqBridgeMamaPublisherImpl_sendSubject(publisherBridge publisher, mamaMsg mamaMsg, msgBridge bridgeMsg, const char* subject);
 
 /*=========================================================================
  =               Public interface implementation functions               =
@@ -107,26 +114,19 @@ mama_status zmqBridgeMamaPublisher_createByIndex(publisherBridge* result, mamaTr
    impl->mTransport = transport;
    impl->mParent    = parent;
 
-   /* Create an underlying bridge message with no parent to be used in sends */
-   mama_status status = zmqBridgeMamaMsgImpl_createMsgOnly(&impl->mMamaBridgeMsg);
-   if (MAMA_STATUS_OK != status) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not create zmq bridge message for publisher: %s.", mamaStatus_stringForStatus(status));
-      free(impl);
-      return MAMA_STATUS_NOMEM;
-   }
-
    impl->mTopic = topic;
    impl->mSource = source;
    impl->mRoot = root;
 
    /* Generate a topic name based on the publisher details */
-   status = zmqBridgeMamaPublisherImpl_buildSendSubject(impl);
+   mama_status status = zmqBridgeMamaPublisherImpl_buildSendSubject(impl);
 
    /* Populate the publisherBridge pointer with the publisher implementation */
    *result = (publisherBridge) impl;
 
    return status;
 }
+
 
 mama_status zmqBridgeMamaPublisher_destroy(publisherBridge publisher)
 {
@@ -143,9 +143,6 @@ mama_status zmqBridgeMamaPublisher_destroy(publisherBridge publisher)
    if (NULL != impl->mSubject) {
       free((void*) impl->mSubject);
    }
-   if (NULL != impl->mMamaBridgeMsg) {
-      zmqBridgeMamaMsg_destroy(impl->mMamaBridgeMsg, 0);
-   }
 
    free(impl);
 
@@ -156,122 +153,101 @@ mama_status zmqBridgeMamaPublisher_destroy(publisherBridge publisher)
    return MAMA_STATUS_OK;
 }
 
+
 mama_status zmqBridgeMamaPublisher_send(publisherBridge publisher, mamaMsg msg)
 {
-   return zmqBridgeMamaPublisher_sendSubject(publisher, msg, NULL);
+   return zmqBridgeMamaPublisherImpl_sendSubject(publisher, msg, NULL, NULL);
 }
+
 
 mama_status zmqBridgeMamaPublisher_sendSubject(publisherBridge publisher, mamaMsg msg, const char* subject)
 {
-   if (NULL == publisher) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No publisher.");
-      return MAMA_STATUS_NULL_ARG;
-   }
-   if (NULL == msg) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
 
-   if (subject == NULL) {
-      zmqBridgeMamaMsg_setSendSubject(impl->mMamaBridgeMsg, impl->mSubject, impl->mSource);
-   }
-   else {
-      zmqBridgeMamaMsg_setSendSubject(impl->mMamaBridgeMsg, subject, NULL);
-   }
-
-   // serialize the msg
-   void* buf = NULL;
-   size_t bufSize = 0;
-   size_t payloadSize = 0;
-   /* Pack the provided MAMA message into a zmq message */
-   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_serialize(impl->mMamaBridgeMsg, msg, &buf, &bufSize));
-   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_getPayloadSize(impl->mMamaBridgeMsg, &payloadSize));
-
-   // send it
-   WLOCK_LOCK(impl->mTransport->mZmqDataPublisher.mLock);
-   int i = zmq_send(impl->mTransport->mZmqDataPublisher.mSocket, buf, bufSize, 0);
-   //MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Sent msg w/subject[%s] [%d bytes=msgSize(%lu)+payload(%lu)]",buf, i, bufSize, payloadSize);
-   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Sent msg w/subject:%s", buf);
-   WLOCK_UNLOCK(impl->mTransport->mZmqDataPublisher.mLock);
-
-   // TODO: ????
-   /* Reset the message type for the next publish */
-   zmqBridgeMamaMsgImpl_setMsgType(impl->mMamaBridgeMsg, ZMQ_MSG_PUB_SUB);
-
-   return MAMA_STATUS_OK;
+   return zmqBridgeMamaPublisherImpl_sendSubject(publisher, msg, NULL, subject);
 }
 
-/* Send reply to inbox. */
-// TODO: fix these fucking void*s!
+
+// Send reply to inbox from original request
 mama_status zmqBridgeMamaPublisher_sendReplyToInbox(publisherBridge publisher, void* request, mamaMsg reply)
 {
    if (NULL == publisher || NULL == request || NULL == reply) {
       return MAMA_STATUS_NULL_ARG;
    }
 
-   zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
-
    /* Get the incoming bridge message from the mamaMsg */
-   msgBridge bridgeMsg = NULL;
-   mama_status status = mamaMsgImpl_getBridgeMsg((mamaMsg) request, &bridgeMsg);
-   if (MAMA_STATUS_OK != status) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get bridge message from cached queue mamaMsg [%s]", mamaStatus_stringForStatus(status));
-      return status;
+   msgBridge bridgeMsg = zmqBridgeMamaMsgImpl_getBridgeMsg((mamaMsg) request);
+   if (bridgeMsg == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle");
+      assert(0);
+      return MAMA_STATUS_NULL_ARG;
    }
 
-   /* Get properties from the incoming bridge message */
-   const char* replyHandle = NULL;
-   status = zmqBridgeMamaMsg_duplicateReplyHandle(bridgeMsg, (void**) &replyHandle);
-   if (MAMA_STATUS_OK != status) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle[%s]", mamaStatus_stringForStatus(status));
-   }
-   else {
-      status = zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisher, (void*) replyHandle, reply);
-      if (MAMA_STATUS_OK != status) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not send reply to [%s]", mamaStatus_stringForStatus(status));
-      }
+   /* Get reply address from the bridge message */
+   const char* replyHandle = zmqBridgeMamaMsg_getReplyHandle(bridgeMsg);
+   if (replyHandle == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle");
+      assert(0);
+      return MAMA_STATUS_NULL_ARG;
    }
 
-   free((void*) replyHandle);
-   return status;
+   return zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisher, (void*) replyHandle, reply);
 }
 
+
+// Send reply to inbox
 mama_status zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisherBridge publisher, void* replyHandle, mamaMsg reply)
 {
    if (NULL == publisher || NULL == replyHandle || NULL == reply) {
       return MAMA_STATUS_NULL_ARG;
    }
-   zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
 
-   // Set properties for the outgoing bridge message
-   zmqBridgeMamaMsgImpl_setMsgType(impl->mMamaBridgeMsg, ZMQ_MSG_INBOX_RESPONSE);
-   // Set replyHandle so it will be serialized along with the rest of the message
-   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle(impl->mMamaBridgeMsg, replyHandle));
+   // allocate bridge msg on stack
+   zmqBridgeMsgImpl bridgeMsg;
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_init(&bridgeMsg));
+
+   // Set message type
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setMsgType((msgBridge) &bridgeMsg, ZMQ_MSG_INBOX_RESPONSE));
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle((msgBridge) &bridgeMsg, replyHandle));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent inbox reply to %s", (const char*) replyHandle);
 
-   /* Fire out the message to the inbox */
-   return zmqBridgeMamaPublisher_sendSubject(publisher, reply, (const char*) replyHandle);
+   return zmqBridgeMamaPublisherImpl_sendSubject(publisher, reply, (msgBridge) &bridgeMsg, (const char*) replyHandle);
 }
 
-/* Send a message from the specified inbox using the throttle. */
+
 mama_status zmqBridgeMamaPublisher_sendFromInboxByIndex(publisherBridge publisher, int tportIndex, mamaInbox inbox, mamaMsg msg)
 {
    if (NULL == publisher || NULL == inbox || NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
    }
-   zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
+
+   // allocate bridge msg on stack
+   zmqBridgeMsgImpl bridgeMsg;
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_init(&bridgeMsg));
 
    // Mark this as being a request from an inbox
-   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setMsgType(impl->mMamaBridgeMsg, ZMQ_MSG_INBOX_REQUEST));
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setMsgType((msgBridge) &bridgeMsg, ZMQ_MSG_INBOX_REQUEST));
+
    // Set the reply address
-   const char* replyHandle = zmqBridgeMamaInboxImpl_getReplyHandle(mamaInboxImpl_getInboxBridge(inbox));
-   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle(impl->mMamaBridgeMsg, (void*) replyHandle));
+   inboxBridge inboxBridge = mamaInboxImpl_getInboxBridge(inbox);
+   if (inboxBridge == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get inbox bridge");
+      assert(0);
+      return MAMA_STATUS_NULL_ARG;
+   }
+   const char* replyHandle = zmqBridgeMamaInboxImpl_getReplyHandle(inboxBridge);
+   if (replyHandle == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle");
+      assert(0);
+      return MAMA_STATUS_NULL_ARG;
+   }
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle((msgBridge) &bridgeMsg, (void*) replyHandle));
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s with reply %s", replyHandle);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyHandle);
 
-   return zmqBridgeMamaPublisher_send(publisher, msg);
+   return zmqBridgeMamaPublisherImpl_sendSubject(publisher, msg, (msgBridge) &bridgeMsg, NULL);
 }
+
 
 mama_status zmqBridgeMamaPublisher_sendFromInbox(publisherBridge publisher, mamaInbox inbox, mamaMsg msg)
 {
@@ -283,7 +259,6 @@ mama_status zmqBridgeMamaPublisher_setUserCallbacks(publisherBridge publisher, m
    if (NULL == publisher || NULL == cb) {
       return MAMA_STATUS_NULL_ARG;
    }
-
    zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
 
    /* Take a copy of the callbacks */
@@ -297,41 +272,76 @@ mama_status zmqBridgeMamaPublisher_setUserCallbacks(publisherBridge publisher, m
  =                  Private implementation functions                     =
  =========================================================================*/
 
+// TODO: wtf is this all about?
 mama_status zmqBridgeMamaPublisherImpl_buildSendSubject(zmqPublisherBridge* impl)
 {
    char* keyTarget = NULL;
 
    /* If this is a special _MD publisher, lose the topic unless dictionary */
    if (impl->mRoot != NULL) {
-      // TODO: wtf is this all about?
       /*
        * May use strlen here to increase speed but would need to test to
        * verify this is the only circumstance in which we want to consider the
        * topic when a root is specified.
        */
       if (strcmp(impl->mRoot, "_MDDD") == 0) {
-         zmqBridgeMamaSubscriptionImpl_generateSubjectKey(impl->mRoot,
-                                                          impl->mSource,
-                                                          impl->mTopic,
-                                                          &keyTarget);
+         zmqBridgeMamaSubscriptionImpl_generateSubjectKey(impl->mRoot, impl->mSource, impl->mTopic, &keyTarget);
       }
       else {
-         zmqBridgeMamaSubscriptionImpl_generateSubjectKey(impl->mRoot,
-                                                          impl->mSource,
-                                                          NULL,
-                                                          &keyTarget);
+         zmqBridgeMamaSubscriptionImpl_generateSubjectKey(impl->mRoot, impl->mSource, NULL, &keyTarget);
       }
    }
    /* If this isn't a special _MD publisher */
    else {
-      zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL,
-                                                       impl->mSource,
-                                                       impl->mTopic,
-                                                       &keyTarget);
+      zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, impl->mSource, impl->mTopic, &keyTarget);
    }
 
    /* Set the subject for publishing here */
    impl->mSubject = keyTarget;
 
    return MAMA_STATUS_OK;
+}
+
+
+mama_status zmqBridgeMamaPublisherImpl_sendSubject(publisherBridge publisher, mamaMsg mamaMsg, msgBridge bridgeMsg, const char* subject)
+{
+   if (NULL == publisher || NULL == mamaMsg) {
+      return MAMA_STATUS_NULL_ARG;
+   }
+   zmqPublisherBridge* impl = (zmqPublisherBridge*) publisher;
+
+   // if no bridge msg passed in, allocate one on the stack
+   zmqBridgeMsgImpl tempMsg;
+   if (bridgeMsg == NULL) {
+      CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_init(&tempMsg));
+      bridgeMsg = (msgBridge) &tempMsg;
+   }
+
+   // use subject passed in, or publisher's subject?
+   if (subject != NULL) {
+      zmqBridgeMamaMsg_setSendSubject(bridgeMsg, subject, NULL);
+   }
+   else {
+      zmqBridgeMamaMsg_setSendSubject(bridgeMsg, impl->mSubject, impl->mSource);
+   }
+
+   // serialize the msg
+   void* buf = NULL;
+   size_t bufSize = 0;
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_serialize(bridgeMsg, mamaMsg, &buf, &bufSize));
+
+   // send it
+   mama_status status = MAMA_STATUS_OK;
+   WLOCK_LOCK(impl->mTransport->mZmqDataPublisher.mLock);
+   int i = zmq_send(impl->mTransport->mZmqDataPublisher.mSocket, buf, bufSize, 0);
+   if (i != bufSize) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed %d(%s)", zmq_errno(), zmq_strerror(errno));
+      status = MAMA_STATUS_PLATFORM;
+   }
+   else {
+      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent msg w/subject:%s, size=%ld", buf, bufSize);
+   }
+   WLOCK_UNLOCK(impl->mTransport->mZmqDataPublisher.mLock);
+
+   return status;
 }

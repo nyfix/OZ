@@ -25,12 +25,17 @@
 /*=========================================================================
   =                             Includes                                  =
   =========================================================================*/
+// system includes
+#include <string.h>
+#include <assert.h>
 
+// Mama includes
 #include <mama/mama.h>
 #include <msgimpl.h>
-#include <string.h>
 #include <wombat/wUuid.h>
 #include <wombat/port.h>
+
+// local includes
 #include "zmqdefs.h"
 #include "inbox.h"
 #include "transport.h"
@@ -213,10 +218,13 @@ void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, ma
    if (msgReplyHandle == NULL) {
       // TODO: this should never happen?!
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Got inbox msg w/no reply handle for (%s)", impl->mReplyHandle);
+      assert(0);
+      return;
    }
    else {
       if (strcmp(impl->mReplyHandle, msgReplyHandle) != 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Discarding msg w/replyHandle(%s) which does not match our replyHandle(%s)", msgReplyHandle, impl->mReplyHandle);
+         assert(0);
          return;
       }
    }
