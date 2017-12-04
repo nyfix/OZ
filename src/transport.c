@@ -334,6 +334,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
 
    // free memory
    endpointPool_destroy(impl->mSubEndpoints);
+   wlock_destroy(impl->mInboxesLock);
    wtable_destroy(impl->mInboxes);
    list_destroy(impl->mWcEndpoints, NULL, NULL);
    free((void*) impl->mInboxSubject);
@@ -412,6 +413,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       free(impl);
       return MAMA_STATUS_NOMEM;
    }
+   impl->mInboxesLock = wlock_create();
 
    // create sub endpoints
    status = endpointPool_create(&impl->mSubEndpoints, "mSubEndpoints");
@@ -841,9 +843,12 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, voi
 {
    memoryNode* node = (memoryNode*) closure;
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   zmqTransportBridge* impl = (zmqTransportBridge*) tmsg->mTransport;
 
    // find the inbox
-   zmqInboxImpl* inbox = wtable_lookup(tmsg->mTransport->mInboxes, tmsg->mEndpointIdentifier);
+   wlock_lock(impl->mInboxesLock);
+   zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, tmsg->mEndpointIdentifier);
+   wlock_unlock(impl->mInboxesLock);
    if (inbox == NULL) {
       MAMA_LOG(MAMA_LOG_LEVEL_FINER, "discarding uninteresting message for inbox %s", tmsg->mEndpointIdentifier);
       goto exit;
@@ -888,6 +893,7 @@ exit:
 
    return;
 }
+
 
 // Called when message removed from queue by dispatch thread
 // NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
@@ -1610,7 +1616,9 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
 
    // index directly into subject to pick up inbox name (last part)
    const char* inboxName = &subject[ZMQ_REPLYHANDLE_INBOXNAME_INDEX];
+   wlock_lock(impl->mInboxesLock);
    zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, inboxName);
+   wlock_unlock(impl->mInboxesLock);
    if (inbox == NULL) {
       MAMA_LOG(MAMA_LOG_LEVEL_FINER, "discarding uninteresting message for subject %s", subject);
       return MAMA_STATUS_NOT_FOUND;
@@ -1741,13 +1749,21 @@ memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* imp
 
 mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
-   return wtable_insert(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX], inbox) >= 0 ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
+   wlock_lock(impl->mInboxesLock);
+   mama_status status = wtable_insert(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX], inbox) >= 0 ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
+   wlock_unlock(impl->mInboxesLock);
+   assert(status == MAMA_STATUS_OK);
+   return status;
 }
 
 
 mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
-   return wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
+   wlock_lock(impl->mInboxesLock);
+   mama_status status = wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
+   wlock_unlock(impl->mInboxesLock);
+   assert(status == MAMA_STATUS_OK);
+   return status;
 }
 
 

@@ -167,6 +167,9 @@ typedef struct zmqTransportBridge_ {
    mama_status             mOmzmqDispatchStatus;
    endpointPool_t          mSubEndpoints;
    wList                   mWcEndpoints;
+   // NOTE: this lock protects ONLY the table, NOT the individual inboxes contained in it....
+   // The lock is acquired immediately before lookup, insert, remove and released immediately after
+   wLock                   mInboxesLock;
    wtable_t                mInboxes;
    long int                mMemoryPoolSize;
    long int                mMemoryNodeSize;
