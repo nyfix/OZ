@@ -1131,7 +1131,9 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 
 
    WLOCK_LOCK(impl->mZmqDataSubscriber.mLock);
-   WLOCK_LOCK(impl->mZmqNamingSubscriber.mLock);
+   if (impl->mIsNaming) {
+      WLOCK_LOCK(impl->mZmqNamingSubscriber.mLock);
+   }
 
 
    // Check if we should be still dispatching.
@@ -1189,7 +1191,9 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
    }
 
    WLOCK_UNLOCK(impl->mZmqDataSubscriber.mLock);
-   WLOCK_UNLOCK(impl->mZmqNamingSubscriber.mLock);
+   if (impl->mIsNaming) {
+      WLOCK_UNLOCK(impl->mZmqNamingSubscriber.mLock);
+   }
 
    impl->mOmzmqDispatchStatus = MAMA_STATUS_OK;
    return NULL;
