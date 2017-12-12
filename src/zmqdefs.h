@@ -84,6 +84,7 @@ extern "C" {
   =========================================================================*/
 #define     MAX_SUBJECT_LENGTH               256         // topic size
 #define     ZMQ_MAX_NAMING_URIS              8           // proxy processes for naming messages
+// TODO: is 256 enough? what happens if exceeded?
 #define     ZMQ_MAX_INCOMING_URIS            256         // incoming connections from other processes
 #define     ZMQ_MAX_OUTGOING_URIS            256         // outgoing connections to other processes
 #define     ZMQ_MAX_ENDPOINT_LENGTH          256         // enpoint string
