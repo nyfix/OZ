@@ -36,17 +36,6 @@
 #define  ZMQ_SUB_TYPE   ZMQ_SUB
 #endif
 
-//
-// threads
-#define OPENMAMA_ZMQ_THREAD_SAFE
-#ifdef  OPENMAMA_ZMQ_THREAD_SAFE
-#define WLOCK_LOCK      wlock_lock
-#define WLOCK_UNLOCK    wlock_unlock
-#else
-#define WLOCK_LOCK      wlock_noop
-#define WLOCK_UNLOCK    wlock_noop
-#endif
-
 // call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
 #define CALL_MAMA_FUNC(x)                                                                  \
    do {                                                                                    \

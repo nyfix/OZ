@@ -7,8 +7,6 @@
 
 #include "util.h"
 
-void wlock_noop(wLock lock ) {}
-
 const char* zmq_generate_uuid()
 {
    wUuid tempUuid;

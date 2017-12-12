@@ -1,8 +1,4 @@
 
-// locking
-#include <wlock.h>
-void wlock_noop(wLock lock );
-
 // uuid
 // dont forget to add one for trailing null
 #define UUID_STRING_SIZE 36
