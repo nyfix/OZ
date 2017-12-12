@@ -45,7 +45,6 @@
 extern timerHeap gOmzmqTimerHeap;
 
 typedef struct zmqTimerImpl_ {
-   wLock           mLock;
    timerElement    mTimerElement;
    double          mInterval;
    void*           mClosure;
@@ -129,7 +128,6 @@ mama_status zmqBridgeMamaTimer_create(timerBridge* result, void* nativeQueueHand
    impl->mOnTimerDestroyed     = onTimerDestroyed;
    wInterlocked_initialize(&impl->mDestroying);
    wInterlocked_set(0, &impl->mDestroying);
-   impl->mLock = wlock_create();
 
 
    /* Determine when the next timer should fire */
@@ -162,7 +160,8 @@ mama_status zmqBridgeMamaTimer_destroy(timerBridge timer)
    wInterlocked_set(1, &impl->mDestroying);
    impl->mAction = NULL;
 
-   wlock_lock(impl->mLock);
+   // destroy must be syncrhonized w/reset
+   lockTimerHeap(gOmzmqTimerHeap);
 
    /* Destroy the timer element */
    int timerResult = destroyTimer(gOmzmqTimerHeap, impl->mTimerElement);
@@ -172,7 +171,7 @@ mama_status zmqBridgeMamaTimer_destroy(timerBridge timer)
    }
    impl->mTimerElement = NULL;
 
-   wlock_unlock(impl->mLock);
+   unlockTimerHeap(gOmzmqTimerHeap);
 
    /*
     * Put the impl free at the back of the queue to be executed when all
@@ -198,7 +197,8 @@ mama_status zmqBridgeMamaTimer_reset(timerBridge timer)
 
    mama_status status = MAMA_STATUS_OK;
 
-   wlock_lock(impl->mLock);
+   // destroyTimer/createTimer must be executed atomically!
+   lockTimerHeap(gOmzmqTimerHeap);
 
    /* Destroy the existing timer element */
    if (impl->mTimerElement != NULL) {
@@ -217,7 +217,7 @@ mama_status zmqBridgeMamaTimer_reset(timerBridge timer)
       status =  MAMA_STATUS_PLATFORM;
    }
 
-   wlock_unlock(impl->mLock);
+   unlockTimerHeap(gOmzmqTimerHeap);
 
    return status;
 }
@@ -262,8 +262,6 @@ static void MAMACALLTYPE zmqBridgeMamaTimerImpl_destroyCallback(mamaQueue queue,
    zmqTimerImpl* impl = (zmqTimerImpl*) closure;
 
    (*impl->mOnTimerDestroyed)(impl->mParent, impl->mClosure);
-
-   wlock_destroy(impl->mLock);
 
    /* Free the implementation memory here */
    free(impl);
