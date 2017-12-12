@@ -332,7 +332,7 @@ mama_status zmqBridgeMamaPublisherImpl_sendSubject(publisherBridge publisher, ma
 
    // send it
    mama_status status = MAMA_STATUS_OK;
-   WLOCK_LOCK(impl->mTransport->mZmqDataPublisher.mLock);
+   wlock_lock(impl->mTransport->mZmqDataPublisher.mLock);
    int i = zmq_send(impl->mTransport->mZmqDataPublisher.mSocket, buf, bufSize, 0);
    if (i != bufSize) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed %d(%s)", zmq_errno(), zmq_strerror(errno));
@@ -341,7 +341,9 @@ mama_status zmqBridgeMamaPublisherImpl_sendSubject(publisherBridge publisher, ma
    else {
       MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent msg w/subject:%s, size=%ld", buf, bufSize);
    }
-   WLOCK_UNLOCK(impl->mTransport->mZmqDataPublisher.mLock);
+   wlock_unlock(impl->mTransport->mZmqDataPublisher.mLock);
+
+   free(buf);
 
    return status;
 }
