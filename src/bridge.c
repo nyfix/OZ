@@ -46,8 +46,8 @@
 timerHeap           gOmzmqTimerHeap;
 
 /* Default payload names and IDs to be loaded when this bridge is loaded */
-static char*        PAYLOAD_NAMES[]         =   { "qpidmsg", NULL };
-static char         PAYLOAD_IDS[]           =   { MAMA_PAYLOAD_QPID, '\0' };
+static char*        PAYLOAD_NAMES[]         =   { NULL };
+static char         PAYLOAD_IDS[]           =   { '\0' };
 
 /*=========================================================================
   =                              Macros                                   =

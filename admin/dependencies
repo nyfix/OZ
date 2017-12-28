@@ -1,0 +1,15 @@
+#!/bin/bash -xv
+
+###############################################################################
+# The immediately following definitions are constant for a particular version
+export PROJECT_NAME=OpenMAMA-zmq
+export PROJECT_VERSION=2.0
+export JIRA_RELEASE=BUS-1780           # release artifact in jira
+
+# internal dependencies
+export LIBEVENT_VERSION=1.4.15
+export LIBZMQ_VERSION=4.2.3
+export OPENMAMA_VERSION=6.2.1
+
+# external dependencies
+export CMAKE_VERSION=2.8.12.2
