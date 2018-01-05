@@ -5,10 +5,10 @@
 #################################################################
 
 # prevent annoying deb# BUILD_TYPE is normally release for CC
-#export BUILD_TYPE=release
-export BUILD_TYPE=debug
+export BUILD_TYPE=release
+#export BUILD_TYPE=debug
 
-ug messages
+# prevent annoying debug messages
 unset MALLOC_CHECK_
 
 # standard install location
