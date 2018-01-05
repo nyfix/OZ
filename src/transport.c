@@ -330,7 +330,8 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
       zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingPublisher);
       zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingSubscriber);
    }
-   zmq_ctx_term(impl->mZmqContext);
+   //zmq_ctx_term(impl->mZmqContext);
+   zmq_ctx_shutdown(impl->mZmqContext);
 
    // free memory
    endpointPool_destroy(impl->mSubEndpoints);
