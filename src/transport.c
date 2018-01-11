@@ -767,6 +767,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       sprintf(endpointAddress, "tcp://%s:*", impl->mPublishAddress);
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqDataPublisher,  endpointAddress, &impl->mPubEndpoint));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqDataSubscriber, endpointAddress, &impl->mSubEndpoint));
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Binding data sockets to publisher:%s subscriber:%s", impl->mSubEndpoint, impl->mPubEndpoint);
+
       // one or the other, but not both (or will get duplicate msgs)
       //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataPublisher, impl->mSubEndpoint));
       // prefer connecting sub to pub (see https://github.com/zeromq/libzmq/issues/2267)
@@ -785,6 +787,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
          if (impl->mIncomingNamingAddress[i]) {
             CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSubscriber, impl->mIncomingNamingAddress[i]));
          }
+
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting proxy sockets to publisher:%s subscriber:%s", impl->mIncomingNamingAddress[i], impl->mOutgoingNamingAddress[i]);
       }
    }
    else {
@@ -792,11 +796,13 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       for (int i = 0; (i < ZMQ_MAX_OUTGOING_URIS) && (NULL != impl->mOutgoingAddress[i]); i++) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindOrConnect(&impl->mZmqDataPublisher,
                                                                impl->mOutgoingAddress[i], ZMQ_TPORT_DIRECTION_OUTGOING));
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data publisher socket to subscriber:%s", impl->mOutgoingNamingAddress[i]);
       }
 
       for (int i = 0; (i < ZMQ_MAX_INCOMING_URIS) && (NULL != impl->mIncomingAddress[i]); i++) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindOrConnect(&impl->mZmqDataSubscriber,
                                                                impl->mIncomingAddress[i], ZMQ_TPORT_DIRECTION_INCOMING));
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data subscriber socket to publisher:%s", impl->mIncomingNamingAddress[i]);
       }
    }
 
@@ -1453,6 +1459,8 @@ mama_status zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket)
 
 mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, zmqSocket* socket)
 {
+   // let everything default ...
+   #if 0
    wlock_lock(socket->mLock);
    // options apply to all sockets (?!)
    ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          SNDHWM,             atoi);
@@ -1471,6 +1479,7 @@ mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, zmqSoc
    #endif
    ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int64_t,      MAXMSGSIZE,         atoll);
    wlock_unlock(socket->mLock);
+   #endif
 
    return MAMA_STATUS_OK;
 }
@@ -1588,6 +1597,8 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataPublisher, pMsg->mSubEndpoint));
       if (strcmp(pMsg->mPubEndpoint, impl->mPubEndpoint) != 0)
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSubscriber, pMsg->mPubEndpoint));
+
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data sockets to publisher:%s subscriber:%s", pMsg->mSubEndpoint, pMsg->mPubEndpoint);
    }
    else {
       // TODO: implement disconnect

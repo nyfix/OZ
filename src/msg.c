@@ -346,51 +346,32 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
 
    // get size of buffer needed
    size_t serializedSize = (strlen(impl->mSendSubject) + 1) + sizeof(impl->mMsgType) + payloadSize;
-   switch (impl->mMsgType) {
-      case ZMQ_MSG_INBOX_REQUEST:
-      case ZMQ_MSG_INBOX_RESPONSE:
-         serializedSize += strlen(impl->mReplyHandle);
-         break;
-      default:
-         break;
+   if (impl->mMsgType== ZMQ_MSG_INBOX_REQUEST) {
+      serializedSize += strlen(impl->mReplyHandle);
    }
-   serializedSize++;          // trailing null
+   serializedSize++;    // trailing null for reply handle (even if not present)
 
    allocateBufferMemory(&impl->mSerializedBuffer, &impl->mSerializedBufferSize, serializedSize);
 
    // Ok great - we have a buffer now of appropriate size, let's populate it
    uint8_t* bufferPos = (uint8_t*)impl->mSerializedBuffer;
 
-
    // Copy across the subject
    size_t msgSubjectByteCount = strlen(impl->mSendSubject) + 1;
    memcpy(bufferPos, impl->mSendSubject, msgSubjectByteCount);
    bufferPos += msgSubjectByteCount;
 
-   // this is just silly?!
-   #if 0
-   // Leave 8 bytes empty - receive side will be thankful for them
-   memset((void*)bufferPos, 0, 8);
-   bufferPos += 8;
-   #endif
-
    // Copy across the message type
    memcpy(bufferPos, &impl->mMsgType, sizeof(impl->mMsgType));
    bufferPos+=sizeof(impl->mMsgType);
 
-   // Copy across reply handle if appropriate
-   size_t msgInboxByteCount;
-   switch (impl->mMsgType) {
-      case ZMQ_MSG_INBOX_RESPONSE:
-      case ZMQ_MSG_INBOX_REQUEST:
-         msgInboxByteCount = strlen(impl->mReplyHandle);
-         memcpy(bufferPos, impl->mReplyHandle, msgInboxByteCount);
-         bufferPos += msgInboxByteCount;
-         break;
-      default:
-         break;
+   // copy reply address (only for request)
+   if (impl->mMsgType == ZMQ_MSG_INBOX_REQUEST) {
+      size_t msgInboxByteCount = strlen(impl->mReplyHandle);
+      memcpy(bufferPos, impl->mReplyHandle, msgInboxByteCount);
+      bufferPos += msgInboxByteCount;
    }
-   *bufferPos = '\0';         // trailing null for reply handle (even if not present)
+   *bufferPos = '\0';   // trailing null for reply handle (even if not present)
    bufferPos++;
 
    // Copy across the payload
@@ -417,22 +398,22 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    // Skip past the subject - don't care about that here
    bufferPos += strlen((char*)source) + 1;
 
-   // this is just silly?!
-   #if 0
-   // Leave 8 bytes empty - receive side will be thankful for them
-   memset((void*)bufferPos, 0, 8);
-   bufferPos += 8;
-   #endif
-
    // Set the message type
    memcpy(&impl->mMsgType, bufferPos, sizeof(impl->mMsgType));
    bufferPos+=sizeof(impl->mMsgType);
 
    // set reply handle
-   // TODO: check/replace strcpy's
-   strcpy(impl->mReplyHandle, (const char*)bufferPos);
-   bufferPos += strlen(bufferPos);
+   if (impl->mMsgType == ZMQ_MSG_INBOX_REQUEST) {
+      // for requests, reply address is embedded in msg
+      strcpy(impl->mReplyHandle, (const char*)bufferPos);
+      bufferPos += strlen(bufferPos);
+   }
+   else if (impl->mMsgType == ZMQ_MSG_INBOX_RESPONSE) {
+      // for responses, reply address is the subject
+      strcpy(impl->mReplyHandle, (const char*) source);
+   }
    bufferPos++;                     // trailing null for reply handle (even if not present)
+
    // Parse the payload into a MAMA Message
    int payloadSize = size - (bufferPos - (uint8_t*)source);
    assert(payloadSize > 0);
