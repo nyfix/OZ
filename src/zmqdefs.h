@@ -113,6 +113,11 @@ typedef enum zmqTransportDirection_ {
 
 #define ZMQ_CONTROL_ENDPOINT  "inproc://control"
 
+#define DATA_PUBLISHER_MONITOR      "inproc://dataPub"
+#define DATA_SUBSCRIBER_MONITOR     "inproc://dataSub"
+#define NAMING_PUBLISHER_MONITOR    "inproc://namePub"
+#define NAMING_SUBSCRIBER_MONITOR   "inproc://nameSub"
+
 typedef struct zmqSocket_ {
    void*       mSocket;
    wLock       mLock;
@@ -155,12 +160,19 @@ typedef struct zmqTransportBridge_ {
    wthread_t               mOmzmqDispatchThread;
    uint32_t                mIsDispatching;
    mama_status             mOmzmqDispatchStatus;
+
+   wthread_t               mOmzmqMonitorThread;
+   uint32_t                mIsMonitoring;
+
    endpointPool_t          mSubEndpoints;
+
    wList                   mWcEndpoints;
+
    // NOTE: this lock protects ONLY the table, NOT the individual inboxes contained in it....
    // The lock is acquired immediately before lookup, insert, remove and released immediately after
    wLock                   mInboxesLock;
    wtable_t                mInboxes;
+
    long int                mMemoryPoolSize;
    long int                mMemoryNodeSize;
 

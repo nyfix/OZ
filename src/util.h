@@ -16,5 +16,4 @@ const char* zmq_generate_uuid();
 
 void mama_log_helper (MamaLogLevel level, const char* function, const char* file, int lineno, const char *format, ...);
 
-
-
+const char* get_zmqEventName(int event);

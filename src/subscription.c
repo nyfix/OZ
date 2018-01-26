@@ -122,7 +122,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
    }
    impl->mSubjectKey = strdup(prefix);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "\t%s\t%s", source, impl->mSubjectKey);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "\t%s\t%s", source, impl->mSubjectKey);
 
    // create regex to match against
    impl->mRegexTopic = calloc(1, sizeof(regex_t));
