@@ -1172,43 +1172,47 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       // no normal msg, so poll
       zmq_pollitem_t items[] = {
          { impl->mZmqControlSubscriber.mSocket, 0, ZMQ_POLLIN , 0},
-         { impl->mZmqDataSubscriber.mSocket, 0, ZMQ_POLLIN , 0},
-         { impl->mZmqNamingSubscriber.mSocket, 0, ZMQ_POLLIN , 0}
+         { impl->mZmqDataSubscriber.mSocket,    0, ZMQ_POLLIN , 0},
+         { impl->mZmqNamingSubscriber.mSocket,  0, ZMQ_POLLIN , 0}
       };
       int rc = zmq_poll(items, impl->mIsNaming ? 3 : 2, -1);
       if (rc < 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned %d - Error %d(%s)", rc, errno, zmq_strerror(errno));
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned %d - errorno %d(%s)", rc, zmq_errno(), zmq_strerror(zmq_errno()));
          continue;
       }
       ++impl->mPolls;
 
       // got command msg?
       if (items[0].revents & ZMQ_POLLIN) {
-         // TODO: zmq_poll is supposed to be level-triggered, not edge-triggered, so this should not be necessary?
          int size = zmq_msg_recv(&zmsg, impl->mZmqControlSubscriber.mSocket, ZMQ_DONTWAIT);
-         while (size != -1) {
-            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
-            size = zmq_msg_recv(&zmsg, impl->mZmqControlSubscriber.mSocket, ZMQ_DONTWAIT);
+         if (size == -1) {
+            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no command msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
          }
-         continue;
+         else {
+            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+         }
       }
 
       // got normal msg?
       if (items[1].revents & ZMQ_POLLIN) {
-         int size = zmq_msg_recv(&zmsg, impl->mZmqDataSubscriber.mSocket, 0);
-         if (size != -1) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqDataSubscriber.mSocket, ZMQ_DONTWAIT);
+         if (size == -1) {
+            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no data msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
+         }
+         else {
             zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
          }
-         continue;
       }
 
       // got naming msg?
       if (items[2].revents & ZMQ_POLLIN) {
-         int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber.mSocket, 0);
-         if (size != -1) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSubscriber.mSocket, ZMQ_DONTWAIT);
+         if (size == -1) {
+            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no naming msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
+         }
+         else {
             zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
          }
-         continue;
       }
    }
 
