@@ -343,10 +343,15 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    zmq_ctx_term(impl->mZmqContext);
 
    // free memory
+   wlock_destroy(impl->mSubsLock);
    endpointPool_destroy(impl->mSubEndpoints);
+
    wlock_destroy(impl->mInboxesLock);
    wtable_destroy(impl->mInboxes);
+
+   wlock_destroy(impl->mWcsLock);
    list_destroy(impl->mWcEndpoints, NULL, NULL);
+
    free((void*) impl->mInboxSubject);
    free((void*) impl->mPubEndpoint);
    free((void*) impl->mSubEndpoint);
@@ -415,6 +420,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       free(impl);
       return MAMA_STATUS_NOMEM;
    }
+   impl->mWcsLock = wlock_create();
 
    // create inboxes
    impl->mInboxes = wtable_create("inboxes", INBOX_TABLE_SIZE);
@@ -432,6 +438,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       free(impl);
       return status;
    }
+   impl->mSubsLock = wlock_create();
 
    // generate inbox subject
    const char* uuid = zmq_generate_uuid();
@@ -860,6 +867,8 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 // Called when message removed from queue by dispatch thread
 // NOTE: Needs to check inbox, which may have been deleted after this event was queued but before it
 // was dequeued.
+// Note also that if the inbox is found, it is guaranteed to exist for the duration of the function,
+// so long as all deletes are done from this thread (the callback thread), which is guaranteed by MME.
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, void* closure)
 {
    memoryNode* node = (memoryNode*) closure;
@@ -919,6 +928,8 @@ exit:
 // Called when message removed from queue by dispatch thread
 // NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
 // was dequeued.
+// Note also that if the subscription is found, it is guaranteed to exist for the duration of the function,
+// so long as all deletes are done from this thread (the callback thread), which is guaranteed by MME.
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void* closure)
 {
    memoryNode* node = (memoryNode*) closure;
@@ -1022,6 +1033,8 @@ void zmqBridgeMamaTransportImpl_findWildcard(wList dummy, zmqSubscription** pSub
 // Called when message removed from queue by dispatch thread
 // NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
 // was dequeued.
+// Note also that if the subscription is found, it is guaranteed to exist for the duration of the function,
+// so long as all deletes are done from this thread (the callback thread), which is guaranteed by MME.
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* closure)
 {
    memoryNode* node = (memoryNode*) closure;
@@ -1675,19 +1688,24 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
    const char* inboxName = &subject[ZMQ_REPLYHANDLE_INBOXNAME_INDEX];
    wlock_lock(impl->mInboxesLock);
    zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, inboxName);
-   wlock_unlock(impl->mInboxesLock);
    if (inbox == NULL) {
+      wlock_unlock(impl->mInboxesLock);
       MAMA_LOG(MAMA_LOG_LEVEL_FINER, "discarding uninteresting message for subject %s", subject);
       return MAMA_STATUS_NOT_FOUND;
    }
 
+   void* queue = inbox->mZmqQueue;
+   // at this point, we dont care if the inbox is deleted
+   // (as long as the queue remains)
+   wlock_unlock(impl->mInboxesLock);
+
    // TODO: can/should move following to zmqBridgeMamaTransportImpl_queueCallback?
-   memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, inbox->mZmqQueue, zmsg);
+   memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, queue, zmsg);
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
    tmsg->mEndpointIdentifier = strdup(inboxName);
 
    // callback (queued) will release the message
-   zmqBridgeMamaQueue_enqueueEvent(inbox->mZmqQueue, zmqBridgeMamaTransportImpl_inboxCallback, node);
+   zmqBridgeMamaQueue_enqueueEvent(queue, zmqBridgeMamaTransportImpl_inboxCallback, node);
 
    return MAMA_STATUS_OK;
 }
@@ -1735,18 +1753,23 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
    wcClosure.subject = subject;
    wcClosure.zmsg = zmsg;
    wcClosure.found = 0;
+   wlock_lock(impl->mWcsLock);
    list_for_each(impl->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_matchWildcards, &wcClosure);
+   wlock_unlock(impl->mWcsLock);
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Found %d wildcard matches for %s", wcClosure.found, subject);
 
    // get list of subscribers for this subject
    endpoint_t* subs = NULL;
    size_t subCount = 0;
+   wlock_lock(impl->mSubsLock);
    mama_status status = endpointPool_getRegistered(impl->mSubEndpoints, subject, &subs, &subCount);
    if (MAMA_STATUS_OK != status) {
+      wlock_unlock(impl->mSubsLock);
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s) querying registration table for subject %s", status, mamaStatus_stringForStatus(status), subject);
       return MAMA_STATUS_SYSTEM_ERROR;
    }
    if (0 == subCount) {
+      wlock_unlock(impl->mSubsLock);
       if (wcClosure.found == 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_FINER, "discarding uninteresting message for subject %s", subject);
       }
@@ -1764,6 +1787,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
       }
 
       if (1 != subscription->mIsNotMuted) {
+         wlock_unlock(impl->mSubsLock);
          MAMA_LOG(MAMA_LOG_LEVEL_WARN, "muted - not queueing update for symbol %s", subject);
          return MAMA_STATUS_NOT_FOUND;
       }
@@ -1776,6 +1800,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
       // callback (queued) will release the message
       zmqBridgeMamaQueue_enqueueEvent(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, node);
    }
+   wlock_unlock(impl->mSubsLock);
 
    return MAMA_STATUS_OK;
 }

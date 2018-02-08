@@ -164,9 +164,9 @@ typedef struct zmqTransportBridge_ {
    uint32_t                mIsMonitoring;
 
    endpointPool_t          mSubEndpoints;
-
+   wLock                   mSubsLock;             // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
    wList                   mWcEndpoints;
-
+   wLock                   mWcsLock;              // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
    // NOTE: this lock protects ONLY the table, NOT the individual inboxes contained in it....
    // The lock is acquired immediately before lookup, insert, remove and released immediately after
    wLock                   mInboxesLock;
