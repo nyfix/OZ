@@ -937,7 +937,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void*
 
    // find the subscription based on its identifier
    zmqSubscription* subscription = NULL;
-   endpointPool_getEndpointByIdentifiers(tmsg->mSubEndpoints, tmsg->mSubject,
+   endpointPool_getEndpointByIdentifiers(tmsg->mTransport->mSubEndpoints, tmsg->mSubject,
                                          tmsg->mEndpointIdentifier, (endpoint_t*) &subscription);
 
    /* Can't do anything without a subscriber */
@@ -1728,7 +1728,7 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
    }
 
    // check regex
-   if (regexec(subscription->mRegexTopic, closure->subject, 0, NULL, 0) != 0) {
+   if (regexec(subscription->mCompRegex, closure->subject, 0, NULL, 0) != 0) {
       return;
    }
 
@@ -1736,7 +1736,6 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
    closure->found++;
    memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(subscription->mTransport, subscription->mZmqQueue, closure->zmsg);
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-   tmsg->mSubEndpoints = NULL;
    tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
 
    // callback (queued) will release the message
@@ -1794,7 +1793,6 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
 
       memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, subscription->mZmqQueue, zmsg);
       zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-      tmsg->mSubEndpoints = impl->mSubEndpoints;
       tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
 
       // callback (queued) will release the message
@@ -1821,7 +1819,6 @@ memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* imp
    tmsg->mTransport    = impl;
    tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
    tmsg->mNodeSize     = zmq_msg_size(zmsg);
-   tmsg->mSubEndpoints = NULL;
    tmsg->mEndpointIdentifier = NULL;
    memcpy(tmsg->mNodeBuffer, zmq_msg_data(zmsg), tmsg->mNodeSize);
 

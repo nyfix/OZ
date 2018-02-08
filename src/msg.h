@@ -44,19 +44,6 @@ extern "C" {
   =========================================================================*/
 
 /**
- * This will return true if the bridge message supplied is not null and has
- * been created in the past
- *
- * @param msg    The bridge message to examine.
- * @param result Pointer to an unsigned int to populate with 1 if valid and 0
- *               if invalid or null.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_isValid(msgBridge    msg,
-                             uint8_t*     result);
-/**
  * This will set the bridge's internal message type according to the value
  * provided.
  *
@@ -68,81 +55,6 @@ zmqBridgeMamaMsgImpl_isValid(msgBridge    msg,
 mama_status
 zmqBridgeMamaMsgImpl_setMsgType(msgBridge    msg,
                                 zmqMsgType  type);
-
-/**
- * This will get the bridge's internal message type.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with the value of the bridge message type
- *               (e.g. ZMQ_MSG_PUB_SUB).
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_getMsgType(msgBridge    msg,
-                                zmqMsgType* type);
-
-/**
- * This will set the bridge's internal message inbox name according to the value
- * provided.
- *
- * @param msg    The bridge message to update.
- * @param type   The new inbox name.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_setInboxName(msgBridge    msg,
-                                  const char*  value);
-
-/**
- * This will get the bridge's inbox name.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with the value of the inbox name.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status zmqBridgeMamaMsgImpl_getInboxName(msgBridge msg, char** value);
-
-/**
- * This will set the bridge's internal message replyTo according to the value
- * provided. Note the replyTo field is used in request reply to advise which
- * url to send replies to.
- *
- * @param msg    The bridge message to update.
- * @param type   The new reply to URL.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_setReplyTo(msgBridge    msg,
-                                const char*  value);
-
-/**
- * This will get the bridge's internal message replyTo string. Note the replyTo
- * field is used in request reply to advise which url to send replies to.
- *
- * @param msg    The bridge message to examine.
- * @param type   Pointer to populate with the value of the reply to URL.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_getReplyTo(msgBridge    msg,
-                                char**       value);
-
-/**
- * This will get the payload size of the last serialized message
- *
- * @param msg    The bridge message to query.
- * @param size   Pointer to a value to populate with the size.
- *
- * @return mama_status indicating whether the method succeeded or failed.
- */
-mama_status
-zmqBridgeMamaMsgImpl_getPayloadSize(msgBridge   msg,
-                                    size_t*     size);
 
 
 /**
@@ -167,14 +79,11 @@ zmqBridgeMamaMsgImpl_getSendSubject(msgBridge    msg,
  */
 mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge*  msg);
 
+
 mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void** target, size_t* size);
-
 mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, mama_size_t size, mamaMsg target);
-
 const char* zmqBridgeMamaMsg_getReplyHandle(msgBridge msg);
-
 msgBridge zmqBridgeMamaMsgImpl_getBridgeMsg(mamaMsg mamaMsg);
-
 mama_status zmqBridgeMamaMsgImpl_init(zmqBridgeMsgImpl* msg);
 
 

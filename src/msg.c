@@ -90,7 +90,7 @@ int zmqBridgeMamaMsg_isFromInbox(msgBridge msg)
       return 1;
    }
 
-   if (strlen(impl->mReplyHandle) != 0) {
+   if (impl->mReplyHandle[0] != '\0') {
       return 1;
    }
 
@@ -249,19 +249,6 @@ mama_status zmqBridgeMamaMsgImpl_setReplyHandleAndIncrement(msgBridge msg, void*
   =                  Public implementation functions                      =
   =========================================================================*/
 
-mama_status zmqBridgeMamaMsgImpl_isValid(msgBridge msg, uint8_t* result)
-{
-   if (NULL == msg) {
-      *result = 0;
-      return MAMA_STATUS_NULL_ARG;
-   }
-   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
-
-   *result = impl->mIsValid;
-   return MAMA_STATUS_OK;
-}
-
-
 mama_status zmqBridgeMamaMsgImpl_setMsgType(msgBridge msg, zmqMsgType type)
 {
    if (NULL == msg) {
@@ -270,29 +257,6 @@ mama_status zmqBridgeMamaMsgImpl_setMsgType(msgBridge msg, zmqMsgType type)
    zmqBridgeMsgImpl*  impl = (zmqBridgeMsgImpl*) msg;
 
    impl->mMsgType = type;
-   return MAMA_STATUS_OK;
-}
-
-mama_status zmqBridgeMamaMsgImpl_getMsgType(msgBridge msg, zmqMsgType* type)
-{
-   if (NULL == msg) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   zmqBridgeMsgImpl*  impl = (zmqBridgeMsgImpl*) msg;
-
-   *type = impl->mMsgType;
-   return MAMA_STATUS_OK;
-}
-
-
-mama_status zmqBridgeMamaMsgImpl_getPayloadSize(msgBridge msg, size_t* size)
-{
-   if (NULL == msg) {
-      return MAMA_STATUS_NULL_ARG;
-   }
-   zmqBridgeMsgImpl*  impl = (zmqBridgeMsgImpl*) msg;
-
-   *size = impl->mPayloadSize;
    return MAMA_STATUS_OK;
 }
 
@@ -306,6 +270,7 @@ mama_status zmqBridgeMamaMsgImpl_getSendSubject(msgBridge msg, char** value)
    *value = impl->mSendSubject;
    return MAMA_STATUS_OK;
 }
+
 
 /* Non-interface version of create which permits null parent */
 mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
@@ -376,7 +341,6 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
 
    // Copy across the payload
    memcpy((void*)bufferPos, payloadBuffer, payloadSize);
-   impl->mPayloadSize = payloadSize;
 
    // Populate return pointers
    *target = impl->mSerializedBuffer;
@@ -428,12 +392,10 @@ mama_status zmqBridgeMamaMsgImpl_init(zmqBridgeMsgImpl* msg)
 {
    msg->mParent = NULL;
    msg->mMsgType = ZMQ_MSG_PUB_SUB;
-   msg->mIsValid = 1;
    strcpy(msg->mReplyHandle, "");
    strcpy(msg->mSendSubject, "");
    msg->mSerializedBuffer = NULL;
    msg->mSerializedBufferSize = 0;
-   msg->mPayloadSize = 0;
 
    return MAMA_STATUS_OK;
 }
