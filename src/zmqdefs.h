@@ -113,10 +113,9 @@ typedef enum zmqTransportDirection_ {
 
 #define ZMQ_CONTROL_ENDPOINT  "inproc://control"
 
-#define DATA_PUBLISHER_MONITOR      "inproc://dataPub"
-#define DATA_SUBSCRIBER_MONITOR     "inproc://dataSub"
-#define NAMING_PUBLISHER_MONITOR    "inproc://namePub"
-#define NAMING_SUBSCRIBER_MONITOR   "inproc://nameSub"
+// un-comment to create socket monitor thread
+//#define MONITOR_SOCKETS
+
 
 typedef struct zmqSocket_ {
    void*       mSocket;

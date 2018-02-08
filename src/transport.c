@@ -255,7 +255,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNonNamingParams(zmqTransportBridge* impl);
 
 // socket helpers
-mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type, const char* monitorName);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type, const char* name, int monitor);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char* uri, const char** endpointName);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const char* uri);
@@ -750,14 +750,14 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    // create control sockets for inter-thread commands
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSubscriber, ZMQ_SERVER, NULL));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSubscriber, ZMQ_SERVER, "controlSub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqControlSubscriber,  ZMQ_CONTROL_ENDPOINT, NULL));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPublisher, ZMQ_CLIENT, NULL));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPublisher, ZMQ_CLIENT, "controlPub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqControlPublisher,  ZMQ_CONTROL_ENDPOINT));
 
    // create data sockets
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataPublisher, ZMQ_PUB_TYPE, DATA_PUBLISHER_MONITOR));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataSubscriber, ZMQ_SUB_TYPE, DATA_SUBSCRIBER_MONITOR));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataPublisher, ZMQ_PUB_TYPE, "dataPub", 1));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataSubscriber, ZMQ_SUB_TYPE, "dataSub", 1));
    // set socket options as per mama.properties etc.
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setSocketOptions(impl->mName, &impl->mZmqDataPublisher));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setSocketOptions(impl->mName, &impl->mZmqDataSubscriber));
@@ -768,8 +768,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
 
    if (impl->mIsNaming) {
       // create naming sockets
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingPublisher, ZMQ_PUB_TYPE, NAMING_PUBLISHER_MONITOR));
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingSubscriber, ZMQ_SUB_TYPE, NAMING_SUBSCRIBER_MONITOR));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingPublisher, ZMQ_PUB_TYPE, "namingPub", 1));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingSubscriber, ZMQ_SUB_TYPE, "namingSub", 1));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqNamingSubscriber.mSocket, ZMQ_NAMING_PREFIX));
    }
 
@@ -1364,7 +1364,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNonNamingParams(zmqTransportB
 }
 
 
-mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type, const char* monitorName)
+mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type, const char* name, int monitor)
 {
    void* temp = zmq_socket(zmqContext, type);
    if (temp == NULL) {
@@ -1375,9 +1375,16 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    pSocket->mSocket = temp;
    pSocket->mLock = wlock_create();
 
-   if (monitorName != NULL) {
-      CALL_ZMQ_FUNC(zmq_socket_monitor(pSocket->mSocket, monitorName, ZMQ_EVENT_ALL));
+   // we dont use router/dealer or req/rep, so we hijack the identity property to set a name to make debugging easier
+   CALL_ZMQ_FUNC(zmq_setsockopt(pSocket->mSocket, ZMQ_IDENTITY, name, strlen(name) +1));
+
+   #ifdef MONITOR_SOCKETS
+   if ((monitor ==1) && (name != NULL)) {
+      char endpoint[256];
+      sprintf(endpoint, "inproc://%s", name);
+      CALL_ZMQ_FUNC(zmq_socket_monitor(pSocket->mSocket, endpoint, ZMQ_EVENT_ALL));
    }
+   #endif
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "(%p, %d) succeeded", pSocket->mSocket, type);
 
@@ -1872,25 +1879,29 @@ mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl
 
 mama_status zmqBridgeMamaTransportImpl_startMonitor(zmqTransportBridge* impl)
 {
+   #ifdef MONITOR_SOCKETS
    /* Set the transport bridge mIsDispatching to true. */
    wInterlocked_initialize(&impl->mIsMonitoring);
    wInterlocked_set(1, &impl->mIsMonitoring);
 
-   /* Initialize dispatch thread */
+   /* Initialize monitor thread */
    int rc = wthread_create(&(impl->mOmzmqMonitorThread), NULL, zmqBridgeMamaTransportImpl_monitorThread, impl);
    if (0 != rc) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "create of monitor thread failed %d(%s)", rc, strerror(rc));
       return MAMA_STATUS_PLATFORM;
    }
+   #endif
 
    return MAMA_STATUS_OK;
 }
 
 mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl)
 {
+   #ifdef MONITOR_SOCKETS
    wInterlocked_set(0, &impl->mIsMonitoring);
 
-   //wthread_join(impl->mOmzmqMonitorThread, NULL);
+   wthread_join(impl->mOmzmqMonitorThread, NULL);
+   #endif
 
    return MAMA_STATUS_OK;
 }
@@ -1931,40 +1942,41 @@ int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName
    return 0;
 }
 
+// TODO: hard-coded endpoint names
 void* zmqBridgeMamaTransportImpl_monitorThread(void* closure)
 {
    zmqTransportBridge* impl = (zmqTransportBridge*) closure;
 
    void* dataPubMonitor = zmq_socket(impl->mZmqContext, ZMQ_PAIR);
-   zmq_connect(dataPubMonitor, DATA_PUBLISHER_MONITOR);
+   zmq_connect(dataPubMonitor, "inproc://dataPub");
    void* dataSubMonitor = zmq_socket(impl->mZmqContext, ZMQ_PAIR);
-   zmq_connect(dataSubMonitor, DATA_SUBSCRIBER_MONITOR);
+   zmq_connect(dataSubMonitor, "inproc://dataSub");
    void* namingPubMonitor = zmq_socket(impl->mZmqContext, ZMQ_PAIR);
-   zmq_connect(namingPubMonitor, NAMING_PUBLISHER_MONITOR);
+   zmq_connect(namingPubMonitor, "inproc://namingPub");
    void* namingSubMonitor = zmq_socket(impl->mZmqContext, ZMQ_PAIR);
-   zmq_connect(namingSubMonitor, NAMING_SUBSCRIBER_MONITOR);
+   zmq_connect(namingSubMonitor, "inproc://namingSub");
 
    while (1 == wInterlocked_read(&impl->mIsMonitoring)) {
       zmq_pollitem_t items[] = {
-         { dataPubMonitor, 0, ZMQ_POLLIN , 0},
-         { dataSubMonitor, 0, ZMQ_POLLIN , 0},
-         { namingPubMonitor, 0, ZMQ_POLLIN , 0},
+         { dataPubMonitor,    0, ZMQ_POLLIN , 0},
+         { dataSubMonitor,    0, ZMQ_POLLIN , 0},
+         { namingPubMonitor,  0, ZMQ_POLLIN , 0},
          { namingSubMonitor, 0, ZMQ_POLLIN , 0},
       };
       int rc = zmq_poll(items, 4, -1);
       //assert(rc >= 0);
 
       if (items[0].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(dataPubMonitor, "DataPub");
+         zmqBridgeMamaTransportImpl_monitorEvent(dataPubMonitor, "dataPub");
       }
       if (items[1].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(dataSubMonitor, "DataSub");
+         zmqBridgeMamaTransportImpl_monitorEvent(dataSubMonitor, "dataSub");
       }
       if (items[2].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(namingPubMonitor, "NamingPub");
+         zmqBridgeMamaTransportImpl_monitorEvent(namingPubMonitor, "namingPub");
       }
       if (items[3].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(namingSubMonitor, "NamingSub");
+         zmqBridgeMamaTransportImpl_monitorEvent(namingSubMonitor, "namingSub");
       }
    }
 
