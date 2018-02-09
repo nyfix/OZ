@@ -31,6 +31,11 @@
 // if defined, a separate thread is created to log output from zmq_socket_monitor
 #define MONITOR_SOCKETS
 
+// Note that hash table size is actually 10x value specified in wtable_create
+// (to reduce collisions), and that there is no limit to # of entries
+// So a table of size 1024 will use 8MB (1024*10*sizeof(void*))
+#define     INBOX_TABLE_SIZE                 1024
+
 // zmq has two ways to manage subscriptions
 // w/XSUB subscriptions messages can be made visible to the application
 //#define USE_XSUB

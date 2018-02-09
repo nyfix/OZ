@@ -25,6 +25,8 @@
 #ifndef MAMA_BRIDGE_ZMQ_SUBSCRIPTION_H__
 #define MAMA_BRIDGE_ZMQ_SUBSCRIPTION_H__
 
+#include "zmqdefs.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

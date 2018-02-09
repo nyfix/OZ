@@ -35,6 +35,11 @@
 
 #include <mama/mama.h>
 #include <bridge.h>
+
+// required for definition of ZMQ_CLIENT, ZMQ_SERVER
+#define ZMQ_BUILD_DRAFT_API
+#include <zmq.h>
+
 #include "zmqdefs.h"
 
 #if defined(__cplusplus)
@@ -49,28 +54,78 @@ extern "C" {
  *
  * @return zmqTransportBridge* associated with the mamaTransport.
  */
-zmqTransportBridge*
-zmqBridgeMamaTransportImpl_getTransportBridge(mamaTransport transport);
+zmqTransportBridge* zmqBridgeMamaTransportImpl_getTransportBridge(mamaTransport transport);
 
-/**
- * This is purely a debug function to dump to screen a snapshot of the status
- * of the transport's message pool.
- *
- * @param impl       The zmq transport bridge referring to a message pool.
- */
-void
-zmqBridgeMamaTransportImpl_dumpMessagePool(zmqTransportBridge* impl);
+///////////////////////////////////////////////////////////////////////////////
+static mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl);
+static mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl);
+static mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl);
+
+///////////////////////////////////////////////////////////////////////////////
+// socket helpers
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type, const char* name, int monitor);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char* uri, const char** endpointName);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const char* uri);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disconnectSocket(zmqSocket* socket, const char* uri);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket);
+mama_status zmqBridgeMamaTransportImpl_bindOrConnect(void* socket, const char* uri, zmqTransportDirection direction);
+
+///////////////////////////////////////////////////////////////////////////////
+// message processing
+//
+static void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure);
+//
+mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE  zmqBridgeMamaTransportImpl_dispatchNormalMsg(zmqTransportBridge* zmqTransport, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_dispatchControlMsg(zmqTransportBridge* impl, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl, const char* subject, zmq_msg_t* zmsg);
+//
+static void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void* closure);
+static void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, void* closure);
+static void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* closure);
+memoryNode* MAMACALLTYPE zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* impl, void* queue, zmq_msg_t* zmsg);
 
 
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* topic);
+
+// naming-style transports publish their endpoints so peers can connect
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl);
+mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl, char command);
+
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_kickSocket(void* socket);
+
+// wildcard support
+typedef struct zmqWildcardClosure {
+   const char* subject;
+   zmq_msg_t*  zmsg;
+   int         found;
+} zmqWildcardClosure;
+void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pSubscription, zmqWildcardClosure* closure);
+
+typedef struct zmqFindWildcardClosure {
+   const char*       mEndpointIdentifier;
+   zmqSubscription*  mSubscription;
+} zmqFindWildcardClosure;
+void zmqBridgeMamaTransportImpl_findWildcard(wList dummy, zmqSubscription** pSubscription, zmqFindWildcardClosure* closure);
+void zmqBridgeMamaTransportImpl_removeWildcard(wList wcList, zmqSubscription** pSubscription, zmqFindWildcardClosure* closure);
+void zmqBridgeMamaTransportImpl_unregisterWildcard(zmqTransportBridge* impl, zmqSubscription* subscription);
+
+// inbox support
 mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl, const char** inboxSubject);
-
-
 mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox);
 mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox);
 
-void zmqBridgeMamaTransportImpl_unregisterWildcard(zmqTransportBridge* impl, zmqSubscription* subscription);
-
+// control socket
 mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmqControlMsg* msg, int msgSize);
+
+// socket monitor
+void* zmqBridgeMamaTransportImpl_monitorThread(void* closure);
+mama_status zmqBridgeMamaTransportImpl_startMonitor(zmqTransportBridge* impl);
+mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl);
+int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName);
 
 
 #if defined(__cplusplus)

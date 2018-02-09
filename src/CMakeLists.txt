@@ -44,7 +44,10 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
                    zmqbridgefunctions.h
                    zmqdefs.h
                    util.h util.c
-                   ${MAMA_SRC}/mama/c_cpp/src/c/bridge/qpid/endpointpool.c)
+                   ${MAMA_SRC}/mama/c_cpp/src/c/bridge/qpid/endpointpool.c
+                   notimpl.c
+                   params.c
+                   )
 
 if(WIN32)
     target_link_libraries(mamazmqimpl${MAMA_LIB_SUFFIX}
