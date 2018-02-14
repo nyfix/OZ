@@ -1444,7 +1444,7 @@ void* zmqBridgeMamaTransportImpl_monitorThread(void* closure)
 mama_status zmqBridgeMamaTransportImpl_startMonitor(zmqTransportBridge* impl)
 {
    #ifdef MONITOR_SOCKETS
-   /* Set the transport bridge mIsDispatching to true. */
+   /* Set the transport bridge mIsMonitoring to true. */
    wInterlocked_initialize(&impl->mIsMonitoring);
    wInterlocked_set(1, &impl->mIsMonitoring);
 
