@@ -29,7 +29,7 @@
 // the following definitions control how the library is built
 
 // if defined, a separate thread is created to log output from zmq_socket_monitor
-#define MONITOR_SOCKETS
+//#define MONITOR_SOCKETS
 
 // Note that hash table size is actually 10x value specified in wtable_create
 // (to reduce collisions), and that there is no limit to # of entries
