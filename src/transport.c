@@ -1156,7 +1156,7 @@ mama_status zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket)
    }
    wlock_unlock(socket->mLock);
 
-   return MAMA_STATUS_OK;
+   return status;
 }
 
 
@@ -1164,7 +1164,6 @@ mama_status zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket)
 // inferred from endpoint string (wildcard => bind, non-wildcard => connect)
 mama_status zmqBridgeMamaTransportImpl_bindOrConnect(void* socket, const char* uri, zmqTransportDirection direction)
 {
-   int rc = 0;
    char tportTypeStr[16];
    char* firstColon = NULL;
    zmqTransportType tportType = ZMQ_TPORT_TYPE_UNKNOWN;
