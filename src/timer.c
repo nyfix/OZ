@@ -37,7 +37,6 @@
 #include "zmqbridgefunctions.h"
 #include "util.h"
 
-
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =
   =========================================================================*/
@@ -96,6 +95,10 @@ static void MAMACALLTYPE zmqBridgeMamaTimerImpl_queueCallback(mamaQueue queue, v
  *                implementation.
  */
 static void zmqBridgeMamaTimerImpl_timerCallback(timerElement timer, void* closure);
+
+
+mama_status zmqBridgeMamaTimerImpl_reset(zmqTimerImpl* impl, mama_f64_t interval);
+
 
 
 /*=========================================================================
@@ -190,49 +193,21 @@ mama_status zmqBridgeMamaTimer_reset(timerBridge timer)
    }
    zmqTimerImpl* impl = (zmqTimerImpl*) timer;
 
-   if (1 == wInterlocked_read(&impl->mDestroying)) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Timer has been destroyed");
-      return MAMA_STATUS_OK;
-   }
-
-   mama_status status = MAMA_STATUS_OK;
-
-   // destroyTimer/createTimer must be executed atomically!
-   lockTimerHeap(gOmzmqTimerHeap);
-
-   /* Destroy the existing timer element */
-   if (impl->mTimerElement != NULL) {
-      destroyTimer(gOmzmqTimerHeap, impl->mTimerElement);
-   }
-
-   /* Calculate next time interval */
-   struct timeval timeout;
-   timeout.tv_sec  = (time_t) impl->mInterval;
-   timeout.tv_usec = ((impl->mInterval - timeout.tv_sec) * 1000000.0);
-
-   /* Create the timer for the next firing */
-   int timerResult = createTimer(&impl->mTimerElement, gOmzmqTimerHeap, zmqBridgeMamaTimerImpl_timerCallback, &timeout, impl);
-   if (0 != timerResult) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to reset underlying timer [%d].", timerResult);
-      status =  MAMA_STATUS_PLATFORM;
-   }
-
-   unlockTimerHeap(gOmzmqTimerHeap);
-
-   return status;
+   return zmqBridgeMamaTimerImpl_reset(impl, impl->mInterval);
 }
 
 
 mama_status zmqBridgeMamaTimer_setInterval(timerBridge timer, mama_f64_t interval)
 {
+   if (interval < 0) {
+      return MAMA_STATUS_INVALID_ARG;
+   }
    if (NULL == timer) {
       return MAMA_STATUS_NULL_ARG;
    }
    zmqTimerImpl* impl  = (zmqTimerImpl*) timer;
 
-   impl->mInterval = interval;
-
-   return  zmqBridgeMamaTimer_reset(timer);
+   return  zmqBridgeMamaTimerImpl_reset(impl, interval);
 }
 
 
@@ -302,3 +277,41 @@ static void zmqBridgeMamaTimerImpl_timerCallback(timerElement  timer, void* clos
       zmqBridgeMamaQueue_enqueueEvent((queueBridge) impl->mQueue, zmqBridgeMamaTimerImpl_queueCallback, closure);
    }
 }
+
+
+mama_status zmqBridgeMamaTimerImpl_reset(zmqTimerImpl* impl, mama_f64_t interval)
+{
+   if (1 == wInterlocked_read(&impl->mDestroying)) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Timer has been destroyed");
+      return MAMA_STATUS_OK;
+   }
+
+   mama_status status = MAMA_STATUS_OK;
+
+   // destroyTimer/createTimer must be executed atomically!
+   lockTimerHeap(gOmzmqTimerHeap);
+
+   impl->mInterval = interval;
+
+   /* Destroy the existing timer element */
+   if (impl->mTimerElement != NULL) {
+      destroyTimer(gOmzmqTimerHeap, impl->mTimerElement);
+   }
+
+   /* Calculate next time interval */
+   struct timeval timeout;
+   timeout.tv_sec  = (time_t) impl->mInterval;
+   timeout.tv_usec = ((impl->mInterval - timeout.tv_sec) * 1000000.0);
+
+   /* Create the timer for the next firing */
+   int timerResult = createTimer(&impl->mTimerElement, gOmzmqTimerHeap, zmqBridgeMamaTimerImpl_timerCallback, &timeout, impl);
+   if (0 != timerResult) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to reset underlying timer [%d].", timerResult);
+      status =  MAMA_STATUS_PLATFORM;
+   }
+
+   unlockTimerHeap(gOmzmqTimerHeap);
+
+   return status;
+}
+
