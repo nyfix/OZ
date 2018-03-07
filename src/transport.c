@@ -968,10 +968,12 @@ mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, z
 
 mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
+   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "inbox=%p,replyHandle=%s", inbox->mParent, inbox->mReplyHandle);
+
    wlock_lock(impl->mInboxesLock);
    mama_status status = wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
    wlock_unlock(impl->mInboxesLock);
-   assert(status == MAMA_STATUS_OK);
+   //assert(status == MAMA_STATUS_OK);
    return status;
 }
 
