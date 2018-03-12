@@ -173,7 +173,7 @@ mama_status zmqBridgeMamaInbox_destroy(inboxBridge inbox)
    MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
 
    // unregister the inbox with the transport
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unregisterInbox(impl->mTransport, impl));
+   mama_status status = zmqBridgeMamaTransportImpl_unregisterInbox(impl->mTransport, impl);
 
    if (NULL != impl->mOnInboxDestroyed) {
      // calls mamaInbox_onInboxDestroyed, which decrements the queue's object count
@@ -184,7 +184,7 @@ mama_status zmqBridgeMamaInbox_destroy(inboxBridge inbox)
    free((void*) impl->mReplyHandle);
    free(impl);
 
-   return MAMA_STATUS_OK;
+   return status;
 }
 
 
