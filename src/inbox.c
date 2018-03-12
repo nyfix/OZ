@@ -140,9 +140,9 @@ mama_status zmqBridgeMamaInbox_createByIndex(inboxBridge* bridge, mamaTransport 
    const char* inboxSubject;
    zmqBridgeMamaTransportImpl_getInboxSubject(impl->mTransport, &inboxSubject);
    char replyHandle[ZMQ_REPLYHANDLE_SIZE];
-   const char* uuid = zmq_generate_uuid();
-   sprintf(replyHandle, "%s.%s", inboxSubject, uuid);
-   free((void*) uuid);
+   const char* uid = zmqBridge_generateUid(&impl->mTransport->mInboxUid);
+   sprintf(replyHandle, "%s.%s", inboxSubject, uid);
+   free((void*) uid);
    impl->mReplyHandle = strdup(replyHandle);
 
    /* Initialize the remaining members for the zmq inbox implementation */
@@ -158,6 +158,8 @@ mama_status zmqBridgeMamaInbox_createByIndex(inboxBridge* bridge, mamaTransport 
    /* Populate the bridge with the newly created implementation */
    *bridge = (inboxBridge) impl;
 
+   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
+
    return MAMA_STATUS_OK;
 }
 
@@ -167,6 +169,8 @@ mama_status zmqBridgeMamaInbox_destroy(inboxBridge inbox)
       return MAMA_STATUS_NULL_ARG;
    }
    zmqInboxImpl* impl = (zmqInboxImpl*) inbox;
+
+   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
 
    // unregister the inbox with the transport
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unregisterInbox(impl->mTransport, impl));

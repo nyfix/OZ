@@ -24,10 +24,10 @@
 
 
 
-// uuid
 // dont forget to add one for trailing null
 #define UUID_STRING_SIZE 36
-const char* zmq_generate_uuid();
+
+const char* zmqBridge_generateUid(long long* id);
 
 // logging
 // NOTE: following code uses (deprecated) gMamaLogLevel directly, rather than calling mama_getLogLevel

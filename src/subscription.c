@@ -299,7 +299,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, 
    /* Use a standard centralized method to determine a topic key */
    zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
 
-   impl->mEndpointIdentifier = zmq_generate_uuid();
+   impl->mEndpointIdentifier = zmqBridge_generateUid(&impl->mTransport->mWcsUid);
 
    // add this to list of wildcards
    zmqSubscription** pSub = (zmqSubscription**) list_allocate_element(impl->mTransport->mWcEndpoints);
@@ -323,7 +323,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    /* Use a standard centralized method to determine a topic key */
    zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
 
-   impl->mEndpointIdentifier = zmq_generate_uuid();
+   impl->mEndpointIdentifier = zmqBridge_generateUid(&impl->mTransport->mSubUid);
    endpointPool_registerWithIdentifier(impl->mTransport->mSubEndpoints, impl->mSubjectKey, impl->mEndpointIdentifier, impl);
 
    /* subscribe to the topic */

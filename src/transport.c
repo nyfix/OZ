@@ -46,6 +46,7 @@
 #include <subscriptionimpl.h>
 #include <transportimpl.h>
 #include <timers.h>
+#include <wombat/wUuid.h>
 
 // local includes
 #include "subscription.h"
@@ -57,6 +58,16 @@
 #include "params.h"
 
 #include "transport.h"
+
+const char* zmqBridgeMamaTransport_generateInboxSubject()
+{
+   wUuid tempUuid;
+   wUuid_generate_random(tempUuid);
+   char uuidStringBuffer[UUID_STRING_SIZE+1];
+   wUuid_unparse(tempUuid, uuidStringBuffer);
+
+   return strdup(uuidStringBuffer);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -120,6 +131,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       return MAMA_STATUS_NOMEM;
    }
    impl->mWcsLock = wlock_create();
+   __sync_fetch_and_and(&impl->mWcsUid, 0);
 
    // create inboxes
    impl->mInboxes = wtable_create("inboxes", INBOX_TABLE_SIZE);
@@ -129,6 +141,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       return MAMA_STATUS_NOMEM;
    }
    impl->mInboxesLock = wlock_create();
+   __sync_fetch_and_and(&impl->mInboxUid, 0);
 
    // create sub endpoints
    status = endpointPool_create(&impl->mSubEndpoints, "mSubEndpoints");
@@ -138,12 +151,13 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       return status;
    }
    impl->mSubsLock = wlock_create();
+   __sync_fetch_and_and(&impl->mSubUid, 0);
 
    // generate inbox subject
-   const char* uuid = zmq_generate_uuid();
-   char temp[strlen(ZMQ_REPLYHANDLE_PREFIX)+1+UUID_STRING_SIZE+1];
-   snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, uuid);
-   free((void*) uuid);
+   const char* inboxSubject = zmqBridgeMamaTransport_generateInboxSubject();
+   char temp[ZMQ_INBOX_SUBJECT_SIZE];
+   snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, inboxSubject);
+   free((void*) inboxSubject);
    impl->mInboxSubject = strdup(temp);
 
    // connect/bind/subscribe/etc. all sockets
@@ -958,6 +972,8 @@ mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl,
 
 mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
+   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", inbox->mParent, inbox->mReplyHandle);
+
    wlock_lock(impl->mInboxesLock);
    mama_status status = wtable_insert(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX], inbox) >= 0 ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
    wlock_unlock(impl->mInboxesLock);
@@ -968,12 +984,16 @@ mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, z
 
 mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "inbox=%p,replyHandle=%s", inbox->mParent, inbox->mReplyHandle);
+   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", inbox->mParent, inbox->mReplyHandle);
 
    wlock_lock(impl->mInboxesLock);
    mama_status status = wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
    wlock_unlock(impl->mInboxesLock);
-   //assert(status == MAMA_STATUS_OK);
+   if (status != MAMA_STATUS_OK) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "failed to unregister inbox (%s)", inbox->mReplyHandle);
+   }
+
+   assert(status == MAMA_STATUS_OK);
    return status;
 }
 

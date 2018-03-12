@@ -26,15 +26,14 @@
 
 #include "util.h"
 
-const char* zmq_generate_uuid()
+const char* zmqBridge_generateUid(long long* id)
 {
-   wUuid tempUuid;
-   wUuid_generate_time(tempUuid);
-   char uuidStringBuffer[UUID_STRING_SIZE+1];
-   wUuid_unparse(tempUuid, uuidStringBuffer);
-
-   return strdup(uuidStringBuffer);
+   long long next = __sync_add_and_fetch(id, 1);
+   char temp[16+1];
+   sprintf(temp, "%016llx", next);
+   return strdup(temp);
 }
+
 
 #define MAX_LOG_MSG_SIZE 1024
 // TODO: figure out a way to do this without needing to call printf twice

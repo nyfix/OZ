@@ -30,6 +30,10 @@
 ///////////////////////////////////////////////////////////////////////
 // the following definitions control how the library is built
 
+// for debugging inbox create/destroy
+//#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_NORMAL
+#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_FINEST
+
 // if defined, a separate thread is created to log output from zmq_socket_monitor
 //#define MONITOR_SOCKETS
 
@@ -162,13 +166,16 @@ typedef struct zmqTransportBridge_ {
    // subscription handling
    endpointPool_t          mSubEndpoints;         // regular subscription endpoints
    wLock                   mSubsLock;             // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
+   unsigned long long      mSubUid;               // unique ID of (non-wildcard) subscription
    wList                   mWcEndpoints;          // wildcard endpoints
    wLock                   mWcsLock;              // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
+   unsigned long long      mWcsUid;                // unique ID of wildcard subscription
 
    // inbox support
    const char*             mInboxSubject;         // one subject per transport
    wtable_t                mInboxes;              // collection of inboxes
    wLock                   mInboxesLock;          // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
+   unsigned long long      mInboxUid;             // unique ID of inbox
 
    long int                mMemoryPoolSize;
    long int                mMemoryNodeSize;
@@ -253,15 +260,16 @@ typedef struct zmqControlMsg {
 } zmqControlMsg;
 
 
-#define ZMQ_REPLYHANDLE_PREFIX            "_INBOX"
-// full reply handle is "_INBOX.<replyAddr>.<inboxName>" where:
+// full reply handle is "_INBOX.<replyAddr>.<inboxID>" where:
 // replyAddr is a uuid string (36 bytes)
-// inboxName is a uuid string (36 bytes)
-// so the whole thing is 6+1+36+1+36 = 80 (+1 for trailing null)
-// e.g., "_INBOX.15BD6852-91B0-4F4A-A2FB-5E63A1D24561.B68A5F70-A7FB-4816-B3E1-1DF7438E2FD2"
-#define ZMQ_REPLYHANDLE_SIZE              81
-// offset of inboxName in the string
-#define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   43
+// inboxID is a long long encoded as a hex string (8 bytes)
+// so the whole thing is 6+1+36+1+16 = 59 (+1 for trailing null)
+// e.g., "_INBOX.d4ac532a-224f-11e8-a178-082e5f19101.0000000000000003"
+#define ZMQ_REPLYHANDLE_PREFIX            "_INBOX"
+#define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   6+1+UUID_STRING_SIZE                // offset of inboxName in the string
+#define ZMQ_REPLYHANDLE_INBOXNAME_SIZE    16+1                                // long long in hex format (+ trailing null)
+#define ZMQ_INBOX_SUBJECT_SIZE            ZMQ_REPLYHANDLE_INBOXNAME_INDEX+1   // _INBOX.<UUID> (+ trailing null)
+#define ZMQ_REPLYHANDLE_SIZE              ZMQ_INBOX_SUBJECT_SIZE+ZMQ_REPLYHANDLE_INBOXNAME_SIZE
 
 // defines internal structure of an "inbox" for request/reply messaging
 typedef struct zmqInboxImpl {
