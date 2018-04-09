@@ -25,6 +25,8 @@
 /*=========================================================================
   =                             Includes                                  =
   =========================================================================*/
+// system includes
+#include <assert.h>
 
 // MAMA includes
 #include <mama/mama.h>
@@ -101,6 +103,10 @@ zmqBridgeMamaQueue_create(queueBridge* queue,
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to allocate memory for queue.");
       return MAMA_STATUS_NOMEM;
    }
+
+   /* Initialize the active flag */
+   wInterlocked_initialize(&impl->mIsActive);
+   wInterlocked_set(1, &impl->mIsActive);
 
    /* Initialize the dispatch lock */
    wthread_mutex_init(&impl->mDispatchLock, NULL);
@@ -248,9 +254,6 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
                                          NULL,
                                          NULL,
                                          ZMQ_QUEUE_DISPATCH_TIMEOUT);
-      // TODO: for debugging
-      int queueSize;
-      wombatQueue_getSize(impl->mQueue, &queueSize);
    }
    while ((WOMBAT_QUEUE_OK == status || WOMBAT_QUEUE_TIMEOUT == status)
           && wInterlocked_read(&impl->mIsDispatching) == 1);
@@ -320,6 +323,22 @@ zmqBridgeMamaQueue_dispatchEvent(queueBridge queue)
 }
 
 mama_status
+zmqBridgeMamaQueue_enqueueEventEx(queueBridge        queue,
+                                mamaQueueEventCB   callback,
+                                void*              closure)
+{
+   zmqQueueBridge*    impl = (zmqQueueBridge*) queue;
+   
+   if (wInterlocked_read(&impl->mIsActive) == 1) {
+       return zmqBridgeMamaQueue_enqueueEvent(queue, callback, closure);
+   }  
+
+   // silently drop events if the queue is set to inactive
+   MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Dropping event from inactive queue");
+   return MAMA_STATUS_OK;
+}
+
+mama_status
 zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
                                 mamaQueueEventCB   callback,
                                 void*              closure)
@@ -333,6 +352,13 @@ zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
 
    /* Perform null checks and return if null arguments provided */
    CHECK_QUEUE(impl);
+
+   // dont enqueue event if queue is not dispatching
+   if (wInterlocked_read(&impl->mIsDispatching) != 1) {
+      //assert(0);
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Attempt to enqueue event on non-dispatching queue");
+      //return MAMA_STATUS_INVALID_ARG;
+   }
 
    /* Call the underlying wombatQueue_enqueue method */
    status = wombatQueue_enqueue(impl->mQueue,
@@ -458,6 +484,25 @@ zmqBridgeMamaQueue_setLowWatermark(queueBridge    queue,
    return MAMA_STATUS_OK;
 }
 
+mama_status
+zmqBridgeMamaQueue_activate(queueBridge    queue)
+{
+   zmqQueueBridge* impl = (zmqQueueBridge*) queue;
+
+   wInterlocked_set(1, &impl->mIsActive);
+
+   return MAMA_STATUS_OK;
+}
+
+mama_status
+zmqBridgeMamaQueue_deactivate(queueBridge    queue)
+{
+   zmqQueueBridge* impl = (zmqQueueBridge*) queue;
+
+   wInterlocked_set(0, &impl->mIsActive);
+
+   return MAMA_STATUS_OK;
+}
 
 /*=========================================================================
   =                  Public implementation functions                      =

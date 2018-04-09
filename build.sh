@@ -71,6 +71,8 @@ cmake \
    -DZMQ_ROOT=${LIBZMQ_INSTALL} \
    ..
 make ${VERBOSE} && make ${VERBOSE} install
+rc=$?
+[[ $rc -ne 0 ]] && exit $rc
 
 # copy source to facilitate debugging
 mkdir -p ${INSTALL_PREFIX}/src

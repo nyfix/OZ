@@ -95,10 +95,14 @@ zmqBridgeMamaQueue_dispatchEvent(queueBridge queue);
 
 MAMAExpDLL
 extern mama_status
+zmqBridgeMamaQueue_enqueueEventEx(queueBridge        queue,
+                                mamaQueueEnqueueCB callback,
+                                void*              closure);
+MAMAExpDLL
+extern mama_status
 zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
                                 mamaQueueEnqueueCB callback,
                                 void*              closure);
-
 MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_stopDispatch(queueBridge queue);
@@ -127,6 +131,14 @@ MAMAExpDLL
 extern mama_status
 zmqBridgeMamaQueue_setLowWatermark(queueBridge queue,
                                    size_t      lowWatermark);
+
+MAMAExpDLL
+extern mama_status
+zmqBridgeMamaQueue_activate(queueBridge queue);
+
+MAMAExpDLL
+extern mama_status
+zmqBridgeMamaQueue_deactivate(queueBridge queue);
 
 MAMAExpDLL
 extern int

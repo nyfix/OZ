@@ -624,7 +624,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
    tmsg->mEndpointIdentifier = strdup(inboxName);
 
    // callback (queued) will release the message
-   zmqBridgeMamaQueue_enqueueEvent(queue, zmqBridgeMamaTransportImpl_inboxCallback, node);
+   zmqBridgeMamaQueue_enqueueEventEx(queue, zmqBridgeMamaTransportImpl_inboxCallback, node);
 
    return MAMA_STATUS_OK;
 }
@@ -683,7 +683,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
          tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
 
          // callback (queued) will release the message
-         zmqBridgeMamaQueue_enqueueEvent(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, node);
+         zmqBridgeMamaQueue_enqueueEventEx(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, node);
       }
    }
    wlock_unlock(impl->mSubsLock);
@@ -715,7 +715,7 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
    tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
 
    // callback (queued) will release the message
-   zmqBridgeMamaQueue_enqueueEvent(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_wcCallback, node);
+   zmqBridgeMamaQueue_enqueueEventEx(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_wcCallback, node);
 }
 
 

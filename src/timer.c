@@ -35,6 +35,7 @@
 
 // local includes
 #include "zmqbridgefunctions.h"
+#include "zmqdefs.h"
 #include "util.h"
 
 /*=========================================================================
@@ -176,10 +177,7 @@ mama_status zmqBridgeMamaTimer_destroy(timerBridge timer)
 
    unlockTimerHeap(gOmzmqTimerHeap);
 
-   /*
-    * Put the impl free at the back of the queue to be executed when all
-    * pending timer events have been completed
-    */
+   // There may be timer events already queued, so we cannot destroy the timer until these have fired.
    zmqBridgeMamaQueue_enqueueEvent((queueBridge) impl->mQueue, zmqBridgeMamaTimerImpl_destroyCallback, (void*) impl);
 
    return returnStatus;
@@ -274,7 +272,7 @@ static void zmqBridgeMamaTimerImpl_timerCallback(timerElement  timer, void* clos
       zmqBridgeMamaTimer_reset((timerBridge) closure);
 
       /* Enqueue the callback for handling */
-      zmqBridgeMamaQueue_enqueueEvent((queueBridge) impl->mQueue, zmqBridgeMamaTimerImpl_queueCallback, closure);
+      zmqBridgeMamaQueue_enqueueEventEx((queueBridge) impl->mQueue, zmqBridgeMamaTimerImpl_queueCallback, closure);
    }
 }
 

@@ -32,7 +32,7 @@
 
 // for debugging inbox create/destroy
 //#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_NORMAL
-#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_FINEST
+#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_FINER
 
 // if defined, a separate thread is created to log output from zmq_socket_monitor
 //#define MONITOR_SOCKETS
@@ -232,6 +232,7 @@ typedef struct zmqQueueBridge {
    size_t                  mHighWatermark;
    size_t                  mLowWatermark;
    uint32_t                mIsDispatching;
+   uint32_t                mIsActive;
    mamaQueueEnqueueCB      mEnqueueCallback;
    void*                   mClosure;
    wthread_mutex_t         mDispatchLock;
