@@ -137,7 +137,7 @@ mama_status zmqBridgeMamaTimer_create(timerBridge* result, void* nativeQueueHand
    /* Determine when the next timer should fire */
    struct timeval timeout;
    timeout.tv_sec  = (time_t) interval;
-   timeout.tv_usec = ((interval - timeout.tv_sec) * 1000000.0);
+   timeout.tv_usec = ((interval - timeout.tv_sec) * 1000000.0);  // how is this ever not zero?
 
    /* Create the first single fire timer */
    int timerResult = createTimer(&impl->mTimerElement, gOmzmqTimerHeap, zmqBridgeMamaTimerImpl_timerCallback, &timeout, impl);
