@@ -120,9 +120,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
          prefix[l-2] = '\0';                    // overwrite with null
       }
    }
-   impl->mSubjectKey = strdup(prefix);
-
-   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "\t%s\t%s", source, impl->mSubjectKey);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "\t%s\t%s", source, prefix);
 
    // create regex to match against
    impl->mCompRegex = calloc(1, sizeof(regex_t));
@@ -135,7 +133,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
 
    // TODO: depending on resolution of https://github.com/OpenMAMA/OpenMAMA/issues/324
    // may need/want to pass source?
-   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_createWildcard(impl, NULL, impl->mSubjectKey));
+   CALL_MAMA_FUNC(zmqBridgeMamaSubscriptionImpl_createWildcard(impl, NULL, prefix));
 
    *subscriber = (subscriptionBridge) impl;
 
@@ -197,7 +195,7 @@ mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
    // see http://api.zeromq.org/4-2:zmq-setsockopt under ZMQ_UNSUBSCRIBE
    mama_status status = zmqBridgeMamaSubscriptionImpl_unsubscribe(transportBridge, impl->mSubjectKey);
 
-   free(impl->mSubjectKey);
+   free((void*)impl->mSubjectKey);
    free((void*)impl->mEndpointIdentifier);
    free((void*)impl->mOrigRegex);
    if (NULL != impl->mCompRegex) {
