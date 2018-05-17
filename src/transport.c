@@ -168,7 +168,18 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
 
    if (impl->mIsNaming) {
       // publish connection information
+      #if 0
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_publishEndpoints(impl));
+      #else
+      /* Initialize dispatch thread */
+      wthread_t publishThread;
+      int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
+      if (0 != rc) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "create of endpoint publish thread failed %d(%s)", rc, strerror(rc));
+         return MAMA_STATUS_PLATFORM;
+      }
+      #endif
+
    }
 
    impl->mIsValid = 1;
@@ -315,8 +326,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    if (impl->mIsNaming) {
       // disable reconnect on data sockets
       // (to avoid reconnecting to ephemeral port which may have been re-used by another process)
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqDataPublisher));
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqDataSubscriber));
+      //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqDataPublisher));
+      //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disableReconnect(&impl->mZmqDataSubscriber));
 
       // bind pub/sub sockets
       char endpointAddress[ZMQ_MAX_ENDPOINT_LENGTH];
@@ -1400,16 +1411,18 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
 
 
 // publishes endpoint message continuously every 100ms until we get it back
-mama_status zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl)
+void* zmqBridgeMamaTransportImpl_publishEndpoints(void* closure)
 {
+   zmqTransportBridge* impl = (zmqTransportBridge*) closure;
+
    wsem_init(&impl->mNamingConnected, 0, 0);
 
    do {
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
+      zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C');
    } while ((wsem_timedwait(&impl->mNamingConnected, 100) != 0) && (errno == ETIMEDOUT));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully published endpoints");
-   return MAMA_STATUS_OK;
+   //return MAMA_STATUS_OK;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -92,7 +92,7 @@ mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_subscribe(void* socket, cons
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* topic);
 
 // naming-style transports publish their endpoints so peers can connect
-mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_publishEndpoints(zmqTransportBridge* impl);
+void* MAMACALLTYPE zmqBridgeMamaTransportImpl_publishEndpoints(void* closure);
 mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl, char command);
 
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_kickSocket(void* socket);
