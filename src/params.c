@@ -51,6 +51,13 @@ const char* zmqBridgeMamaTransportImpl_getParameter(const char* defaultVal, cons
 
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBridge* impl)
 {
+   impl->mSocketMonitor = atoi(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_SOCKET_MONITOR,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_SOCKET_MONITOR));
+
    impl->mIsNaming = atoi(zmqBridgeMamaTransportImpl_getParameter(
                              DEFAULT_ISNAMING,
                              "%s.%s.%s",

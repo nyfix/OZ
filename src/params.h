@@ -10,24 +10,60 @@
 
 // zmq params
 #define     TPORT_PARAM_ZMQ_SNDHWM              "zmq_sndhwm"
+#define     DEFAULT_ZMQ_SNDHWM                  "0"       /* ZMQ Default = 1000 */
+
 #define     TPORT_PARAM_ZMQ_RCVHWM              "zmq_rcvhwm"
+#define     DEFAULT_ZMQ_RCVHWM                  "0"       /* ZMQ Default = 1000 */
+
 #define     TPORT_PARAM_ZMQ_AFFINITY            "zmq_affinity"
+#define     DEFAULT_ZMQ_AFFINITY                "0"       /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_IDENTITY            "zmq_identity"
+#define     DEFAULT_ZMQ_IDENTITY                NULL      /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_SNDBUF              "zmq_sndbuf"
+#define     DEFAULT_ZMQ_SNDBUF                  "0"       /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_RCVBUF              "zmq_rcvbuf"
+#define     DEFAULT_ZMQ_RCVBUF                  "0"       /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_RECONNECT_IVL       "zmq_reconnect_ivl"
+#define     DEFAULT_ZMQ_RECONNECT_IVL           "100"     /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_RECONNECT_IVL_MAX   "zmq_reconnect_ivl_max"
+#define     DEFAULT_ZMQ_RECONNECT_IVL_MAX       "0"       /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_BACKLOG             "zmq_backlog"
+#define     DEFAULT_ZMQ_BACKLOG                 "100"     /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_MAXMSGSIZE          "zmq_maxmsgsize"
+#define     DEFAULT_ZMQ_MAXMSGSIZE              "-1"      /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_RCVTIMEO            "zmq_rcvtimeo"
+#define     DEFAULT_ZMQ_RCVTIMEO                "10"      /* ZMQ Default = -1   */
+
 #define     TPORT_PARAM_ZMQ_SNDTIMEO            "zmq_sndtimeo"
+#define     DEFAULT_ZMQ_SNDTIMEO                "-1"      /* ZMQ Default        */
+
 #define     TPORT_PARAM_ZMQ_RATE                "zmq_rate"
+#define     DEFAULT_ZMQ_RATE                    "1000000" /* ZMQ Default = 100  */
 
 // naming params
 #define     TPORT_PARAM_ISNAMING                "is_naming"
+#define     DEFAULT_ISNAMING                    "0"
+
 #define     TPORT_PARAM_NAMING_ADDR             "naming.subscribe_address"
+// no default
+
 #define     TPORT_PARAM_NAMING_PORT             "naming.subscribe_port"
+// no default
+
 #define     TPORT_PARAM_PUBLISH_ADDRESS         "publish_address"
+#define     DEFAULT_PUBLISH_ADDRESS             "lo"
+
+#define     TPORT_PARAM_SOCKET_MONITOR          "socket_monitor"
+#define     DEFAULT_SOCKET_MONITOR              "0"
+
 
 /* Default values for corresponding configuration parameters */
 #define     DEFAULT_SUB_OUTGOING_URL        "tcp://*:5557"
@@ -37,24 +73,6 @@
 #define     DEFAULT_MEMPOOL_SIZE            "1024"
 #define     DEFAULT_MEMNODE_SIZE            "4096"
 
-// zmq params
-#define     DEFAULT_ZMQ_SNDHWM              "0"       /* ZMQ Default = 1000 */
-#define     DEFAULT_ZMQ_RCVHWM              "0"       /* ZMQ Default = 1000 */
-#define     DEFAULT_ZMQ_AFFINITY            "0"       /* ZMQ Default        */
-#define     DEFAULT_ZMQ_IDENTITY            NULL      /* ZMQ Default        */
-#define     DEFAULT_ZMQ_SNDBUF              "0"       /* ZMQ Default        */
-#define     DEFAULT_ZMQ_RCVBUF              "0"       /* ZMQ Default        */
-#define     DEFAULT_ZMQ_RECONNECT_IVL       "100"     /* ZMQ Default        */
-#define     DEFAULT_ZMQ_RECONNECT_IVL_MAX   "0"       /* ZMQ Default        */
-#define     DEFAULT_ZMQ_BACKLOG             "100"     /* ZMQ Default        */
-#define     DEFAULT_ZMQ_MAXMSGSIZE          "-1"      /* ZMQ Default        */
-#define     DEFAULT_ZMQ_RCVTIMEO            "10"      /* ZMQ Default = -1   */
-#define     DEFAULT_ZMQ_SNDTIMEO            "-1"      /* ZMQ Default        */
-#define     DEFAULT_ZMQ_RATE                "1000000" /* ZMQ Default = 100  */
-
-// naming params
-#define     DEFAULT_ISNAMING                "0"
-#define     DEFAULT_PUBLISH_ADDRESS         "lo"
 
 // TODO: should all sockets have same options?
 #define ZMQ_SET_SOCKET_OPTIONS(name, socket, type, opt, map)                     \

@@ -34,9 +34,6 @@
 //#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_NORMAL
 #define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_FINER
 
-// if defined, a separate thread is created to log output from zmq_socket_monitor
-#define MONITOR_SOCKETS
-
 // Note that hash table size is actually 10x value specified in wtable_create
 // (to reduce collisions), and that there is no limit to # of entries
 // So a table of size 1024 will use 8MB (1024*10*sizeof(void*))
@@ -147,7 +144,6 @@ typedef struct zmqTransportBridge_ {
    zmqSocket               mZmqNamingPublisher;   // outgoing connections to proxy
    zmqSocket               mZmqNamingSubscriber;  // incoming connections from proxy
    const char*             mPubEndpoint;          // endpoint address for naming
-   const char*             mSubEndpoint;          // endpoint address for naming
    const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
 
@@ -165,6 +161,7 @@ typedef struct zmqTransportBridge_ {
    // for zmq_socket_monitor
    wthread_t               mOmzmqMonitorThread;
    uint32_t                mIsMonitoring;
+   int                     mSocketMonitor;
 
    // peers
    wtable_t                mPeers;
@@ -175,7 +172,7 @@ typedef struct zmqTransportBridge_ {
    unsigned long long      mSubUid;               // unique ID of (non-wildcard) subscription
    wList                   mWcEndpoints;          // wildcard endpoints
    wLock                   mWcsLock;              // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
-   unsigned long long      mWcsUid;                // unique ID of wildcard subscription
+   unsigned long long      mWcsUid;               // unique ID of wildcard subscription
 
    // inbox support
    const char*             mInboxSubject;         // one subject per transport
@@ -257,7 +254,6 @@ typedef struct zmqNamingMsg {
    int                     mPid;                                     // process ID
    char                    mUuid[UUID_STRING_SIZE+1];                // uuid of transport
    char                    mPubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];    // dataSubscriber connects to this endpoint
-   char                    mSubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];    // dataPublisher connects to this endpoint
 } zmqNamingMsg;
 
 
