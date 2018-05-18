@@ -133,6 +133,15 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mWcsLock = wlock_create();
    __sync_fetch_and_and(&impl->mWcsUid, 0);
 
+
+   // create peers table
+   impl->mPeers = wtable_create("peers", PEER_TABLE_SIZE);
+   if (impl->mPeers == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create peers table");
+      free(impl);
+      return MAMA_STATUS_NOMEM;
+   }
+
    // create inboxes
    impl->mInboxes = wtable_create("inboxes", INBOX_TABLE_SIZE);
    if (impl->mInboxes == NULL) {
@@ -154,10 +163,9 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    __sync_fetch_and_and(&impl->mSubUid, 0);
 
    // generate inbox subject
-   const char* inboxSubject = zmqBridgeMamaTransport_generateInboxSubject();
+   impl->mUuid = zmqBridgeMamaTransport_generateInboxSubject();
    char temp[ZMQ_INBOX_SUBJECT_SIZE];
-   snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, inboxSubject);
-   free((void*) inboxSubject);
+   snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, impl->mUuid);
    impl->mInboxSubject = strdup(temp);
 
    // connect/bind/subscribe/etc. all sockets
@@ -232,6 +240,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    wlock_destroy(impl->mWcsLock);
    list_destroy(impl->mWcEndpoints, NULL, NULL);
 
+   free((void*) impl->mUuid);
    free((void*) impl->mInboxSubject);
    free((void*) impl->mPubEndpoint);
    free((void*) impl->mSubEndpoint);
@@ -545,7 +554,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received naming msg: type=%c prog=%s host=%s pid=%d topic=%s pub=%s sub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mPid, pMsg->mTopic, pMsg->mPubEndpoint, pMsg->mSubEndpoint);
+   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received naming msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s sub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mPubEndpoint, pMsg->mSubEndpoint);
 
    if (pMsg->mType == 'C') {
       // connect
@@ -558,14 +567,22 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          return MAMA_STATUS_OK;
       }
 
-      // NOTE: multiple connections to same endpoint are silently ignored (see https://github.com/zeromq/libzmq/issues/788)
-      // NOTE: dont connect to self (avoid duplicate msgs)
-      if (strcmp(pMsg->mSubEndpoint, impl->mSubEndpoint) != 0)
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataPublisher, pMsg->mSubEndpoint));
-      if (strcmp(pMsg->mPubEndpoint, impl->mPubEndpoint) != 0)
+      zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mPubEndpoint);
+      if (pOrigMsg == NULL) {
+         // we've never seen this endpoint before
+         // connect to peer (sub => pub)
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSubscriber, pMsg->mPubEndpoint));
 
-      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data sockets to publisher:%s subscriber:%s", pMsg->mSubEndpoint, pMsg->mPubEndpoint);
+         // save endpoint in table
+         pOrigMsg = malloc(sizeof(zmqNamingMsg));
+         memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
+         wtable_insert(impl->mPeers, pOrigMsg->mPubEndpoint, pOrigMsg);
+
+         // send a discovery msg whenever we see an endpoint we haven't seen before
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
+
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data sockets to publisher:%s subscriber:%s", pMsg->mSubEndpoint, pMsg->mPubEndpoint);
+      }
    }
    else if (pMsg->mType == 'D') {
       // disconnect
@@ -580,8 +597,14 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // zmq will silently ignore multiple attempts to connect to the same endpoint (see https://github.com/zeromq/libzmq/issues/788)
       // so, we want to explicitly disconnect from sockets on normal shutdown so that zmq will know that the endpoint is
       // disconnected and will *not* ignore a subsequent request to connect to it
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataPublisher, pMsg->mSubEndpoint));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSubscriber, pMsg->mPubEndpoint));
+
+      // remove endpoint from the table
+      zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mPubEndpoint);
+      if (pOrigMsg != NULL) {
+         free(pOrigMsg);
+      }
+
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s subscriber:%s", pMsg->mSubEndpoint, pMsg->mPubEndpoint);
    }
    else {
@@ -1393,6 +1416,7 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
    wmStrSizeCpy(msg.mProgName, program_invocation_short_name, sizeof(msg.mProgName));
    gethostname(msg.mHost, sizeof(msg.mHost));
    msg.mPid = getpid();
+   strcpy(msg.mUuid, impl->mUuid);
    strcpy(msg.mPubEndpoint, impl->mPubEndpoint);
    strcpy(msg.mSubEndpoint, impl->mSubEndpoint);
    wlock_lock(impl->mZmqNamingPublisher.mLock);

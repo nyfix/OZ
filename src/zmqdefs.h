@@ -42,6 +42,8 @@
 // So a table of size 1024 will use 8MB (1024*10*sizeof(void*))
 #define     INBOX_TABLE_SIZE                 1024
 
+#define     PEER_TABLE_SIZE                  128
+
 // zmq has two ways to manage subscriptions
 // w/XSUB subscriptions messages can be made visible to the application
 //#define USE_XSUB
@@ -135,6 +137,7 @@ typedef struct zmqTransportBridge_ {
    void*                   mZmqContext;
    int                     mIsNaming;           // whether transport is a "naming" transport
    const char*             mPublishAddress;     // publish_address from mama.properties (e.g., "eth0")
+   const char*             mUuid;               // unique id of this transport object
 
    // inproc socket for inter-thread commands
    zmqSocket               mZmqControlSubscriber;
@@ -162,6 +165,9 @@ typedef struct zmqTransportBridge_ {
    // for zmq_socket_monitor
    wthread_t               mOmzmqMonitorThread;
    uint32_t                mIsMonitoring;
+
+   // peers
+   wtable_t                mPeers;
 
    // subscription handling
    endpointPool_t          mSubEndpoints;         // regular subscription endpoints
@@ -249,6 +255,7 @@ typedef struct zmqNamingMsg {
    char                    mProgName[256];                           // executable name
    char                    mHost[MAXHOSTNAMELEN + 1];                // (short) hostname
    int                     mPid;                                     // process ID
+   char                    mUuid[UUID_STRING_SIZE+1];                // uuid of transport
    char                    mPubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];    // dataSubscriber connects to this endpoint
    char                    mSubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];    // dataPublisher connects to this endpoint
 } zmqNamingMsg;
