@@ -112,6 +112,7 @@ typedef enum zmqTransportDirection_ {
 
 
 #define ZMQ_CONTROL_ENDPOINT  "inproc://control"
+#define ZMQ_MONITOR_ENDPOINT  "inproc://monitor"
 
 typedef struct zmqSocket_ {
    void*       mSocket;        // the zmq socket
@@ -137,19 +138,19 @@ typedef struct zmqTransportBridge_ {
    const char*             mUuid;               // unique id of this transport object
 
    // inproc socket for inter-thread commands
-   zmqSocket               mZmqControlSubscriber;
-   zmqSocket               mZmqControlPublisher;
+   zmqSocket               mZmqControlSub;
+   zmqSocket               mZmqControlPub;
 
    // naming transports only
-   zmqSocket               mZmqNamingPublisher;   // outgoing connections to proxy
-   zmqSocket               mZmqNamingSubscriber;  // incoming connections from proxy
-   const char*             mPubEndpoint;          // endpoint address for naming
+   zmqSocket               mZmqNamingPub;       // outgoing connections to proxy
+   zmqSocket               mZmqNamingSub;       // incoming connections from proxy
+   const char*             mPubEndpoint;        // endpoint address for naming
    const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
 
    // "data" sockets for normal messaging
-   zmqSocket               mZmqDataPublisher;
-   zmqSocket               mZmqDataSubscriber;
+   zmqSocket               mZmqDataPub;
+   zmqSocket               mZmqDataSub;
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
 
@@ -159,6 +160,8 @@ typedef struct zmqTransportBridge_ {
    mama_status             mOmzmqDispatchStatus;
 
    // for zmq_socket_monitor
+   zmqSocket               mZmqMonitorPub;
+   zmqSocket               mZmqMonitorSub;
    wthread_t               mOmzmqMonitorThread;
    uint32_t                mIsMonitoring;
    int                     mSocketMonitor;

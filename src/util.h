@@ -43,5 +43,6 @@ void mama_log_helper (MamaLogLevel level, const char* function, const char* file
 
 const char* get_zmqEventName(int event);
 int get_zmqEventLogLevel(int event);
+int get_zmqEventMask(int logLevel);
 
 #endif

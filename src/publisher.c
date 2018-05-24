@@ -332,9 +332,9 @@ mama_status zmqBridgeMamaPublisherImpl_sendSubject(publisherBridge publisher, ma
 
    // send it
    mama_status status = MAMA_STATUS_OK;
-   wlock_lock(impl->mTransport->mZmqDataPublisher.mLock);
-   int i = zmq_send(impl->mTransport->mZmqDataPublisher.mSocket, buf, bufSize, 0);
-   wlock_unlock(impl->mTransport->mZmqDataPublisher.mLock);
+   wlock_lock(impl->mTransport->mZmqDataPub.mLock);
+   int i = zmq_send(impl->mTransport->mZmqDataPub.mSocket, buf, bufSize, 0);
+   wlock_unlock(impl->mTransport->mZmqDataPub.mLock);
    if (i != bufSize) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed %d(%s)", zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;

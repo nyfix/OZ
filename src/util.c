@@ -97,3 +97,41 @@ int get_zmqEventLogLevel(int event)
       default                                   : return MAMA_LOG_LEVEL_ERROR;
    }
 }
+
+
+// Returns a bit-mask of events that are logged at specified log level.
+// Ensures that we don't ask for more events than we care about
+int get_zmqEventMask(int logLevel)
+{
+   int eventMask = 0;
+
+   switch(logLevel) {
+
+      case MAMA_LOG_LEVEL_FINEST:
+         eventMask |= ZMQ_EVENT_CONNECT_DELAYED;
+         eventMask |= ZMQ_EVENT_CONNECT_RETRIED;
+
+      case MAMA_LOG_LEVEL_FINER:
+         eventMask |= ZMQ_EVENT_LISTENING;
+
+      case MAMA_LOG_LEVEL_FINE:
+         eventMask |= ZMQ_EVENT_CLOSED;
+         eventMask |= ZMQ_EVENT_MONITOR_STOPPED;
+
+      case MAMA_LOG_LEVEL_NORMAL:
+         eventMask |= ZMQ_EVENT_CONNECTED;
+         eventMask |= ZMQ_EVENT_ACCEPTED;
+         eventMask |= ZMQ_EVENT_DISCONNECTED;
+         eventMask |= ZMQ_EVENT_HANDSHAKE_SUCCEEDED;
+
+      case MAMA_LOG_LEVEL_ERROR:
+         eventMask |= ZMQ_EVENT_BIND_FAILED;
+         eventMask |= ZMQ_EVENT_ACCEPT_FAILED;
+         eventMask |= ZMQ_EVENT_CLOSE_FAILED;
+         eventMask |= ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL;
+         eventMask |= ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL;
+         eventMask |= ZMQ_EVENT_HANDSHAKE_FAILED_AUTH;
+   }
+
+   return eventMask;
+}
