@@ -253,6 +253,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
       free((void*) impl->mIncomingNamingAddress[i]);
    }
 
+   wtable_free_all(impl->mPeers);
    wtable_destroy(impl->mPeers);
 
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Naming messages = %ld", impl->mNamingMessages);
