@@ -147,12 +147,16 @@ typedef struct zmqTransportBridge_ {
    const char*             mPubEndpoint;        // endpoint address for naming
    const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
    const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
+   int                     mNamingReconnect;
+   double                  mNamingReconnectTimeout;
 
    // "data" sockets for normal messaging
    zmqSocket               mZmqDataPub;
    zmqSocket               mZmqDataSub;
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
+   int                     mDataReconnect;
+   double                  mDataReconnectTimeout;
 
    // main dispatch thread
    wthread_t               mOmzmqDispatchThread;

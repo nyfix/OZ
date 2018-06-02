@@ -37,10 +37,10 @@ const char* zmqBridgeMamaTransportImpl_getParameter(const char* defaultVal, cons
    const char* returnVal = zmqBridgeMamaTransportImpl_getParameterWithVaList((char*)defaultVal, paramName, format, arguments);
    /* These will be equal if unchanged */
    if (returnVal == defaultVal) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "parameter [%s]: [%s] (Default)", paramName, returnVal);
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "parameter [%s]: [%s] (Default)", paramName, returnVal);
    }
    else {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "parameter [%s]: [%s] (User Defined)", paramName, returnVal);
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "parameter [%s]: [%s] (User Defined)", paramName, returnVal);
    }
 
    /* Clean up the list */
@@ -51,6 +51,21 @@ const char* zmqBridgeMamaTransportImpl_getParameter(const char* defaultVal, cons
 
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBridge* impl)
 {
+   impl->mDataReconnect = atoi(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_RECONNECT,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_RECONNECT));
+
+   impl->mDataReconnectTimeout = atof(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_CONNECT_TIMEOUT,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_CONNECT_TIMEOUT));
+
+
    impl->mSocketMonitor = atoi(zmqBridgeMamaTransportImpl_getParameter(
                              DEFAULT_SOCKET_MONITOR,
                              "%s.%s.%s",
@@ -96,6 +111,21 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
 // TODO: implement 2, 3
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBridge* impl)
 {
+
+   impl->mNamingReconnect = atoi(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_NAMING_RECONNECT,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_NAMING_RECONNECT));
+
+   impl->mDataReconnectTimeout = atof(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_NAMING_CONNECT_TIMEOUT,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_NAMING_CONNECT_TIMEOUT));
+
    // nsd addr
    const char* address = zmqBridgeMamaTransportImpl_getParameter(NULL, "%s.%s.%s", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_ADDR);
    if (address) {

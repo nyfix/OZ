@@ -48,9 +48,22 @@
 #define     TPORT_PARAM_ZMQ_RATE                "zmq_rate"
 #define     DEFAULT_ZMQ_RATE                    "1000000" /* ZMQ Default = 100  */
 
+// non-naming params (data sockets)
+#define     TPORT_PARAM_RECONNECT               "retry_connects"
+#define     DEFAULT_RECONNECT                   "0"
+
+#define     TPORT_PARAM_CONNECT_TIMEOUT         "connect_timeout"
+#define     DEFAULT_CONNECT_TIMEOUT             ".1"
+
 // naming params
 #define     TPORT_PARAM_ISNAMING                "is_naming"
 #define     DEFAULT_ISNAMING                    "0"
+
+#define     TPORT_PARAM_NAMING_RECONNECT        "naming.retry_connects"
+#define     DEFAULT_NAMING_RECONNECT            "1"
+
+#define     TPORT_PARAM_NAMING_CONNECT_TIMEOUT  "naming.connect_timeout"
+#define     DEFAULT_NAMING_CONNECT_TIMEOUT      ".1"
 
 #define     TPORT_PARAM_NAMING_ADDR             "naming.subscribe_address"
 // no default
