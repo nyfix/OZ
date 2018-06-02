@@ -362,8 +362,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
             continue;
          }
 
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingPub, impl->mOutgoingNamingAddress[i]));
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mIncomingNamingAddress[i]));
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingPub, impl->mOutgoingNamingAddress[i]));
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting naming sockets to publisher:%s subscriber:%s", impl->mIncomingNamingAddress[i], impl->mOutgoingNamingAddress[i]);
       }
    }
