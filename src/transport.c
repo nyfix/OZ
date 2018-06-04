@@ -1584,9 +1584,10 @@ mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl)
 
    wthread_join(impl->mOmzmqMonitorThread, NULL);
 
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqMonitorPub, ZMQ_MONITOR_ENDPOINT));
+   // TODO: resolve https://github.com/zeromq/libzmq/issues/3152
+   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqMonitorPub, ZMQ_MONITOR_ENDPOINT));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqMonitorPub));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unbindSocket(&impl->mZmqMonitorSub, ZMQ_MONITOR_ENDPOINT));
+   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unbindSocket(&impl->mZmqMonitorSub, ZMQ_MONITOR_ENDPOINT));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqMonitorSub));
 
    return MAMA_STATUS_OK;
