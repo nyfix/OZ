@@ -119,7 +119,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
                              impl->mName,
                              TPORT_PARAM_NAMING_RECONNECT));
 
-   impl->mDataReconnectTimeout = atof(zmqBridgeMamaTransportImpl_getParameter(
+   impl->mNamingReconnectTimeout = atof(zmqBridgeMamaTransportImpl_getParameter(
                              DEFAULT_NAMING_CONNECT_TIMEOUT,
                              "%s.%s.%s",
                              TPORT_PARAM_PREFIX,
