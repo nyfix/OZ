@@ -49,6 +49,8 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
                    params.c
                    )
 
+add_executable(nsd nsd.c)
+
 if(WIN32)
     target_link_libraries(mamazmqimpl${MAMA_LIB_SUFFIX}
                           libwombatcommon${MAMA_LIB_SUFFIX}
@@ -79,6 +81,9 @@ elseif(UNIX)
                           uuid
                           event)
     install(TARGETS mamazmqimpl${MAMA_LIB_SUFFIX} DESTINATION lib)
+
+    target_link_libraries(nsd wombatcommon mama zmq)
+    install(TARGETS nsd DESTINATION bin)
 endif()
 
 # Default to installing directly to MAMA directory unless provided already

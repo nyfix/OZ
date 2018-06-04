@@ -176,12 +176,13 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    // start the dispatch thread
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_start(impl));
 
-   if (impl->mIsNaming) {
+
+/*   if (impl->mIsNaming) {
       // publish connection information
       #if 0
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_publishEndpoints(impl));
       #else
-      /* Initialize dispatch thread */
+      // Initialize dispatch thread
       wthread_t publishThread;
       int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
       if (0 != rc) {
@@ -191,6 +192,10 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       #endif
 
    }
+*/
+
+
+   //wsem_wait(&impl->mNamingConnected);
 
    impl->mIsValid = 1;
    *result = (transportBridge) impl;
@@ -249,8 +254,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    free((void*) impl->mPubEndpoint);
 
    for (int i = 0; (i < ZMQ_MAX_NAMING_URIS); ++i) {
-      free((void*) impl->mOutgoingNamingAddress[i]);
-      free((void*) impl->mIncomingNamingAddress[i]);
+      free((void*) impl->mNamingAddress[i]);
    }
 
    wtable_free_all(impl->mPeers);
@@ -349,22 +353,13 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Bound publish socket to:%s ", impl->mPubEndpoint);
 
       // prefer connecting sub to pub (see https://github.com/zeromq/libzmq/issues/2267)
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, impl->mPubEndpoint, 0, 0));
+      //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, impl->mPubEndpoint, 0, 0));
 
       // connect to proxy for naming messages
-      for (int i = 0; (i < ZMQ_MAX_NAMING_URIS); ++i) {
-         // must specify both
-         if ((impl->mOutgoingNamingAddress[i] == NULL) || impl->mIncomingNamingAddress[i] == NULL) {
-            continue;
-         }
-
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mIncomingNamingAddress[i],
+      for (int i = 0; (i < ZMQ_MAX_NAMING_URIS) && (impl->mNamingAddress[i] != NULL); ++i) {
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mNamingAddress[i],
             impl->mNamingReconnect, impl->mNamingReconnectTimeout));
-
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingPub, impl->mOutgoingNamingAddress[i],
-            impl->mNamingReconnect, impl->mNamingReconnectTimeout));
-
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting naming sockets to publisher:%s subscriber:%s", impl->mIncomingNamingAddress[i], impl->mOutgoingNamingAddress[i]);
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting naming subscriber to: %s", impl->mNamingAddress[i]);
       }
    }
    else {
@@ -374,7 +369,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
          impl->mOutgoingAddress[i], ZMQ_TPORT_DIRECTION_OUTGOING,
          impl->mDataReconnect, impl->mDataReconnectTimeout));
 
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data publisher socket to subscriber:%s", impl->mOutgoingNamingAddress[i]);
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data publisher socket to subscriber:%s", impl->mOutgoingAddress[i]);
       }
 
       for (int i = 0; (i < ZMQ_MAX_INCOMING_URIS) && (NULL != impl->mIncomingAddress[i]); i++) {
@@ -382,7 +377,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
             impl->mIncomingAddress[i], ZMQ_TPORT_DIRECTION_INCOMING,
             impl->mDataReconnect, impl->mDataReconnectTimeout));
 
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data subscriber socket to publisher:%s", impl->mIncomingNamingAddress[i]);
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data subscriber socket to publisher:%s", impl->mIncomingAddress[i]);
       }
    }
 
@@ -563,41 +558,41 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received naming msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mPubEndpoint);
+   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received naming msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
 
    if (pMsg->mType == 'C') {
       // connect
 
-      // is this our msg?
-      if (strcmp(pMsg->mPubEndpoint, impl->mPubEndpoint) == 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling event");
-         wsem_post(&impl->mNamingConnected);
-         // NOTE: dont connect to self (avoid duplicate msgs)
-         return MAMA_STATUS_OK;
-      }
-
-      zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mPubEndpoint);
+      zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mEndPointAddr);
       if (pOrigMsg == NULL) {
          // we've never seen this endpoint before
          // connect to peer (sub => pub)
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mPubEndpoint, impl->mDataReconnect, impl->mDataReconnectTimeout));
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr, impl->mDataReconnect, impl->mDataReconnectTimeout));
 
          // save endpoint in table
          pOrigMsg = malloc(sizeof(zmqNamingMsg));
          memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
-         wtable_insert(impl->mPeers, pOrigMsg->mPubEndpoint, pOrigMsg);
+         wtable_insert(impl->mPeers, pOrigMsg->mEndPointAddr, pOrigMsg);
 
          // send a discovery msg whenever we see an endpoint we haven't seen before
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
 
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at:%s", pMsg->mPubEndpoint);
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at:%s", pMsg->mEndPointAddr);
+      }
+
+      // is this our msg?
+      if (strcmp(pMsg->mEndPointAddr, impl->mPubEndpoint) == 0) {
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling event");
+         wsem_post(&impl->mNamingConnected);
+         // NOTE: dont connect to self (avoid duplicate msgs)
+         return MAMA_STATUS_OK;
       }
    }
    else if (pMsg->mType == 'D') {
       // disconnect
 
       // is this our msg?
-      if (strcmp(pMsg->mPubEndpoint, impl->mPubEndpoint) == 0) {
+      if (strcmp(pMsg->mEndPointAddr, impl->mPubEndpoint) == 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Got own endpoint msg -- ignoring");
          // NOTE: dont disconnect from self
          return MAMA_STATUS_OK;
@@ -606,15 +601,34 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // zmq will silently ignore multiple attempts to connect to the same endpoint (see https://github.com/zeromq/libzmq/issues/788)
       // so, we want to explicitly disconnect from sockets on normal shutdown so that zmq will know that the endpoint is
       // disconnected and will *not* ignore a subsequent request to connect to it
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mPubEndpoint));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr));
 
       // remove endpoint from the table
-      zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mPubEndpoint);
+      zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mEndPointAddr);
       if (pOrigMsg != NULL) {
          free(pOrigMsg);
       }
 
-      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mPubEndpoint);
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mEndPointAddr);
+   }
+   else if (pMsg->mType == 'W') {
+      // welcome msg - naming subscriber is connected
+
+      // connect to proxy
+      mama_status status = zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingPub, pMsg->mEndPointAddr,
+         impl->mNamingReconnect, impl->mNamingReconnectTimeout);
+      if (status != MAMA_STATUS_OK) {
+         MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "connect to naming endpoint(%s) failed %d(%s)", pMsg->mEndPointAddr, status, mamaStatus_stringForStatus(status));
+         return MAMA_STATUS_PLATFORM;
+      }
+
+      // start thread to publish namng msg
+      wthread_t publishThread;
+      int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
+      if (0 != rc) {
+         MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "create of endpoint publish thread failed %d(%s)", rc, strerror(rc));
+         return MAMA_STATUS_PLATFORM;
+      }
    }
    else {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unknown naming msg type=%c", pMsg->mType);
@@ -1463,18 +1477,18 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
    gethostname(msg.mHost, sizeof(msg.mHost));
    msg.mPid = getpid();
    strcpy(msg.mUuid, impl->mUuid);
-   strcpy(msg.mPubEndpoint, impl->mPubEndpoint);
+   strcpy(msg.mEndPointAddr, impl->mPubEndpoint);
    wlock_lock(impl->mZmqNamingPub.mLock);
    int i = zmq_send(impl->mZmqNamingPub.mSocket, &msg, sizeof(msg), 0);
    wlock_unlock(impl->mZmqNamingPub.mLock);
    if (i != sizeof(msg)) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to publish endpoints: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mPubEndpoint);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to publish endpoints: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
       return MAMA_STATUS_PLATFORM;
    }
 
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(impl->mZmqNamingPub.mSocket));
 
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Sent endpoint msg: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mPubEndpoint);
+   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Sent endpoint msg: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
    return MAMA_STATUS_OK;
 }
 

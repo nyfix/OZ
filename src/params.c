@@ -119,7 +119,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
                              impl->mName,
                              TPORT_PARAM_NAMING_RECONNECT));
 
-   impl->mDataReconnectTimeout = atof(zmqBridgeMamaTransportImpl_getParameter(
+   impl->mNamingReconnectTimeout = atof(zmqBridgeMamaTransportImpl_getParameter(
                              DEFAULT_NAMING_CONNECT_TIMEOUT,
                              "%s.%s.%s",
                              TPORT_PARAM_PREFIX,
@@ -132,10 +132,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
       int port = atoi(zmqBridgeMamaTransportImpl_getParameter("0","%s.%s.%s", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT));
       char endpoint[1024];
       sprintf(endpoint, "tcp://%s:%d", address, port);
-      impl->mOutgoingNamingAddress[0] = strdup(endpoint);
-      // by convention, subscribe port = publish port +1
-      sprintf(endpoint, "tcp://%s:%d", address, port+1);
-      impl->mIncomingNamingAddress[0] = strdup(endpoint);
+      impl->mNamingAddress[0] = strdup(endpoint);
    }
 
    for (int i = 0; i < ZMQ_MAX_NAMING_URIS; ++i) {
@@ -146,10 +143,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
       int port = atoi(zmqBridgeMamaTransportImpl_getParameter("0","%s.%s.%s_%d", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT, i));
       char endpoint[1024];
       sprintf(endpoint, "tcp://%s:%d", address, port);
-      impl->mOutgoingNamingAddress[i] = strdup(endpoint);
-      // by convention, subscribe port = publish port +1
-      sprintf(endpoint, "tcp://%s:%d", address, port+1);
-      impl->mIncomingNamingAddress[i] = strdup(endpoint);
+      impl->mNamingAddress[i] = strdup(endpoint);
    }
 }
 

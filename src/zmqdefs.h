@@ -145,8 +145,7 @@ typedef struct zmqTransportBridge_ {
    zmqSocket               mZmqNamingPub;       // outgoing connections to proxy
    zmqSocket               mZmqNamingSub;       // incoming connections from proxy
    const char*             mPubEndpoint;        // endpoint address for naming
-   const char*             mIncomingNamingAddress[ZMQ_MAX_NAMING_URIS];
-   const char*             mOutgoingNamingAddress[ZMQ_MAX_NAMING_URIS];
+   const char*             mNamingAddress[ZMQ_MAX_NAMING_URIS];
    int                     mNamingReconnect;
    double                  mNamingReconnectTimeout;
 
@@ -260,7 +259,7 @@ typedef struct zmqNamingMsg {
    char                    mHost[MAXHOSTNAMELEN + 1];                // (short) hostname
    int                     mPid;                                     // process ID
    char                    mUuid[UUID_STRING_SIZE+1];                // uuid of transport
-   char                    mPubEndpoint[ZMQ_MAX_ENDPOINT_LENGTH];    // dataSubscriber connects to this endpoint
+   char                    mEndPointAddr[ZMQ_MAX_ENDPOINT_LENGTH];   // dataSubscriber connects to this endpoint
 } zmqNamingMsg;
 
 
