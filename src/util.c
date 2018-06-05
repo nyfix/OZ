@@ -26,9 +26,24 @@
 
 #include "util.h"
 
-const char* zmqBridge_generateUid(long long* id)
+
+const char* zmqBridge_generateUuid()
+{
+   wUuid tempUuid;
+   // this appears to be the "most" unique of all the uuid_generate functions
+   // (it better be ;-)
+   wUuid_generate(tempUuid);
+   char uuidStringBuffer[UUID_STRING_SIZE+ 1];
+   wUuid_unparse(tempUuid, uuidStringBuffer);
+
+   return strdup(uuidStringBuffer);
+}
+
+
+const char* zmqBridge_generateSerial(long long* id)
 {
    long long next = __sync_add_and_fetch(id, 1);
+   // long long is max of 16 digits
    char temp[16+1];
    sprintf(temp, "%016llx", next);
    return strdup(temp);

@@ -62,6 +62,15 @@
 #define     TPORT_PARAM_NAMING_RECONNECT        "naming.retry_connects"
 #define     DEFAULT_NAMING_RECONNECT            "1"
 
+#define     TPORT_PARAM_NAMING_WAIT_FOR_CONNECT "naming.wait_for_connect"
+#define     DEFAULT_NAMING_WAIT_FOR_CONNECT     "1"
+
+#define     TPORT_PARAM_NAMING_CONNECT_INTERVAL "naming.connect_interval"
+#define     DEFAULT_NAMING_CONNECT_INTERVAL     ".1"
+
+#define     TPORT_PARAM_NAMING_CONNECT_RETRIES  "naming.connect_retries"
+#define     DEFAULT_NAMING_CONNECT_RETRIES      "100"
+
 #define     TPORT_PARAM_NAMING_CONNECT_TIMEOUT  "naming.connect_timeout"
 #define     DEFAULT_NAMING_CONNECT_TIMEOUT      ".1"
 
