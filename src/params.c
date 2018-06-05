@@ -112,6 +112,27 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBridge* impl)
 {
 
+   impl->mNamingWaitForConnect = atoi(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_NAMING_WAIT_FOR_CONNECT,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_NAMING_WAIT_FOR_CONNECT));
+
+   impl->mNamingConnectInterval = atof(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_NAMING_CONNECT_INTERVAL,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_NAMING_CONNECT_INTERVAL));
+
+   impl->mNamingConnectRetries = atoi(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_NAMING_CONNECT_RETRIES,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_NAMING_CONNECT_RETRIES));
+
    impl->mNamingReconnect = atoi(zmqBridgeMamaTransportImpl_getParameter(
                              DEFAULT_NAMING_RECONNECT,
                              "%s.%s.%s",
@@ -130,7 +151,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    const char* address = zmqBridgeMamaTransportImpl_getParameter(NULL, "%s.%s.%s", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_ADDR);
    if (address) {
       int port = atoi(zmqBridgeMamaTransportImpl_getParameter("0","%s.%s.%s", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT));
-      char endpoint[1024];
+      char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpoint, "tcp://%s:%d", address, port);
       impl->mNamingAddress[0] = strdup(endpoint);
    }
@@ -141,7 +162,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
          break;
       }
       int port = atoi(zmqBridgeMamaTransportImpl_getParameter("0","%s.%s.%s_%d", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT, i));
-      char endpoint[1024];
+      char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpoint, "tcp://%s:%d", address, port);
       impl->mNamingAddress[i] = strdup(endpoint);
    }

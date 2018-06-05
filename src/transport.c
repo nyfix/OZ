@@ -46,7 +46,6 @@
 #include <subscriptionimpl.h>
 #include <transportimpl.h>
 #include <timers.h>
-#include <wombat/wUuid.h>
 
 // local includes
 #include "subscription.h"
@@ -58,19 +57,6 @@
 #include "params.h"
 
 #include "transport.h"
-
-const char* zmqBridgeMamaTransport_generateInboxSubject()
-{
-   wUuid tempUuid;
-   // this appears to be the "most" unique of all the uuid_generate functions
-   // (it better be ;-)
-   wUuid_generate(tempUuid);
-   char uuidStringBuffer[UUID_STRING_SIZE+1];
-   wUuid_unparse(tempUuid, uuidStringBuffer);
-
-   return strdup(uuidStringBuffer);
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // following functions are defined in the Mama API
@@ -133,7 +119,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       return MAMA_STATUS_NOMEM;
    }
    impl->mWcsLock = wlock_create();
-   __sync_fetch_and_and(&impl->mWcsUid, 0);
+   __sync_and_and_fetch(&impl->mWcsUid, 0);
 
 
    // create peers table
@@ -152,7 +138,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       return MAMA_STATUS_NOMEM;
    }
    impl->mInboxesLock = wlock_create();
-   __sync_fetch_and_and(&impl->mInboxUid, 0);
+   __sync_and_and_fetch(&impl->mInboxUid, 0);
 
    // create sub endpoints
    status = endpointPool_create(&impl->mSubEndpoints, "mSubEndpoints");
@@ -162,13 +148,15 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       return status;
    }
    impl->mSubsLock = wlock_create();
-   __sync_fetch_and_and(&impl->mSubUid, 0);
+   __sync_and_and_fetch(&impl->mSubUid, 0);
 
    // generate inbox subject
-   impl->mUuid = zmqBridgeMamaTransport_generateInboxSubject();
-   char temp[ZMQ_INBOX_SUBJECT_SIZE];
+   impl->mUuid = zmqBridge_generateUuid();
+   char temp[ZMQ_INBOX_SUBJECT_SIZE +1];
    snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, impl->mUuid);
    impl->mInboxSubject = strdup(temp);
+
+   wInterlocked_initialize(&impl->mNamingConnected);
 
    // connect/bind/subscribe/etc. all sockets
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_init(impl));
@@ -176,29 +164,21 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    // start the dispatch thread
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_start(impl));
 
+   *result = (transportBridge) impl;
 
-/*   if (impl->mIsNaming) {
-      // publish connection information
-      #if 0
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_publishEndpoints(impl));
-      #else
-      // Initialize dispatch thread
-      wthread_t publishThread;
-      int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
-      if (0 != rc) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "create of endpoint publish thread failed %d(%s)", rc, strerror(rc));
-         return MAMA_STATUS_PLATFORM;
+   // dont proceed until we are connected to nsd?
+   if (impl->mNamingWaitForConnect == 1) {
+      int retries = impl->mNamingConnectRetries;
+      while ((--retries > 0) && (wInterlocked_read(&impl->mNamingConnected) != 1)) {
+         usleep(impl->mNamingConnectInterval * 1000000);
       }
-      #endif
-
+      if (wInterlocked_read(&impl->mNamingConnected) != 1) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
+         return MAMA_STATUS_TIMEOUT;
+      }
    }
-*/
-
-
-   //wsem_wait(&impl->mNamingConnected);
 
    impl->mIsValid = 1;
-   *result = (transportBridge) impl;
 
    return MAMA_STATUS_OK;
 }
@@ -218,7 +198,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    // stop the dispatcher(s)
    status = zmqBridgeMamaTransportImpl_stop(impl);
    wsem_destroy(&impl->mIsReady);
-   wsem_destroy(&impl->mNamingConnected);
+   wInterlocked_destroy(&impl->mNamingConnected);
 
    // close sockets
    zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqDataPub);
@@ -345,8 +325,8 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    if (impl->mIsNaming) {
-      // bind pub/sub sockets
-      char endpointAddress[ZMQ_MAX_ENDPOINT_LENGTH];
+      // bind data pub socket & get endpoint
+      char endpointAddress[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpointAddress, "tcp://%s:*", impl->mPublishAddress);
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqDataPub,  endpointAddress, &impl->mPubEndpoint,
          impl->mNamingReconnect, impl->mNamingReconnectTimeout));
@@ -355,7 +335,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       // prefer connecting sub to pub (see https://github.com/zeromq/libzmq/issues/2267)
       //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, impl->mPubEndpoint, 0, 0));
 
-      // connect to proxy for naming messages
+      // connect sub socket to proxy
       for (int i = 0; (i < ZMQ_MAX_NAMING_URIS) && (impl->mNamingAddress[i] != NULL); ++i) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mNamingAddress[i],
             impl->mNamingReconnect, impl->mNamingReconnectTimeout));
@@ -558,7 +538,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received naming msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
+   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
 
    if (pMsg->mType == 'C') {
       // connect
@@ -582,9 +562,8 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
       // is this our msg?
       if (strcmp(pMsg->mEndPointAddr, impl->mPubEndpoint) == 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling event");
-         wsem_post(&impl->mNamingConnected);
-         // NOTE: dont connect to self (avoid duplicate msgs)
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling");
+         wInterlocked_set(1, &impl->mNamingConnected);
          return MAMA_STATUS_OK;
       }
    }
@@ -1105,7 +1084,7 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    CALL_ZMQ_FUNC(zmq_setsockopt(pSocket->mSocket, ZMQ_IDENTITY, name, strlen(name) +1));
 
    if ((monitor ==1) && (name != NULL)) {
-      char endpoint[256];
+      char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpoint, "inproc://%s", name);
       CALL_ZMQ_FUNC(zmq_socket_monitor(pSocket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel)));
    }
@@ -1190,7 +1169,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
 
    // get endpoint name
    if (endpointName != NULL) {
-      char temp[ZMQ_MAX_ENDPOINT_LENGTH];
+      char temp[ZMQ_MAX_ENDPOINT_LENGTH +1];
       size_t tempSize = sizeof(temp);
       int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
       if (0 != rc) {
@@ -1498,14 +1477,22 @@ void* zmqBridgeMamaTransportImpl_publishEndpoints(void* closure)
 {
    zmqTransportBridge* impl = (zmqTransportBridge*) closure;
 
-   wsem_init(&impl->mNamingConnected, 0, 0);
+   wInterlocked_set(0, &impl->mNamingConnected);
 
-   do {
+   int retries = impl->mNamingConnectRetries;
+   while (--retries > 0) {
       zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C');
-   } while ((wsem_timedwait(&impl->mNamingConnected, 100) != 0) && (errno == ETIMEDOUT));
+      if (wInterlocked_read(&impl->mNamingConnected) == 1) {
+         MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully published endpoint msg");
+         return NULL;
+      }
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully published endpoints");
-   //return MAMA_STATUS_OK;
+      usleep(impl->mNamingConnectInterval * 1000000);
+   }
+
+   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
+
+   return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1634,7 +1621,7 @@ int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName
 
    uint8_t* data = (uint8_t *) zmq_msg_data (&msg);
    size_t size = zmq_msg_size(&msg);
-   char endpoint[ZMQ_MAX_ENDPOINT_LENGTH+1];
+   char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
    memset(endpoint, '\0', sizeof(endpoint));
    memcpy(endpoint, data, size);
 

@@ -41,6 +41,7 @@
 
 #define     PEER_TABLE_SIZE                  128
 
+
 // zmq has two ways to manage subscriptions
 // w/XSUB subscriptions messages can be made visible to the application
 //#define USE_XSUB
@@ -57,7 +58,8 @@
 // TODO: is 256 enough? what happens if exceeded?
 #define     ZMQ_MAX_INCOMING_URIS            256         // incoming connections from other processes
 #define     ZMQ_MAX_OUTGOING_URIS            256         // outgoing connections to other processes
-#define     ZMQ_MAX_ENDPOINT_LENGTH          256         // enpoint string
+//#define     ZMQ_MAX_ENDPOINT_LENGTH          sizeof("tcp://255.255.255.255:65536")
+#define     ZMQ_MAX_ENDPOINT_LENGTH          256
 ///////////////////////////////////////////////////////////////////////
 
 /*=========================================================================
@@ -129,7 +131,7 @@ typedef struct zmqSocket_ {
 typedef struct zmqTransportBridge_ {
    const char*             mName;               // select from mama.properties: mama.<middleware>.transport.<name>.<property>
    wsem_t                  mIsReady;            // prevents shutdown from proceeding until startup has completed
-   wsem_t                  mNamingConnected;    // signals that we've received our own discovery msg
+   uint32_t                mNamingConnected;    // signals that we've received our own discovery msg
    int                     mIsValid;            // required by Mama API
    mamaTransport           mTransport;          // parent Mama transport
    void*                   mZmqContext;
@@ -148,6 +150,9 @@ typedef struct zmqTransportBridge_ {
    const char*             mNamingAddress[ZMQ_MAX_NAMING_URIS];
    int                     mNamingReconnect;
    double                  mNamingReconnectTimeout;
+   int                     mNamingWaitForConnect;
+   int                     mNamingConnectRetries;
+   double                  mNamingConnectInterval;
 
    // "data" sockets for normal messaging
    zmqSocket               mZmqDataPub;
@@ -253,20 +258,20 @@ typedef struct zmqQueueBridge {
 // defines discovery (naming) msgs sent by transport on startup and received by other transports
 // naming msgs use namingSubscriber/namingPublisher, which is connected to one or more zmq_proxy processes
 typedef struct zmqNamingMsg {
-   char                    mTopic[MAX_SUBJECT_LENGTH];               // w/zmq, topic string must be first part of msg
-   unsigned char           mType;                                    // "C"=connect, "D"=disconnect
-   char                    mProgName[256];                           // executable name
-   char                    mHost[MAXHOSTNAMELEN + 1];                // (short) hostname
-   int                     mPid;                                     // process ID
-   char                    mUuid[UUID_STRING_SIZE+1];                // uuid of transport
-   char                    mEndPointAddr[ZMQ_MAX_ENDPOINT_LENGTH];   // dataSubscriber connects to this endpoint
+   char                    mTopic[MAX_SUBJECT_LENGTH +1];               // w/zmq, topic string must be first part of msg
+   unsigned char           mType;                                       // "C"=connect, "D"=disconnect, "W"=welcome
+   char                    mProgName[256 +1];                           // executable name
+   char                    mHost[MAXHOSTNAMELEN + 1];                   // (short) hostname
+   int                     mPid;                                        // process ID
+   char                    mUuid[UUID_STRING_SIZE +1];                  // uuid of transport
+   char                    mEndPointAddr[ZMQ_MAX_ENDPOINT_LENGTH +1];   // dataSub socket connects to this endpoint
 } zmqNamingMsg;
 
 
 // defines control msg sent to main dispatch thread via inproc transport
 typedef struct zmqControlMsg {
-   char     command;                   // "S"=subscribe, "U"=unsubscribe, "X"=exit
-   char     arg1[256];                 // for subscribe & unsubscribe this is the topic
+   char     command;                         // "S"=subscribe, "U"=unsubscribe, "X"=exit
+   char     arg1[MAX_SUBJECT_LENGTH +1];     // for subscribe & unsubscribe this is the topic
 } zmqControlMsg;
 
 
@@ -299,8 +304,8 @@ typedef struct zmqInboxImpl {
 typedef struct zmqBridgeMsgImpl {
    mamaMsg             mParent;
    uint8_t             mMsgType;                               // pub/sub, request or reply
-   char                mReplyHandle[ZMQ_REPLYHANDLE_SIZE];     // for a request msg, unique identifier of the sending inbox
-   char                mSendSubject[MAX_SUBJECT_LENGTH];       // topic on which the msg is sent
+   char                mReplyHandle[ZMQ_REPLYHANDLE_SIZE +1];  // for a request msg, unique identifier of the sending inbox
+   char                mSendSubject[MAX_SUBJECT_LENGTH +1];    // topic on which the msg is sent
    void*               mSerializedBuffer;                      // flattened buffer in wire format
    size_t              mSerializedBufferSize;                  // size of buffer
 } zmqBridgeMsgImpl;

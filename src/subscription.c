@@ -297,7 +297,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, 
    /* Use a standard centralized method to determine a topic key */
    zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
 
-   impl->mEndpointIdentifier = zmqBridge_generateUid(&impl->mTransport->mWcsUid);
+   impl->mEndpointIdentifier = zmqBridge_generateSerial(&impl->mTransport->mWcsUid);
 
    // add this to list of wildcards
    zmqSubscription** pSub = (zmqSubscription**) list_allocate_element(impl->mTransport->mWcEndpoints);
@@ -321,7 +321,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
    /* Use a standard centralized method to determine a topic key */
    zmqBridgeMamaSubscriptionImpl_generateSubjectKey(NULL, source, symbol, &impl->mSubjectKey);
 
-   impl->mEndpointIdentifier = zmqBridge_generateUid(&impl->mTransport->mSubUid);
+   impl->mEndpointIdentifier = zmqBridge_generateSerial(&impl->mTransport->mSubUid);
    endpointPool_registerWithIdentifier(impl->mTransport->mSubEndpoints, impl->mSubjectKey, impl->mEndpointIdentifier, impl);
 
    /* subscribe to the topic */
@@ -343,7 +343,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const ch
 mama_status zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
    const char*  source, const char*  topic, char**       keyTarget)
 {
-   char        subject[MAX_SUBJECT_LENGTH];
+   char        subject[MAX_SUBJECT_LENGTH +1];
    char*       subjectPos     = subject;
    size_t      bytesRemaining = MAX_SUBJECT_LENGTH;
    size_t      written        = 0;
@@ -420,7 +420,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char*
 {
    // copy input
    // TODO: check len
-   char inTopic[MAX_SUBJECT_LENGTH*2];
+   char inTopic[MAX_SUBJECT_LENGTH*2 +1];
    strcpy(inTopic, wsTopic);
 
    // TODO: check len
