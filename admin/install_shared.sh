@@ -10,7 +10,7 @@ ln -s ${INSTALL_BASE}/${PROJECT_NAME}/${VERSION}-${BUILD_NUMBER} ${INSTALL_BASE}
 
 #####################################################################################
 # create tag in svn
-SVN_URL=$(dirname $(dirname $(svn info ${SRC_DIR} | grep 'URL' | awk '{print $2}')))
+SVN_URL=$(dirname $(dirname $(svn info ${SRC_DIR} | egrep '^URL' | awk '{print $2}')))
 # if a later step (e.g. build_rpm.sh) fails, subsequent invocations of svn copy will copy INTO existing tag rather than creating a new tag
 svn rm                        ${SVN_URL}/tags/${PROJECT_NAME}-${VERSION}-${BUILD_NUMBER} -m "[${JIRA_RELEASE}]: auto-create tag for build"
 svn copy --parents ${SRC_DIR} ${SVN_URL}/tags/${PROJECT_NAME}-${VERSION}-${BUILD_NUMBER} -m "[${JIRA_RELEASE}]: auto-create tag for build"

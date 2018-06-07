@@ -8,6 +8,8 @@
 
 #include <zmq.h>
 
+#include "zmqdefs.h"
+
 // TODO: these values are in a later version of zmq.h
 /*  DRAFT 0MQ socket events and monitoring                                    */
 /*  Unspecified system errors during handshake. Event value is an errno.      */
@@ -43,8 +45,7 @@ const char* zmqBridge_generateUuid()
 const char* zmqBridge_generateSerial(long long* id)
 {
    long long next = __sync_add_and_fetch(id, 1);
-   // long long is max of 16 digits
-   char temp[16+1];
+   char temp[ZMQ_REPLYHANDLE_INBOXNAME_SIZE +1];
    sprintf(temp, "%016llx", next);
    return strdup(temp);
 }

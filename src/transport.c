@@ -153,7 +153,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    // generate inbox subject
    impl->mUuid = zmqBridge_generateUuid();
    char temp[ZMQ_INBOX_SUBJECT_SIZE +1];
-   snprintf(temp, sizeof(temp) - 1, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, impl->mUuid);
+   sprintf(temp, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, impl->mUuid);
    impl->mInboxSubject = strdup(temp);
 
    wInterlocked_initialize(&impl->mNamingConnected);
