@@ -549,13 +549,13 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          // connect to peer (sub => pub)
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr, impl->mDataReconnect, impl->mDataReconnectTimeout));
 
+         // send a discovery msg whenever we see an endpoint we haven't seen before
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
+
          // save endpoint in table
          pOrigMsg = malloc(sizeof(zmqNamingMsg));
          memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
          wtable_insert(impl->mPeers, pOrigMsg->mEndPointAddr, pOrigMsg);
-
-         // send a discovery msg whenever we see an endpoint we haven't seen before
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
 
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at:%s", pMsg->mEndPointAddr);
       }
@@ -577,16 +577,17 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          return MAMA_STATUS_OK;
       }
 
-      // zmq will silently ignore multiple attempts to connect to the same endpoint (see https://github.com/zeromq/libzmq/issues/788)
-      // so, we want to explicitly disconnect from sockets on normal shutdown so that zmq will know that the endpoint is
-      // disconnected and will *not* ignore a subsequent request to connect to it
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr));
-
       // remove endpoint from the table
       zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mEndPointAddr);
       if (pOrigMsg != NULL) {
          free(pOrigMsg);
       }
+
+      // zmq will silently ignore multiple attempts to connect to the same endpoint (see https://github.com/zeromq/libzmq/issues/788)
+      // so, we want to explicitly disconnect from sockets on normal shutdown so that zmq will know that the endpoint is
+      // disconnected and will *not* ignore a subsequent request to connect to it
+      // Note that we ignore the return value -- any errors are reported in disconnectSocket
+      zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr);
 
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mEndPointAddr);
    }
