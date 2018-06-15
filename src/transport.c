@@ -557,7 +557,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
          wtable_insert(impl->mPeers, pOrigMsg->mEndPointAddr, pOrigMsg);
 
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at:%s", pMsg->mEndPointAddr);
+         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at endpoint:%s", pMsg->mEndPointAddr);
       }
 
       // is this our msg?
@@ -570,6 +570,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
    else if (pMsg->mType == 'D') {
       // disconnect
 
+      // TODO: do we want to wait until we receive our own disconnect msg before we shut down?
       // is this our msg?
       if (strcmp(pMsg->mEndPointAddr, impl->mPubEndpoint) == 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Got own endpoint msg -- ignoring");
@@ -587,6 +588,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // so, we want to explicitly disconnect from sockets on normal shutdown so that zmq will know that the endpoint is
       // disconnected and will *not* ignore a subsequent request to connect to it
       // Note that we ignore the return value -- any errors are reported in disconnectSocket
+      // (which will happen if peer has already exited, for example)
       zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr);
 
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mEndPointAddr);
