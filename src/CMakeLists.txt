@@ -13,6 +13,16 @@ link_directories(${ZMQ_ROOT}/lib64)
 #link_directories(${ZMQ_ROOT}/lib)
 link_directories(${EVENT_ROOT}/lib)
 
+# while libzmq exposes a C api, it is coded in C++ and requires C++ stdlib and that libstdc++ MUST be at least as recent as the
+# version used to build libzmq, which may not be the "system" libstdc++ so we explicitly add its location
+execute_process(COMMAND bash "-c" "dirname $(${CMAKE_CXX_COMPILER} -m64 -print-file-name=libstdc++.so)" OUTPUT_VARIABLE ZMQ_CXX_LINK_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+message("ZMQ_CXX_LINK_DIRS=${ZMQ_CXX_LINK_DIRS}")
+link_directories(${ZMQ_CXX_LINK_DIRS})
+
+# foreach(ZMQ_CXX_LINK_DIR "${ZMQ_CXX_LINK_DIRS}")
+#   link_directories(${ZMQ_CXX_LINK_DIR})
+# endforeach()
+
 add_definitions(-DBRIDGE -DMAMA_DLL)
 
 if(WIN32)
