@@ -19,10 +19,6 @@ execute_process(COMMAND bash "-c" "dirname $(${CMAKE_CXX_COMPILER} -m64 -print-f
 message("ZMQ_CXX_LINK_DIRS=${ZMQ_CXX_LINK_DIRS}")
 link_directories(${ZMQ_CXX_LINK_DIRS})
 
-# foreach(ZMQ_CXX_LINK_DIR "${ZMQ_CXX_LINK_DIRS}")
-#   link_directories(${ZMQ_CXX_LINK_DIR})
-# endforeach()
-
 add_definitions(-DBRIDGE -DMAMA_DLL)
 
 if(WIN32)
