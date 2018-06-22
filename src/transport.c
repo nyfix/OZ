@@ -543,25 +543,24 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
    if (pMsg->mType == 'C') {
       // connect
 
-      zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mEndPointAddr);
+      zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mUuid);
       if (pOrigMsg == NULL) {
-         // we've never seen this endpoint before
-         // connect to peer (sub => pub)
+         // we've never seen this peer before, so connect (sub => pub)
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr, impl->mDataReconnect, impl->mDataReconnectTimeout));
 
-         // send a discovery msg whenever we see an endpoint we haven't seen before
+         // send a discovery msg whenever we see a peer we haven't seen before
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
 
-         // save endpoint in table
+         // save peer in table
          pOrigMsg = malloc(sizeof(zmqNamingMsg));
          memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
-         wtable_insert(impl->mPeers, pOrigMsg->mEndPointAddr, pOrigMsg);
+         wtable_insert(impl->mPeers, pOrigMsg->mUuid, pOrigMsg);
 
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at endpoint:%s", pMsg->mEndPointAddr);
       }
 
       // is this our msg?
-      if (strcmp(pMsg->mEndPointAddr, impl->mPubEndpoint) == 0) {
+      if (strcmp(pMsg->mUuid, impl->mUuid) == 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling");
          wInterlocked_set(1, &impl->mNamingConnected);
          return MAMA_STATUS_OK;
@@ -572,14 +571,14 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
       // TODO: do we want to wait until we receive our own disconnect msg before we shut down?
       // is this our msg?
-      if (strcmp(pMsg->mEndPointAddr, impl->mPubEndpoint) == 0) {
+      if (strcmp(pMsg->mUuid, impl->mUuid) == 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Got own endpoint msg -- ignoring");
          // NOTE: dont disconnect from self
          return MAMA_STATUS_OK;
       }
 
       // remove endpoint from the table
-      zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mEndPointAddr);
+      zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mUuid);
       if (pOrigMsg != NULL) {
          free(pOrigMsg);
       }
