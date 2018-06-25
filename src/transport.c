@@ -1449,7 +1449,9 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 // naming msgs
 mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl, char command)
 {
-   // publish our endpoints
+   mama_status status = MAMA_STATUS_OK;
+
+   // publish our endpoint
    zmqNamingMsg msg;
    memset(&msg, '\0', sizeof(msg));
    strcpy(msg.mTopic, ZMQ_NAMING_PREFIX);
@@ -1459,18 +1461,20 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
    msg.mPid = getpid();
    strcpy(msg.mUuid, impl->mUuid);
    strcpy(msg.mEndPointAddr, impl->mPubEndpoint);
+
    wlock_lock(impl->mZmqNamingPub.mLock);
    int i = zmq_send(impl->mZmqNamingPub.mSocket, &msg, sizeof(msg), 0);
-   wlock_unlock(impl->mZmqNamingPub.mLock);
    if (i != sizeof(msg)) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to publish endpoints: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
-      return MAMA_STATUS_PLATFORM;
+      status = MAMA_STATUS_PLATFORM;
    }
+   else {
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Published endpoint msg: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
+      status = zmqBridgeMamaTransportImpl_kickSocket(impl->mZmqNamingPub.mSocket);
+   }
+   wlock_unlock(impl->mZmqNamingPub.mLock);
 
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_kickSocket(impl->mZmqNamingPub.mSocket));
-
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Sent endpoint msg: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
-   return MAMA_STATUS_OK;
+   return status;
 }
 
 
