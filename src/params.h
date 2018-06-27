@@ -75,10 +75,10 @@
 #define     DEFAULT_NAMING_CONNECT_TIMEOUT      ".1"
 
 #define     TPORT_PARAM_NAMING_ADDR             "naming.subscribe_address"
-// no default
+#define     DEFAULT_NAMING_ADDR                 "127.0.0.1"
 
 #define     TPORT_PARAM_NAMING_PORT             "naming.subscribe_port"
-// no default
+#define     DEFAULT_NAMING_PORT                 "5756"
 
 #define     TPORT_PARAM_PUBLISH_ADDRESS         "publish_address"
 #define     DEFAULT_PUBLISH_ADDRESS             "lo"
