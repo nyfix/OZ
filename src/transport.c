@@ -385,7 +385,9 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
    wsem_wait(&impl->mIsReady);
 
    // send disconnect msg to peers
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'D'));
+   if (impl->mIsNaming) {
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'D'));
+   }
 
    zmqControlMsg msg;
    memset(&msg, '\0', sizeof(msg));

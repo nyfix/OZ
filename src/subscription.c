@@ -90,7 +90,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
    mamaMsgCallbacks callback, mamaSubscription subscription,
    void* closure)
 {
-   if (NULL == subscriber || NULL == subscription || NULL == tport) {
+   if (NULL == subscriber || NULL == subscription || NULL == tport || NULL == source) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "something NULL");
       return MAMA_STATUS_NULL_ARG;
    }
