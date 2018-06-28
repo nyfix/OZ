@@ -147,7 +147,9 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
                              impl->mName,
                              TPORT_PARAM_NAMING_CONNECT_TIMEOUT));
 
-   // nsd addr
+   // nsd addr/port
+   // Note that we DO provide default values for the first/only nsd -- this is necessary to allow the OpenMAMA unit tests to run
+   // w/o a special mama.properties file.
    const char* address = zmqBridgeMamaTransportImpl_getParameter(DEFAULT_NAMING_ADDR, "%s.%s.%s", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_ADDR);
    if (address) {
       int port = atoi(zmqBridgeMamaTransportImpl_getParameter(DEFAULT_NAMING_PORT,"%s.%s.%s", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT));
@@ -156,12 +158,13 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
       impl->mNamingAddress[0] = strdup(endpoint);
    }
 
+   // Note the we do NOT provide default values for other nsd's
    for (int i = 0; i < ZMQ_MAX_NAMING_URIS; ++i) {
-      const char* address = zmqBridgeMamaTransportImpl_getParameter(DEFAULT_NAMING_ADDR, "%s.%s.%s_%d", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_ADDR, i);
+      const char* address = zmqBridgeMamaTransportImpl_getParameter(NULL, "%s.%s.%s_%d", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_ADDR, i);
       if (!address) {
          break;
       }
-      int port = atoi(zmqBridgeMamaTransportImpl_getParameter(DEFAULT_NAMING_PORT,"%s.%s.%s_%d", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT, i));
+      int port = atoi(zmqBridgeMamaTransportImpl_getParameter("0","%s.%s.%s_%d", TPORT_PARAM_PREFIX, impl->mName, TPORT_PARAM_NAMING_PORT, i));
       char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpoint, "tcp://%s:%d", address, port);
       impl->mNamingAddress[i] = strdup(endpoint);

@@ -605,6 +605,11 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          return MAMA_STATUS_PLATFORM;
       }
 
+      // TODO: need to find a way to cancel the publish thread when shutting down the dispatch thread
+      // (to avoid publish thread crashing when the transport is deleted)
+      #if 0
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
+      #else
       // start thread to publish namng msg
       wthread_t publishThread;
       int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
@@ -612,6 +617,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "create of endpoint publish thread failed %d(%s)", rc, strerror(rc));
          return MAMA_STATUS_PLATFORM;
       }
+      #endif
    }
    else {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unknown naming msg type=%c", pMsg->mType);
