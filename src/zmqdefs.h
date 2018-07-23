@@ -153,6 +153,7 @@ typedef struct zmqTransportBridge_ {
    int                     mNamingWaitForConnect;
    int                     mNamingConnectRetries;
    double                  mNamingConnectInterval;
+   int                     mBeaconInterval;
 
    // "data" sockets for normal messaging
    zmqSocket               mZmqDataPub;
@@ -201,7 +202,6 @@ typedef struct zmqTransportBridge_ {
    long int                mSubMessages;           // subscription (as opposed to inbox) messages
    long int                mInboxMessages;         // inbox (as opposed to subscription) messages
    long int                mPolls;                 // msgs read after calling zmq_poll
-   long int                mNoPolls;               // msgs read w/o needing to call zmq_poll (i.e., immediately available)
 
 } zmqTransportBridge;
 

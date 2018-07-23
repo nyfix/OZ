@@ -151,3 +151,21 @@ int get_zmqEventMask(int logLevel)
 
    return eventMask;
 }
+
+
+MamaLogLevel getNamingLogLevel(const char mType)
+{
+   if (mType == 'c')
+      return MAMA_LOG_LEVEL_FINEST;
+   else
+      return MAMA_LOG_LEVEL_NORMAL;
+}
+
+
+uint64_t getMicros(void)
+{
+    //  Use POSIX gettimeofday function to get precise time.
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return (tv.tv_sec * (uint64_t) 1000000 + tv.tv_usec);
+}

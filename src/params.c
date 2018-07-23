@@ -147,6 +147,22 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
                              impl->mName,
                              TPORT_PARAM_NAMING_CONNECT_TIMEOUT));
 
+   impl->mBeaconInterval = atoi(zmqBridgeMamaTransportImpl_getParameter(
+                             DEFAULT_BEACON_INTERVAL,
+                             "%s.%s.%s",
+                             TPORT_PARAM_PREFIX,
+                             impl->mName,
+                             TPORT_PARAM_BEACON_INTERVAL));
+   // validate beacon interval
+   if (impl->mBeaconInterval <= 0) {
+      impl->mBeaconInterval = -1;
+   }
+   else if (impl->mBeaconInterval < 100000) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "beacon_interval cannot be less than 100000");
+      impl->mBeaconInterval = 100000;
+   }
+
+
    // nsd addr/port
    // Note that we DO provide default values for the first/only nsd -- this is necessary to allow the OpenMAMA unit tests to run
    // w/o a special mama.properties file.

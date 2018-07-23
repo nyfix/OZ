@@ -43,4 +43,9 @@ const char* get_zmqEventName(int event);
 int get_zmqEventLogLevel(int event);
 int get_zmqEventMask(int logLevel);
 
+
+MamaLogLevel getNamingLogLevel(const char mType);
+
+uint64_t getMicros(void);
+
 #endif

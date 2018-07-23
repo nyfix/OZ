@@ -86,6 +86,8 @@
 #define     TPORT_PARAM_SOCKET_MONITOR          "socket_monitor"
 #define     DEFAULT_SOCKET_MONITOR              "0"
 
+#define     TPORT_PARAM_BEACON_INTERVAL         "beacon_interval"
+#define     DEFAULT_BEACON_INTERVAL             "1000000"
 
 /* Default values for corresponding configuration parameters */
 #define     DEFAULT_SUB_OUTGOING_URL        "tcp://*:5557"

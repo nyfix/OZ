@@ -98,7 +98,6 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mInboxMessages        = 0;
    impl->mControlMessages      = 0;
    impl->mPolls                = 0;
-   impl->mNoPolls              = 0;
 
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Initializing transport with name %s", impl->mName);
 
@@ -157,6 +156,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mInboxSubject = strdup(temp);
 
    wInterlocked_initialize(&impl->mNamingConnected);
+   wInterlocked_initialize(&impl->mBeaconInterval);
 
    // connect/bind/subscribe/etc. all sockets
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_init(impl));
@@ -246,7 +246,6 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Inbox messages = %ld", impl->mInboxMessages);
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Control messages = %ld", impl->mControlMessages);
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Polls = %ld", impl->mPolls);
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "No polls = %ld", impl->mNoPolls);
 
    free(impl);
 
@@ -380,6 +379,9 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
 // stops the main dispatch thread
 mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 {
+   // disable beaconing if applicable
+   wInterlocked_set(-1, &impl->mBeaconInterval);
+
    // make sure that transport has started before we try to stop it
    // prevents a race condition on mIsDispatching
    wsem_wait(&impl->mIsReady);
@@ -429,63 +431,81 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       wlock_lock(impl->mZmqNamingSub.mLock);
    }
 
+   uint64_t nextBeacon = 0;
+   zmq_pollitem_t items[] = {
+      { impl->mZmqControlSub.mSocket, 0, ZMQ_POLLIN , 0},
+      { impl->mZmqDataSub.mSocket,    0, ZMQ_POLLIN , 0},
+      { impl->mZmqNamingSub.mSocket,  0, ZMQ_POLLIN , 0}
+   };
    // Check if we should be still dispatching.
    while (1 == wInterlocked_read(&impl->mIsDispatching)) {
 
-      // TODO: revisit?
-      //  try reading directly from data socket, and poll only if no msg ready
-      int size = zmq_msg_recv(&zmsg, impl->mZmqDataSub.mSocket, ZMQ_DONTWAIT);
-      if (size != -1) {
-         ++impl->mNoPolls;
-         zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
-         continue;
-      }
-
-      // no normal msg, so poll
-      zmq_pollitem_t items[] = {
-         { impl->mZmqControlSub.mSocket, 0, ZMQ_POLLIN , 0},
-         { impl->mZmqDataSub.mSocket,    0, ZMQ_POLLIN , 0},
-         { impl->mZmqNamingSub.mSocket,  0, ZMQ_POLLIN , 0}
-      };
-      int rc = zmq_poll(items, impl->mIsNaming ? 3 : 2, -1);
+      int rc = zmq_poll(items, impl->mIsNaming ? 3 : 2, wInterlocked_read(&impl->mBeaconInterval));
       if (rc < 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned %d - errorno %d(%s)", rc, zmq_errno(), zmq_strerror(zmq_errno()));
          continue;
       }
       ++impl->mPolls;
 
-      // got command msg?
-      if (items[0].revents & ZMQ_POLLIN) {
-         int size = zmq_msg_recv(&zmsg, impl->mZmqControlSub.mSocket, ZMQ_DONTWAIT);
-         if (size == -1) {
-            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no command msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
-         }
-         else {
-            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
-         }
-      }
-
-      // got normal msg?
-      if (items[1].revents & ZMQ_POLLIN) {
-         int size = zmq_msg_recv(&zmsg, impl->mZmqDataSub.mSocket, ZMQ_DONTWAIT);
-         if (size == -1) {
-            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no data msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
-         }
-         else {
-            zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
+      // TODO: is this the best place?
+      // send a "beacon"?
+      if (wInterlocked_read(&impl->mBeaconInterval) > 0) {
+         uint64_t now = getMicros();
+         if (now > nextBeacon) {
+            zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'c');
+            nextBeacon = now + wInterlocked_read(&impl->mBeaconInterval);
          }
       }
 
-      // got naming msg?
-      if (items[2].revents & ZMQ_POLLIN) {
-         int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSub.mSocket, ZMQ_DONTWAIT);
-         if (size == -1) {
-            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no naming msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
+      int keepGoing;
+      do {
+         keepGoing = 0;
+
+         // drain command msgs
+         while (items[0].revents & ZMQ_POLLIN) {
+            int size = zmq_msg_recv(&zmsg, impl->mZmqControlSub.mSocket, ZMQ_DONTWAIT);
+            if (size <= 0) {
+               items[0].revents = 0;
+               if (errno != EAGAIN) {
+                  MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no command msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
+               }
+            }
+            else {
+               keepGoing = 1;
+               zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+            }
          }
-         else {
-            zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
+
+         // drain naming msgs
+         while (items[2].revents & ZMQ_POLLIN) {
+            int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSub.mSocket, ZMQ_DONTWAIT);
+            if (size <= 0) {
+               items[2].revents = 0;
+               if (errno != EAGAIN) {
+                  MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no naming msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
+               }
+            }
+            else {
+               keepGoing = 1;
+               zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
+            }
          }
-      }
+
+         // drain normal msgs
+         while (items[1].revents & ZMQ_POLLIN) {
+            int size = zmq_msg_recv(&zmsg, impl->mZmqDataSub.mSocket, ZMQ_DONTWAIT);
+            if (size <= 0) {
+               items[1].revents = 0;
+               if (errno != EAGAIN) {
+                  MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no normal msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
+               }
+            }
+            else {
+               keepGoing = 1;
+               zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
+            }
+         }
+      } while(keepGoing == 1);
    }
 
    wlock_unlock(impl->mZmqDataSub.mLock);
@@ -540,13 +560,18 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
+   MAMA_LOG(getNamingLogLevel(pMsg->mType), "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
 
-   if (pMsg->mType == 'C') {
+   if ((pMsg->mType == 'C') || (pMsg->mType == 'c')) {
       // connect
 
       zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mUuid);
       if (pOrigMsg == NULL) {
+         // found peer via beacon message
+         if (pMsg->mType == 'c') {
+            MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
+         }
+
          // we've never seen this peer before, so connect (sub => pub)
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr, impl->mDataReconnect, impl->mDataReconnectTimeout));
 
@@ -562,10 +587,9 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       }
 
       // is this our msg?
-      if (strcmp(pMsg->mUuid, impl->mUuid) == 0) {
+      if ((wInterlocked_read(&impl->mNamingConnected) !=1) && (strcmp(pMsg->mUuid, impl->mUuid) == 0)) {
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling");
          wInterlocked_set(1, &impl->mNamingConnected);
-         return MAMA_STATUS_OK;
       }
    }
    else if (pMsg->mType == 'D') {
@@ -1477,7 +1501,7 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
       status = MAMA_STATUS_PLATFORM;
    }
    else {
-      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Published endpoint msg: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
+      MAMA_LOG(getNamingLogLevel(msg.mType), "Published endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", msg.mType, msg.mProgName, msg.mHost, msg.mUuid, msg.mPid, msg.mTopic, msg.mEndPointAddr);
       status = zmqBridgeMamaTransportImpl_kickSocket(impl->mZmqNamingPub.mSocket);
    }
    wlock_unlock(impl->mZmqNamingPub.mLock);
