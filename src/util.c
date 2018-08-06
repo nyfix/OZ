@@ -50,7 +50,7 @@ const char* zmqBridge_generateSerial(long long* id)
    return strdup(temp);
 }
 
-
+#ifndef  USE_MAMA_LOG
 #define MAX_LOG_MSG_SIZE 1024
 // TODO: figure out a way to do this without needing to call printf twice
 void mama_log_helper (MamaLogLevel level, const char* function, const char* file, int lineno, const char *format, ...)
@@ -68,7 +68,7 @@ void mama_log_helper (MamaLogLevel level, const char* function, const char* file
    // TODO: is there a better way than calling basename?
    mama_log(level, "%s:%s (%s:%d)", function, temp, basename(file), lineno);
 }
-
+#endif
 
 const char* get_zmqEventName(int event)
 {
