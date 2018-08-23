@@ -616,6 +616,15 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // (which will happen if peer has already exited, for example)
       zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr);
 
+      // In cases where a process doesn't send messages via dataPub socket, the socket must have an opportunity to
+      // clean up resources (e.g., disconnected endpoints), and this is as good a place as any.
+      // For more info see https://github.com/zeromq/libzmq/issues/3186
+      wlock_lock(impl->mZmqDataPub.mLock);
+      size_t fd_size = sizeof(uint32_t);
+      uint32_t fd;
+      zmq_getsockopt (impl->mZmqDataPub.mSocket, ZMQ_EVENTS, &fd, &fd_size);
+      wlock_unlock(impl->mZmqDataPub.mLock);
+
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mEndPointAddr);
    }
    else if (pMsg->mType == 'W') {
