@@ -4,7 +4,7 @@ SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)                           #
 source ${SCRIPT_DIR}/dependencies $*
 
 # defaults for dev
-export INSTALL_BASE=$HOME/install
+[[ -z ${INSTALL_BASE} ]] && export INSTALL_BASE="${HOME}/install"
 
 #################################################################
 # look for files of the form devenv.$user.$host.sh and devenv.$user.sh
