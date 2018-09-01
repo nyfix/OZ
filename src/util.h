@@ -1,6 +1,7 @@
 #ifndef OPENMAMA_ZMQ_UTIL_H
 #define OPENMAMA_ZMQ_UTIL_H
 
+
 // call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
 #define CALL_MAMA_FUNC(x)                                                                  \
    do {                                                                                    \
@@ -51,6 +52,6 @@ int get_zmqEventMask(int logLevel);
 
 MamaLogLevel getNamingLogLevel(const char mType);
 
-uint64_t getMicros(void);
+uint64_t getMillis(void);
 
 #endif

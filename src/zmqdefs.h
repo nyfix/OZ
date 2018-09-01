@@ -27,6 +27,9 @@
 #ifndef MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 #define MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 
+#define ONE_MILLION           1000000
+
+
 ///////////////////////////////////////////////////////////////////////
 // the following definitions control how the library is built
 
@@ -144,16 +147,16 @@ typedef struct zmqTransportBridge_ {
    zmqSocket               mZmqControlPub;
 
    // naming transports only
-   zmqSocket               mZmqNamingPub;       // outgoing connections to proxy
-   zmqSocket               mZmqNamingSub;       // incoming connections from proxy
-   const char*             mPubEndpoint;        // endpoint address for naming
+   zmqSocket               mZmqNamingPub;             // outgoing connections to proxy
+   zmqSocket               mZmqNamingSub;             // incoming connections from proxy
+   const char*             mPubEndpoint;              // endpoint address for naming
    const char*             mNamingAddress[ZMQ_MAX_NAMING_URIS];
-   int                     mNamingReconnect;
-   double                  mNamingReconnectTimeout;
-   int                     mNamingWaitForConnect;
-   int                     mNamingConnectRetries;
-   double                  mNamingConnectInterval;
-   int                     mBeaconInterval;
+   int                     mNamingReconnect;          // enable auto-reconnect for naming sockets?
+   int                     mNamingReconnectInterval;
+   int                     mNamingWaitForConnect;     // wait until connected to proxy at startup/abort if failed?
+   int                     mNamingConnectRetries;     // max number of proxy connect attempts
+   int                     mNamingConnectInterval;    // interval between proxy connect attempts (in micros, as per usleep)
+   int                     mBeaconInterval;           // interval between beacons (in millis, as per zmq_poll), or -1 to disable beaconing
 
    // "data" sockets for normal messaging
    zmqSocket               mZmqDataPub;
@@ -161,7 +164,7 @@ typedef struct zmqTransportBridge_ {
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
    int                     mDataReconnect;
-   double                  mDataReconnectTimeout;
+   int                     mDataReconnectInterval;
 
    // main dispatch thread
    wthread_t               mOmzmqDispatchThread;

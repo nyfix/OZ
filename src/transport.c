@@ -102,6 +102,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Initializing transport with name %s", impl->mName);
 
    // parse params
+   wInterlocked_initialize(&impl->mBeaconInterval);
    zmqBridgeMamaTransportImpl_parseCommonParams(impl);
    if (impl->mIsNaming == 1) {
       zmqBridgeMamaTransportImpl_parseNamingParams(impl);
@@ -156,7 +157,6 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mInboxSubject = strdup(temp);
 
    wInterlocked_initialize(&impl->mNamingConnected);
-   wInterlocked_initialize(&impl->mBeaconInterval);
 
    // connect/bind/subscribe/etc. all sockets
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_init(impl));
@@ -165,19 +165,6 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_start(impl));
 
    *result = (transportBridge) impl;
-
-   // dont proceed until we are connected to nsd?
-   if (impl->mNamingWaitForConnect == 1) {
-      int retries = impl->mNamingConnectRetries;
-      while ((--retries > 0) && (wInterlocked_read(&impl->mNamingConnected) != 1)) {
-         usleep(impl->mNamingConnectInterval * 1000000);
-      }
-      if (wInterlocked_read(&impl->mNamingConnected) != 1) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
-         return MAMA_STATUS_TIMEOUT;
-      }
-   }
-
    impl->mIsValid = 1;
 
    return MAMA_STATUS_OK;
@@ -198,6 +185,14 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    // stop the dispatcher(s)
    status = zmqBridgeMamaTransportImpl_stop(impl);
    wsem_destroy(&impl->mIsReady);
+
+   // make sure we don't delete the transport out from under publishEndpoints, if it's running
+   if (wInterlocked_read(&impl->mNamingConnected) == 0) {
+      // this can only be true if publishEndpoints is running in a separate thread(s)
+      // if so, give the thread a chance to terminate
+      usleep(impl->mNamingConnectInterval * 2);
+   }
+
    wInterlocked_destroy(&impl->mNamingConnected);
 
    // close sockets
@@ -205,7 +200,7 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqDataSub);
    zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqControlPub);
    zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqControlSub);
-   if (impl->mIsNaming) {
+   if (impl->mIsNaming == 1) {
       zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingPub);
       zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingSub);
    }
@@ -305,13 +300,13 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataPub, ZMQ_PUB_TYPE, "dataPub", impl->mSocketMonitor));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataSub, ZMQ_SUB_TYPE, "dataSub", impl->mSocketMonitor));
    // set socket options as per mama.properties etc.
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setSocketOptions(impl->mName, &impl->mZmqDataPub));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setSocketOptions(impl->mName, &impl->mZmqDataSub));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setCommonSocketOptions(impl->mName, &impl->mZmqDataPub));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_setCommonSocketOptions(impl->mName, &impl->mZmqDataSub));
 
    // subscribe to inbox subjects
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqDataSub.mSocket, impl->mInboxSubject));
 
-   if (impl->mIsNaming) {
+   if (impl->mIsNaming == 1) {
       // create naming sockets
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingPub, ZMQ_PUB_TYPE, "namingPub", impl->mSocketMonitor));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingSub, ZMQ_SUB_TYPE, "namingSub", impl->mSocketMonitor));
@@ -323,12 +318,12 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_startMonitor(impl));
    }
 
-   if (impl->mIsNaming) {
+   if (impl->mIsNaming == 1) {
       // bind data pub socket & get endpoint
       char endpointAddress[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpointAddress, "tcp://%s:*", impl->mPublishAddress);
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqDataPub,  endpointAddress, &impl->mPubEndpoint,
-         impl->mNamingReconnect, impl->mNamingReconnectTimeout));
+         impl->mNamingReconnect, impl->mNamingReconnectInterval));
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Bound publish socket to:%s ", impl->mPubEndpoint);
 
       // prefer connecting sub to pub (see https://github.com/zeromq/libzmq/issues/2267)
@@ -337,7 +332,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       // connect sub socket to proxy
       for (int i = 0; (i < ZMQ_MAX_NAMING_URIS) && (impl->mNamingAddress[i] != NULL); ++i) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mNamingAddress[i],
-            impl->mNamingReconnect, impl->mNamingReconnectTimeout));
+            impl->mNamingReconnect, impl->mNamingReconnectInterval));
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting naming subscriber to: %s", impl->mNamingAddress[i]);
       }
    }
@@ -346,7 +341,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       for (int i = 0; (i < ZMQ_MAX_OUTGOING_URIS) && (NULL != impl->mOutgoingAddress[i]); i++) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindOrConnect(&impl->mZmqDataPub,
          impl->mOutgoingAddress[i], ZMQ_TPORT_DIRECTION_OUTGOING,
-         impl->mDataReconnect, impl->mDataReconnectTimeout));
+         impl->mDataReconnect, impl->mDataReconnectInterval));
 
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data publisher socket to subscriber:%s", impl->mOutgoingAddress[i]);
       }
@@ -354,7 +349,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       for (int i = 0; (i < ZMQ_MAX_INCOMING_URIS) && (NULL != impl->mIncomingAddress[i]); i++) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindOrConnect(&impl->mZmqDataSub,
             impl->mIncomingAddress[i], ZMQ_TPORT_DIRECTION_INCOMING,
-            impl->mDataReconnect, impl->mDataReconnectTimeout));
+            impl->mDataReconnect, impl->mDataReconnectInterval));
 
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting data subscriber socket to publisher:%s", impl->mIncomingAddress[i]);
       }
@@ -373,6 +368,20 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
       return MAMA_STATUS_PLATFORM;
    }
 
+   // dont proceed until we are connected to proxy?
+   if ( (impl->mIsNaming == 1) && (impl->mNamingWaitForConnect == 1) ) {
+      // wait for welcome msg from proxy to trigger publishEndpoints, which in turn
+      // causes mNamingConnected to be set on receipt of our naming msg
+      int retries = impl->mNamingConnectRetries;
+      while ((--retries > 0) && (wInterlocked_read(&impl->mNamingConnected) != 1)) {
+         usleep(impl->mNamingConnectInterval);
+      }
+      if (wInterlocked_read(&impl->mNamingConnected) != 1) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
+         return MAMA_STATUS_TIMEOUT;
+      }
+   }
+
    return MAMA_STATUS_OK;
 }
 
@@ -383,11 +392,11 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
    wInterlocked_set(-1, &impl->mBeaconInterval);
 
    // make sure that transport has started before we try to stop it
-   // prevents a race condition on mIsDispatching
+   // (prevents a race condition on mIsDispatching)
    wsem_wait(&impl->mIsReady);
 
    // send disconnect msg to peers
-   if (impl->mIsNaming) {
+   if (impl->mIsNaming == 1) {
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'D'));
    }
 
@@ -397,7 +406,12 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(impl, &msg, sizeof(msg)));
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Waiting on dispatch thread to terminate.");
-   wthread_join(impl->mOmzmqDispatchThread, NULL);
+   int rc = wthread_join(impl->mOmzmqDispatchThread, NULL);
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "join of dispatch thread failed %d(%s)", rc, strerror(rc));
+      return MAMA_STATUS_PLATFORM;
+   }
+
    mama_status status = impl->mOmzmqDispatchStatus;
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Rejoined with status: %s.", mamaStatus_stringForStatus(status));
 
@@ -425,13 +439,19 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
    // prevents a race condition on mIsDispatching
    wsem_post(&impl->mIsReady);
 
-
+   // lock sockets
    wlock_lock(impl->mZmqDataSub.mLock);
-   if (impl->mIsNaming) {
+   if (impl->mIsNaming == 1) {
       wlock_lock(impl->mZmqNamingSub.mLock);
    }
 
-   uint64_t nextBeacon = 0;
+   // set next beacon time
+   uint64_t lastBeacon = 0;
+   uint64_t nextBeacon = -1;
+   if (wInterlocked_read(&impl->mBeaconInterval) > 0) {
+      nextBeacon = getMillis() + wInterlocked_read(&impl->mBeaconInterval);
+   }
+
    zmq_pollitem_t items[] = {
       { impl->mZmqControlSub.mSocket, 0, ZMQ_POLLIN , 0},
       { impl->mZmqDataSub.mSocket,    0, ZMQ_POLLIN , 0},
@@ -440,7 +460,11 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
    // Check if we should be still dispatching.
    while (1 == wInterlocked_read(&impl->mIsDispatching)) {
 
-      int rc = zmq_poll(items, impl->mIsNaming ? 3 : 2, wInterlocked_read(&impl->mBeaconInterval));
+      long timeout = -1;
+      if (wInterlocked_read(&impl->mBeaconInterval) > 0) {
+         timeout = nextBeacon - lastBeacon;
+      }
+      int rc = zmq_poll(items, (impl->mIsNaming == 1) ? 3 : 2, timeout);
       if (rc < 0) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned %d - errorno %d(%s)", rc, zmq_errno(), zmq_strerror(zmq_errno()));
          continue;
@@ -449,10 +473,11 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 
       // TODO: is this the best place?
       // send a "beacon"?
-      if (wInterlocked_read(&impl->mBeaconInterval) > 0) {
-         uint64_t now = getMicros();
-         if (now > nextBeacon) {
+      if (nextBeacon > 0) {
+         uint64_t now = getMillis();
+         if (now >= nextBeacon) {
             zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'c');
+            lastBeacon = now;
             nextBeacon = now + wInterlocked_read(&impl->mBeaconInterval);
          }
       }
@@ -505,11 +530,12 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
                zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
             }
          }
-      } while(keepGoing == 1);
+      } while (keepGoing == 1);
    }
 
+   // unlock sockets
    wlock_unlock(impl->mZmqDataSub.mLock);
-   if (impl->mIsNaming) {
+   if (impl->mIsNaming == 1) {
       wlock_unlock(impl->mZmqNamingSub.mLock);
    }
 
@@ -567,13 +593,13 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
       zmqNamingMsg* pOrigMsg = wtable_lookup(impl->mPeers, pMsg->mUuid);
       if (pOrigMsg == NULL) {
-         // found peer via beacon message
          if (pMsg->mType == 'c') {
+            // found peer via beacon message
             MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
          }
 
          // we've never seen this peer before, so connect (sub => pub)
-         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr, impl->mDataReconnect, impl->mDataReconnectTimeout));
+         CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr, impl->mDataReconnect, impl->mDataReconnectInterval));
 
          // send a discovery msg whenever we see a peer we haven't seen before
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
@@ -586,8 +612,8 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at endpoint:%s", pMsg->mEndPointAddr);
       }
 
-      // is this our msg?
-      if ((wInterlocked_read(&impl->mNamingConnected) !=1) && (strcmp(pMsg->mUuid, impl->mUuid) == 0)) {
+      // is this our msg? if so, we know we're connected to proxy
+      if ((wInterlocked_read(&impl->mNamingConnected) != 1) && (strcmp(pMsg->mUuid, impl->mUuid) == 0)) {
          MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling");
          wInterlocked_set(1, &impl->mNamingConnected);
       }
@@ -632,25 +658,19 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
       // connect to proxy
       mama_status status = zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingPub, pMsg->mEndPointAddr,
-         impl->mNamingReconnect, impl->mNamingReconnectTimeout);
+         impl->mNamingReconnect, impl->mNamingReconnectInterval);
       if (status != MAMA_STATUS_OK) {
          MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "connect to naming endpoint(%s) failed %d(%s)", pMsg->mEndPointAddr, status, mamaStatus_stringForStatus(status));
          return MAMA_STATUS_PLATFORM;
       }
 
-      // TODO: need to find a way to cancel the publish thread when shutting down the dispatch thread
-      // (to avoid publish thread crashing when the transport is deleted)
-      #if 0
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C'));
-      #else
-      // start thread to publish namng msg
+      // start thread to publish naming msg
       wthread_t publishThread;
       int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
       if (0 != rc) {
          MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "create of endpoint publish thread failed %d(%s)", rc, strerror(rc));
          return MAMA_STATUS_PLATFORM;
       }
-      #endif
    }
    else {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unknown naming msg type=%c", pMsg->mType);
@@ -1196,7 +1216,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    // set reconnect before bind
    int reconnectInterval = -1;
    if (reconnect == 1) {
-      reconnectInterval = reconnect_timeout * 1000;
+      reconnectInterval = reconnect_timeout;
    }
    CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval)));
 
@@ -1381,35 +1401,13 @@ mama_status zmqBridgeMamaTransportImpl_bindOrConnect(void* socket, const char* u
 }
 
 
-mama_status zmqBridgeMamaTransportImpl_setSocketOptions(const char* name, zmqSocket* socket)
+mama_status zmqBridgeMamaTransportImpl_setCommonSocketOptions(const char* name, zmqSocket* socket)
 {
    wlock_lock(socket->mLock);
    int value = 0;
    CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_RCVHWM, &value, sizeof(value)));
    CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_SNDHWM, &value, sizeof(value)));
    wlock_unlock(socket->mLock);
-
-   // let everything (else) default ...
-   #if 0
-   wlock_lock(socket->mLock);
-   // options apply to all sockets (?!)
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          SNDHWM,             atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RCVHWM,             atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          SNDBUF,             atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RCVBUF,             atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RECONNECT_IVL,      atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RECONNECT_IVL_MAX,  atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          BACKLOG,            atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RCVTIMEO,           atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          SNDTIMEO,           atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int,          RATE,               atoi);
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  uint64_t,     AFFINITY,           atoll);
-   #if ZMQ_VERSION_MINOR >= 2
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  const char*,  IDENTITY,                );
-   #endif
-   ZMQ_SET_SOCKET_OPTIONS(name, socket->mSocket,  int64_t,      MAXMSGSIZE,         atoll);
-   wlock_unlock(socket->mLock);
-   #endif
 
    return MAMA_STATUS_OK;
 }
@@ -1519,28 +1517,26 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
 }
 
 
-// publishes endpoint message continuously every 100ms until we get it back
+// publishes endpoint message continuously until we get it back
 void* zmqBridgeMamaTransportImpl_publishEndpoints(void* closure)
 {
    zmqTransportBridge* impl = (zmqTransportBridge*) closure;
 
    wInterlocked_set(0, &impl->mNamingConnected);
-
    int retries = impl->mNamingConnectRetries;
-   while (--retries > 0) {
+   while ( (--retries > 0) && (1 == wInterlocked_read(&impl->mIsDispatching)) ) {
       zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'C');
       if (wInterlocked_read(&impl->mNamingConnected) == 1) {
-         MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully published endpoint msg");
+         MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Successfully connected to proxy");
          return NULL;
       }
 
-      usleep(impl->mNamingConnectInterval * 1000000);
+      usleep(impl->mNamingConnectInterval);
    }
-
-   MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
 
    return NULL;
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // socket monitor
@@ -1630,7 +1626,10 @@ mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl)
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
    }
 
-   wthread_join(impl->mOmzmqMonitorThread, NULL);
+   int rc = wthread_join(impl->mOmzmqMonitorThread, NULL);
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "join of monitor thread failed %d(%s)", rc, strerror(rc));
+   }
 
    // TODO: resolve https://github.com/zeromq/libzmq/issues/3152
    //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqMonitorPub, ZMQ_MONITOR_ENDPOINT));

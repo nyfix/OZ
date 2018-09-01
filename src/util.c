@@ -152,20 +152,22 @@ int get_zmqEventMask(int logLevel)
    return eventMask;
 }
 
+#define MAMA_LOG_LEVEL_BEACON MAMA_LOG_LEVEL_FINEST
+//#define MAMA_LOG_LEVEL_BEACON MAMA_LOG_LEVEL_NORMAL
 
 MamaLogLevel getNamingLogLevel(const char mType)
 {
    if (mType == 'c')
-      return MAMA_LOG_LEVEL_FINEST;
+      return MAMA_LOG_LEVEL_BEACON;
    else
       return MAMA_LOG_LEVEL_NORMAL;
 }
 
 
-uint64_t getMicros(void)
+uint64_t getMillis(void)
 {
     //  Use POSIX gettimeofday function to get precise time.
     struct timeval tv;
-    gettimeofday (&tv, NULL);
-    return (tv.tv_sec * (uint64_t) 1000000 + tv.tv_usec);
+    gettimeofday(&tv, NULL);
+    return ((tv.tv_sec * (uint64_t) 1000) + (tv.tv_usec / 1000));
 }
