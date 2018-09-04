@@ -32,9 +32,10 @@
 const char* zmqBridge_generateUuid()
 {
    wUuid tempUuid;
-   // this appears to be the "most" unique of all the uuid_generate functions
-   // (it better be ;-)
-   wUuid_generate(tempUuid);
+   if (wUuid_generate_time_safe(tempUuid) == -1) {
+      return NULL;
+   }
+
    char uuidStringBuffer[UUID_STRING_SIZE+ 1];
    wUuid_unparse(tempUuid, uuidStringBuffer);
 
