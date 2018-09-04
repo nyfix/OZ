@@ -152,6 +152,11 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
 
    // generate inbox subject
    impl->mUuid = zmqBridge_generateUuid();
+   if (impl->mUuid == NULL) {
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Failed to generate safe wUuid");
+      free(impl);
+      return MAMA_STATUS_SYSTEM_ERROR;
+   }
    char temp[ZMQ_INBOX_SUBJECT_SIZE +1];
    sprintf(temp, "%s.%s", ZMQ_REPLYHANDLE_PREFIX, impl->mUuid);
    impl->mInboxSubject = strdup(temp);
@@ -1685,4 +1690,3 @@ int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName
 
    return 0;
 }
-
