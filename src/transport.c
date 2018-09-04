@@ -423,7 +423,7 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 ///////////////////////////////////////////////////////////////////////////////
 // dispatch functions
 
-// main thread that reads directly off zmq sockets and calls one of the ...dispatch methods
+// main thread that reads directly off zmq sockets and calls one of the dispatchXxxMsg methods
 void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 {
    zmqTransportBridge* impl = (zmqTransportBridge*)closure;

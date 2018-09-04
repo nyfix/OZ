@@ -120,7 +120,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
       impl->mBeaconInterval = -1;
    }
    else {
-      wInterlocked_set(&impl->mBeaconInterval, f * 1000);                                         // millis
+      wInterlocked_set(f * 1000, &impl->mBeaconInterval);                                         // millis
    }
    if (impl->mBeaconInterval < 100) {
       // cant be less than 100 ms
