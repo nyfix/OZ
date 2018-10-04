@@ -1228,7 +1228,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    // bind socket
    int rc = zmq_bind(socket->mSocket, uri);
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_bind(%x, %s) failed %d(%s)", socket->mSocket, uri, errno, zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_bind(%p, %s) failed %d(%s)", socket->mSocket, uri, errno, zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
    else {
@@ -1241,7 +1241,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
       size_t tempSize = sizeof(temp);
       int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
       if (0 != rc) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%x) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%p) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
          status = MAMA_STATUS_PLATFORM;
       }
       else {
@@ -1283,19 +1283,19 @@ mama_status zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket)
    int linger = 0;
    int rc = zmq_setsockopt(socket->mSocket, ZMQ_LINGER, &linger, sizeof(linger));
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%x) failed trying to set linger %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed trying to set linger %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
 
    rc = zmq_socket_monitor(socket->mSocket, NULL, ZMQ_EVENT_ALL);
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket_monitor(%x) failed trying to disable monitoring %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket_monitor(%p) failed trying to disable monitoring %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
 
    rc = zmq_close(socket->mSocket);
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_close(%x) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_close(%p) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
 
@@ -1314,7 +1314,7 @@ mama_status zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket)
    int reconnectInterval = -1;
    int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval));
    if (rc != 0) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%x) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
    wlock_unlock(socket->mLock);
@@ -1422,10 +1422,12 @@ mama_status zmqBridgeMamaTransportImpl_setCommonSocketOptions(const char* name, 
 // NOTE: caller needs to have acquired lock
 mama_status zmqBridgeMamaTransportImpl_kickSocket(void* socket)
 {
+   #if 0
    // see https://github.com/zeromq/libzmq/issues/2267
    zmq_pollitem_t pollitems [] = { { socket, 0, ZMQ_POLLIN, 0 } };
    CALL_ZMQ_FUNC(zmq_poll(pollitems, 1, 1));
-   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "zmq_poll(%x) complete", socket);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINER, "zmq_poll(%p) complete", socket);
+   #endif
    return MAMA_STATUS_OK;
 }
 
@@ -1438,7 +1440,7 @@ mama_status zmqBridgeMamaTransportImpl_kickSocket(void* socket)
 // NOTE: The subscribe method is controlled by the USE_XSUB preprocessor symbol.
 mama_status zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic)
 {
-   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Socket %x subscribing to %s", socket, topic);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Socket %p subscribing to %s", socket, topic);
 
    #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
@@ -1456,7 +1458,7 @@ mama_status zmqBridgeMamaTransportImpl_subscribe(void* socket, const char* topic
 
 mama_status zmqBridgeMamaTransportImpl_unsubscribe(void* socket, const char* topic)
 {
-   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Socket %x unsubscribing from %s", socket, topic);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Socket %p unsubscribing from %s", socket, topic);
 
    #ifdef USE_XSUB
    char buf[MAX_SUBJECT_LENGTH + 1];
@@ -1686,7 +1688,7 @@ int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName
       return 0;
    }
 
-   MAMA_LOG(logLevel, "socket:%x name:%s value:%d event:%d desc:%s endpoint:%s", socket, socketName, value, event, eventName, endpoint);
+   MAMA_LOG(logLevel, "socket:%p name:%s value:%d event:%d desc:%s endpoint:%s", socket, socketName, value, event, eventName, endpoint);
 
    return 0;
 }
