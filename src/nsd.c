@@ -92,12 +92,16 @@ int main (int argc, char** argv)
    gethostname(welcomeMsg.mHost, sizeof(welcomeMsg.mHost));
    welcomeMsg.mPid = getpid();
    rc = zmq_setsockopt(backend, ZMQ_XPUB_WELCOME_MSG, &welcomeMsg, sizeof(welcomeMsg));
+   if (rc != 0) {
+      mama_log(MAMA_LOG_LEVEL_SEVERE, "Unable to set welcome message: %d(%s)", errno, zmq_strerror(errno));
+      exit(7);
+   }
 
    // bind the backend socket to pub endpoint
    rc = zmq_bind (backend, pubEndpoint);
    if (rc != 0) {
       mama_log(MAMA_LOG_LEVEL_SEVERE, "Unable to bind backend: %d(%s)", errno, zmq_strerror(errno));
-      exit(7);
+      exit(8);
    }
 
    //  Run the proxy until the user interrupts us
