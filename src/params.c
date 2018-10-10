@@ -117,7 +117,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    impl->mNamingReconnectInterval = getFloat(name, "naming.retry_interval", .1) * 1000;           // millis
    double f = getFloat(name, "naming.beacon_interval", 1);
    if (f <= 0) {
-      impl->mBeaconInterval = -1;
+      impl->mBeaconInterval = 0;
    }
    else {
       wInterlocked_set(f * 1000, &impl->mBeaconInterval);                                         // millis

@@ -370,7 +370,7 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    if (impl->mMsgType == ZMQ_MSG_INBOX_REQUEST) {
       // for requests, reply address is embedded in msg
       strcpy(impl->mReplyHandle, (const char*)bufferPos);
-      bufferPos += strlen(bufferPos);
+      bufferPos += strlen((char*) bufferPos);
    }
    else if (impl->mMsgType == ZMQ_MSG_INBOX_RESPONSE) {
       // for responses, reply address is the subject

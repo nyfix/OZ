@@ -394,7 +394,7 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
 mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
 {
    // disable beaconing if applicable
-   wInterlocked_set(-1, &impl->mBeaconInterval);
+   wInterlocked_set(0, &impl->mBeaconInterval);
 
    // make sure that transport has started before we try to stop it
    // (prevents a race condition on mIsDispatching)
@@ -1390,6 +1390,8 @@ mama_status zmqBridgeMamaTransportImpl_bindOrConnect(void* socket, const char* u
                break;
          }
          break;
+      default:
+         return MAMA_STATUS_INVALID_ARG;
    }
 
    /* If this is a binding transport */

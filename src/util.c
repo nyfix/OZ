@@ -43,7 +43,7 @@ const char* zmqBridge_generateUuid()
 }
 
 
-const char* zmqBridge_generateSerial(long long* id)
+const char* zmqBridge_generateSerial(unsigned long long* id)
 {
    long long next = __sync_add_and_fetch(id, 1);
    char temp[ZMQ_REPLYHANDLE_INBOXNAME_SIZE +1];

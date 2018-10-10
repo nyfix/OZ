@@ -26,7 +26,7 @@
 
 #define UUID_STRING_SIZE 36
 const char* zmqBridge_generateUuid();
-const char* zmqBridge_generateSerial(long long* id);
+const char* zmqBridge_generateSerial(unsigned long long* id);
 
 #define USE_MAMA_LOG
 #ifdef  USE_MAMA_LOG

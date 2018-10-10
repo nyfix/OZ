@@ -15,7 +15,6 @@
 
 void sighandler(int unused)
 {
-   unused;
 }
 
 int main (int argc, char** argv)
