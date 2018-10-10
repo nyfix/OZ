@@ -1137,7 +1137,7 @@ memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* imp
 
 ///////////////////////////////////////////////////////////////////////////////
 // zmq socket functions
-mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* pSocket, int type, const char* name, int monitor)
+mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket* socket, int type, const char* name, int monitor)
 {
    void* temp = zmq_socket(zmqContext, type);
    if (temp == NULL) {
@@ -1145,19 +1145,20 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
       return MAMA_STATUS_PLATFORM;
    }
 
-   pSocket->mSocket = temp;
-   pSocket->mLock = wlock_create();
+   socket->mSocket = temp;
+   socket->mLock = wlock_create();
+   socket->mMonitor = monitor;
 
    // we dont use router/dealer or req/rep, so we hijack the identity property to set a name to make debugging easier
-   CALL_ZMQ_FUNC(zmq_setsockopt(pSocket->mSocket, ZMQ_IDENTITY, name, strlen(name) +1));
+   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_IDENTITY, name, strlen(name) +1));
 
-   if ((monitor ==1) && (name != NULL)) {
+   if ((socket->mMonitor != 0) && (name != NULL)) {
       char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpoint, "inproc://%s", name);
-      CALL_ZMQ_FUNC(zmq_socket_monitor(pSocket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel)));
+      CALL_ZMQ_FUNC(zmq_socket_monitor(socket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel)));
    }
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "(%p, %d) succeeded", pSocket->mSocket, type);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "(%p, %d) succeeded", socket->mSocket, type);
 
    return MAMA_STATUS_OK;
 }
@@ -1287,10 +1288,12 @@ mama_status zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket)
       status = MAMA_STATUS_PLATFORM;
    }
 
-   rc = zmq_socket_monitor(socket->mSocket, NULL, ZMQ_EVENT_ALL);
-   if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket_monitor(%p) failed trying to disable monitoring %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
-      status = MAMA_STATUS_PLATFORM;
+   if (socket->mMonitor != 0) {
+      rc = zmq_socket_monitor(socket->mSocket, NULL, ZMQ_EVENT_ALL);
+      if (0 != rc) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket_monitor(%p) failed trying to disable monitoring %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
+         status = MAMA_STATUS_PLATFORM;
+      }
    }
 
    rc = zmq_close(socket->mSocket);

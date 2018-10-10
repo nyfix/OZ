@@ -122,6 +122,7 @@ typedef enum zmqTransportDirection_ {
 typedef struct zmqSocket_ {
    void*       mSocket;        // the zmq socket
    wLock       mLock;          // mutex to control access to socket across threads
+   int         mMonitor;       // if non-zero, socket is to be monitored
 } zmqSocket;
 
 
