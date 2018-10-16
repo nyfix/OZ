@@ -191,8 +191,9 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    status = zmqBridgeMamaTransportImpl_stop(impl);
    wsem_destroy(&impl->mIsReady);
 
+   // TODO: is this good enough?
    // make sure we don't delete the transport out from under publishEndpoints, if it's running
-   if (wInterlocked_read(&impl->mNamingConnected) == 0) {
+   if ((impl->mIsNaming == 1) && (wInterlocked_read(&impl->mNamingConnected) == 0)) {
       // this can only be true if publishEndpoints is running in a separate thread(s)
       // if so, give the thread a chance to terminate
       usleep(impl->mNamingConnectInterval * 2);
@@ -479,11 +480,15 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       // TODO: is this the best place?
       // send a "beacon"?
       if (nextBeacon > 0) {
-         uint64_t now = getMillis();
-         if (now >= nextBeacon) {
-            zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'c');
-            lastBeacon = now;
-            nextBeacon = now + wInterlocked_read(&impl->mBeaconInterval);
+         // if we're shutting down, beaconInterval will be 0, so dont send it
+         uint32_t beaconInterval = wInterlocked_read(&impl->mBeaconInterval);
+         if (beaconInterval > 0) {
+            uint64_t now = getMillis();
+            if (now >= nextBeacon) {
+               zmqBridgeMamaTransportImpl_sendEndpointsMsg(impl, 'c');
+               lastBeacon = now;
+               nextBeacon = now + beaconInterval;
+            }
          }
       }
 
