@@ -202,13 +202,13 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    wInterlocked_destroy(&impl->mNamingConnected);
 
    // close sockets
-   zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqDataPub);
    zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqDataSub);
-   zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqControlPub);
+   zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqDataPub);
    zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqControlSub);
+   zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqControlPub);
    if (impl->mIsNaming == 1) {
-      zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingPub);
       zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingSub);
+      zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqNamingPub);
    }
 
    // stop the monitor thread
@@ -631,6 +631,8 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
    else if (pMsg->mType == 'D') {
       // disconnect
 
+      #undef USEAFTERFREE_REPRO
+      #ifdef USEAFTERFREE_REPRO
       // TODO: do we want to wait until we receive our own disconnect msg before we shut down?
       // is this our msg?
       if (strcmp(pMsg->mUuid, impl->mUuid) == 0) {
@@ -638,6 +640,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          // NOTE: dont disconnect from self
          return MAMA_STATUS_OK;
       }
+      #endif
 
       // remove endpoint from the table
       zmqNamingMsg* pOrigMsg = wtable_remove(impl->mPeers, pMsg->mUuid);
@@ -652,6 +655,8 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // (which will happen if peer has already exited, for example)
       zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr);
 
+      //#define KICK_DATAPUB
+      #ifdef KICK_DATAPUB
       // In cases where a process doesn't send messages via dataPub socket, the socket must have an opportunity to
       // clean up resources (e.g., disconnected endpoints), and this is as good a place as any.
       // For more info see https://github.com/zeromq/libzmq/issues/3186
@@ -660,6 +665,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       uint32_t fd;
       zmq_getsockopt (impl->mZmqDataPub.mSocket, ZMQ_EVENTS, &fd, &fd_size);
       wlock_unlock(impl->mZmqDataPub.mLock);
+      #endif
 
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mEndPointAddr);
    }
@@ -1649,9 +1655,9 @@ mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl)
    }
 
    // TODO: resolve https://github.com/zeromq/libzmq/issues/3152
-   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqMonitorPub, ZMQ_MONITOR_ENDPOINT));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqMonitorPub, ZMQ_MONITOR_ENDPOINT));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqMonitorPub));
-   //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unbindSocket(&impl->mZmqMonitorSub, ZMQ_MONITOR_ENDPOINT));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_unbindSocket(&impl->mZmqMonitorSub, ZMQ_MONITOR_ENDPOINT));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_destroySocket(&impl->mZmqMonitorSub));
 
    return MAMA_STATUS_OK;
