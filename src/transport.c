@@ -1169,6 +1169,9 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
       CALL_ZMQ_FUNC(zmq_socket_monitor(socket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel)));
    }
 
+   int linger = 0;
+   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_LINGER, &linger, sizeof(linger)));
+
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "(%p, %d) succeeded", socket->mSocket, type);
 
    return MAMA_STATUS_OK;
@@ -1289,15 +1292,9 @@ mama_status zmqBridgeMamaTransportImpl_unbindSocket(zmqSocket* socket, const cha
 mama_status zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket)
 {
    mama_status status = MAMA_STATUS_OK;
+   int rc;
 
    wlock_lock(socket->mLock);
-
-   int linger = 0;
-   int rc = zmq_setsockopt(socket->mSocket, ZMQ_LINGER, &linger, sizeof(linger));
-   if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed trying to set linger %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
-      status = MAMA_STATUS_PLATFORM;
-   }
 
    if (socket->mMonitor != 0) {
       rc = zmq_socket_monitor(socket->mSocket, NULL, ZMQ_EVENT_ALL);
