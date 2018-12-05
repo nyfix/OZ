@@ -8,7 +8,7 @@ export JIRA_RELEASE=BUS-1780           # release artifact in jira
 
 # internal dependencies
 export LIBEVENT_VERSION=1.4.15
-export LIBZMQ_VERSION=4.2.3
+export LIBZMQ_VERSION=4.3.0
 export OPENMAMA_VERSION=6.2.1
 
 # external dependencies
