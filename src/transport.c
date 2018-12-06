@@ -1169,6 +1169,8 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
       CALL_ZMQ_FUNC(zmq_socket_monitor(socket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel)));
    }
 
+   // do this here, rather than when closing the socket
+   // (see https://github.com/zeromq/libzmq/issues/3252)
    int linger = 0;
    CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_LINGER, &linger, sizeof(linger)));
 
