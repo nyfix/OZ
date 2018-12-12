@@ -121,11 +121,11 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    }
    else {
       wInterlocked_set(f * 1000, &impl->mBeaconInterval);                                         // millis
-   }
-   if (impl->mBeaconInterval < 100) {
-      // cant be less than 100 ms
-      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "beacon_interval cannot be less than 100ms");
-      wInterlocked_set(100,  &impl->mBeaconInterval);
+      if (impl->mBeaconInterval < 100) {
+         // cant be less than 100 ms
+         MAMA_LOG(MAMA_LOG_LEVEL_WARN, "beacon_interval cannot be less than 100ms");
+         wInterlocked_set(100,  &impl->mBeaconInterval);
+      }
    }
 
    // The naming server address can be specified in any of the following formats:
