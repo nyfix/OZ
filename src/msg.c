@@ -382,7 +382,7 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, 
    int payloadSize = size - (bufferPos - (uint8_t*)source);
    assert(payloadSize > 0);
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Received %zu bytes [payload=%d; type=%c]", size, payloadSize, impl->mMsgType);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Received %zu bytes [payload=%d; type=%d]", size, payloadSize, impl->mMsgType);
 
    return mamaMsgImpl_setMsgBuffer(target, (void*) bufferPos, payloadSize, *bufferPos);
 }
