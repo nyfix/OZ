@@ -22,9 +22,6 @@
  * THE SOFTWARE.
  */
 
-/*=========================================================================
-  =                             Includes                                  =
-  =========================================================================*/
 // system includes
 #include <assert.h>
 
@@ -39,33 +36,6 @@
 #include "zmqbridgefunctions.h"
 #include "zmqdefs.h"
 
-
-/*=========================================================================
-  =                Typedefs, structs, enums and globals                   =
-  =========================================================================*/
-
-
-/*=========================================================================
-  =                              Macros                                   =
-  =========================================================================*/
-
-#define     CHECK_QUEUE(IMPL)                                                  \
-   do {                                                                       \
-      if (IMPL == NULL)              return MAMA_STATUS_NULL_ARG;            \
-      if (IMPL->mQueue == NULL)      return MAMA_STATUS_NULL_ARG;            \
-   } while(0)
-
-/* Timeout is in milliseconds */
-#define     ZMQ_QUEUE_DISPATCH_TIMEOUT     500
-#define     ZMQ_QUEUE_MAX_SIZE             WOMBAT_QUEUE_MAX_SIZE
-#define     ZMQ_QUEUE_CHUNK_SIZE           WOMBAT_QUEUE_CHUNK_SIZE
-#define     ZMQ_QUEUE_INITIAL_SIZE         WOMBAT_QUEUE_CHUNK_SIZE
-
-
-/*=========================================================================
-  =                  Private implementation prototypes                    =
-  =========================================================================*/
-
 /**
  * This funcion is called to check the current queue size against configured
  * watermarks to determine whether or not it should call the watermark callback
@@ -74,17 +44,10 @@
  *
  * @param impl The zmq queue bridge implementation to check.
  */
-static void
-zmqBridgeMamaQueueImpl_checkWatermarks(zmqQueueBridge* impl);
+static void zmqBridgeMamaQueueImpl_checkWatermarks(zmqQueueBridge* impl);
 
 
-/*=========================================================================
-  =               Public interface implementation functions               =
-  =========================================================================*/
-
-mama_status
-zmqBridgeMamaQueue_create(queueBridge* queue,
-                          mamaQueue    parent)
+mama_status zmqBridgeMamaQueue_create(queueBridge* queue, mamaQueue parent)
 {
    /* Null initialize the queue to be created */
    zmqQueueBridge*    impl                = NULL;
@@ -122,10 +85,7 @@ zmqBridgeMamaQueue_create(queueBridge* queue,
       return MAMA_STATUS_NOMEM;
    }
 
-   underlyingStatus = wombatQueue_create(impl->mQueue,
-                                         ZMQ_QUEUE_MAX_SIZE,
-                                         ZMQ_QUEUE_INITIAL_SIZE,
-                                         ZMQ_QUEUE_CHUNK_SIZE);
+   underlyingStatus = wombatQueue_create(impl->mQueue, ZMQ_QUEUE_MAX_SIZE, ZMQ_QUEUE_INITIAL_SIZE, ZMQ_QUEUE_CHUNK_SIZE);
    if (WOMBAT_QUEUE_OK != underlyingStatus) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create underlying queue.");
       wombatQueue_deallocate(impl->mQueue);
@@ -139,10 +99,8 @@ zmqBridgeMamaQueue_create(queueBridge* queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_create_usingNative(queueBridge* queue,
-                                      mamaQueue    parent,
-                                      void*        nativeQueue)
+mama_status zmqBridgeMamaQueue_create_usingNative(queueBridge* queue,
+  mamaQueue parent, void* nativeQueue)
 {
    zmqQueueBridge* impl = NULL;
    if (NULL == queue || NULL == parent || NULL == nativeQueue) {
@@ -171,8 +129,7 @@ zmqBridgeMamaQueue_create_usingNative(queueBridge* queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_destroy(queueBridge queue)
+mama_status zmqBridgeMamaQueue_destroy(queueBridge queue)
 {
    wombatQueueStatus  status  = WOMBAT_QUEUE_OK;
    zmqQueueBridge*    impl    = (zmqQueueBridge*) queue;
@@ -200,8 +157,7 @@ zmqBridgeMamaQueue_destroy(queueBridge queue)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_getEventCount(queueBridge queue, size_t* count)
+mama_status zmqBridgeMamaQueue_getEventCount(queueBridge queue, size_t* count)
 {
    zmqQueueBridge* impl       = (zmqQueueBridge*) queue;
    int             countInt   = 0;
@@ -223,8 +179,7 @@ zmqBridgeMamaQueue_getEventCount(queueBridge queue, size_t* count)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_dispatch(queueBridge queue)
+mama_status zmqBridgeMamaQueue_dispatch(queueBridge queue)
 {
    wombatQueueStatus  status;
    zmqQueueBridge*    impl = (zmqQueueBridge*) queue;
@@ -250,10 +205,7 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
        * Perform a dispatch with a timeout to allow the dispatching process
        * to be interrupted by the calling application between iterations
        */
-      status = wombatQueue_timedDispatch(impl->mQueue,
-                                         NULL,
-                                         NULL,
-                                         ZMQ_QUEUE_DISPATCH_TIMEOUT);
+      status = wombatQueue_timedDispatch(impl->mQueue, NULL, NULL, ZMQ_QUEUE_DISPATCH_TIMEOUT);
    }
    while ((WOMBAT_QUEUE_OK == status || WOMBAT_QUEUE_TIMEOUT == status)
           && wInterlocked_read(&impl->mIsDispatching) == 1);
@@ -270,8 +222,7 @@ zmqBridgeMamaQueue_dispatch(queueBridge queue)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_timedDispatch(queueBridge queue, uint64_t timeout)
+mama_status zmqBridgeMamaQueue_timedDispatch(queueBridge queue, uint64_t timeout)
 {
    wombatQueueStatus  status;
    zmqQueueBridge*    impl        = (zmqQueueBridge*) queue;
@@ -283,10 +234,7 @@ zmqBridgeMamaQueue_timedDispatch(queueBridge queue, uint64_t timeout)
    zmqBridgeMamaQueueImpl_checkWatermarks(impl);
 
    /* Attempt to dispatch the queue with a timeout once */
-   status = wombatQueue_timedDispatch(impl->mQueue,
-                                      NULL,
-                                      NULL,
-                                      timeout);
+   status = wombatQueue_timedDispatch(impl->mQueue, NULL, NULL, timeout);
 
    /* If dispatch failed, report here */
    if (WOMBAT_QUEUE_OK != status && WOMBAT_QUEUE_TIMEOUT != status) {
@@ -298,11 +246,10 @@ zmqBridgeMamaQueue_timedDispatch(queueBridge queue, uint64_t timeout)
 
 }
 
-mama_status
-zmqBridgeMamaQueue_dispatchEvent(queueBridge queue)
+mama_status zmqBridgeMamaQueue_dispatchEvent(queueBridge queue)
 {
    wombatQueueStatus  status;
-   zmqQueueBridge*    impl = (zmqQueueBridge*) queue;
+   zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
    /* Perform null checks and return if null arguments provided */
    CHECK_QUEUE(impl);
@@ -322,26 +269,22 @@ zmqBridgeMamaQueue_dispatchEvent(queueBridge queue)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_enqueueEventEx(queueBridge        queue,
-                                mamaQueueEventCB   callback,
-                                void*              closure)
+mama_status zmqBridgeMamaQueue_enqueueEventEx(queueBridge queue,
+  mamaQueueEventCB callback, void* closure)
 {
-   zmqQueueBridge*    impl = (zmqQueueBridge*) queue;
-   
+   zmqQueueBridge* impl = (zmqQueueBridge*) queue;
+
    if (wInterlocked_read(&impl->mIsActive) == 1) {
        return zmqBridgeMamaQueue_enqueueEvent(queue, callback, closure);
-   }  
+   }
 
    // silently drop events if the queue is set to inactive
    MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Dropping event from inactive queue");
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
-                                mamaQueueEventCB   callback,
-                                void*              closure)
+mama_status zmqBridgeMamaQueue_enqueueEvent(queueBridge queue,
+  mamaQueueEventCB callback, void* closure)
 {
    wombatQueueStatus  status;
    zmqQueueBridge*    impl = (zmqQueueBridge*) queue;
@@ -361,10 +304,7 @@ zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
    }
 
    /* Call the underlying wombatQueue_enqueue method */
-   status = wombatQueue_enqueue(impl->mQueue,
-                                (wombatQueueCb) callback,
-                                impl->mParent,
-                                closure);
+   status = wombatQueue_enqueue(impl->mQueue, (wombatQueueCb) callback, impl->mParent, closure);
 
    /* Call the enqueue callback if provided */
    if (NULL != impl->mEnqueueCallback) {
@@ -380,8 +320,7 @@ zmqBridgeMamaQueue_enqueueEvent(queueBridge        queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_stopDispatch(queueBridge queue)
+mama_status zmqBridgeMamaQueue_stopDispatch(queueBridge queue)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -394,10 +333,8 @@ zmqBridgeMamaQueue_stopDispatch(queueBridge queue)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_setEnqueueCallback(queueBridge        queue,
-                                      mamaQueueEnqueueCB callback,
-                                      void*              closure)
+mama_status zmqBridgeMamaQueue_setEnqueueCallback(queueBridge queue,
+  mamaQueueEnqueueCB callback, void* closure)
 {
    zmqQueueBridge* impl   = (zmqQueueBridge*) queue;
 
@@ -414,8 +351,7 @@ zmqBridgeMamaQueue_setEnqueueCallback(queueBridge        queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_removeEnqueueCallback(queueBridge queue)
+mama_status zmqBridgeMamaQueue_removeEnqueueCallback(queueBridge queue)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -429,9 +365,7 @@ zmqBridgeMamaQueue_removeEnqueueCallback(queueBridge queue)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_getNativeHandle(queueBridge queue,
-                                   void**      nativeHandle)
+mama_status zmqBridgeMamaQueue_getNativeHandle(queueBridge queue, void** nativeHandle)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -448,9 +382,7 @@ zmqBridgeMamaQueue_getNativeHandle(queueBridge queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_setHighWatermark(queueBridge queue,
-                                    size_t      highWatermark)
+mama_status zmqBridgeMamaQueue_setHighWatermark(queueBridge queue, size_t highWatermark)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -466,9 +398,7 @@ zmqBridgeMamaQueue_setHighWatermark(queueBridge queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_setLowWatermark(queueBridge    queue,
-                                   size_t         lowWatermark)
+mama_status zmqBridgeMamaQueue_setLowWatermark(queueBridge queue, size_t lowWatermark)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -484,8 +414,7 @@ zmqBridgeMamaQueue_setLowWatermark(queueBridge    queue,
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_activate(queueBridge    queue)
+mama_status zmqBridgeMamaQueue_activate(queueBridge queue)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -494,8 +423,7 @@ zmqBridgeMamaQueue_activate(queueBridge    queue)
    return MAMA_STATUS_OK;
 }
 
-mama_status
-zmqBridgeMamaQueue_deactivate(queueBridge    queue)
+mama_status zmqBridgeMamaQueue_deactivate(queueBridge queue)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -504,22 +432,17 @@ zmqBridgeMamaQueue_deactivate(queueBridge    queue)
    return MAMA_STATUS_OK;
 }
 
-/*=========================================================================
-  =                  Public implementation functions                      =
-  =========================================================================*/
 
-void
-zmqBridgeMamaQueueImpl_setClosure(queueBridge              queue,
-                                  void*                    closure,
-                                  zmqQueueClosureCleanup   callback)
+void zmqBridgeMamaQueueImpl_setClosure(queueBridge queue,
+  void* closure, zmqQueueClosureCleanup callback)
 {
    zmqQueueBridge* impl    = (zmqQueueBridge*) queue;
    impl->mClosure          = closure;
    impl->mClosureCleanupCb = callback;
 }
 
-void*
-zmqBridgeMamaQueueImpl_getClosure(queueBridge              queue)
+
+void* zmqBridgeMamaQueueImpl_getClosure(queueBridge queue)
 {
    zmqQueueBridge* impl = (zmqQueueBridge*) queue;
 
@@ -527,12 +450,7 @@ zmqBridgeMamaQueueImpl_getClosure(queueBridge              queue)
 }
 
 
-/*=========================================================================
-  =                  Private implementation functions                     =
-  =========================================================================*/
-
-void
-zmqBridgeMamaQueueImpl_checkWatermarks(zmqQueueBridge* impl)
+void zmqBridgeMamaQueueImpl_checkWatermarks(zmqQueueBridge* impl)
 {
    size_t              eventCount      =  0;
 

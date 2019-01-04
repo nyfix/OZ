@@ -25,13 +25,19 @@
 #ifndef MAMA_BRIDGE_ZMQ_QUEUE_H__
 #define MAMA_BRIDGE_ZMQ_QUEUE_H__
 
-
-/*=========================================================================
-  =                             Includes                                  =
-  =========================================================================*/
-
 #include "zmqdefs.h"
 
+#define     CHECK_QUEUE(IMPL)                                          \
+   do {                                                                \
+      if (IMPL == NULL)              return MAMA_STATUS_NULL_ARG;      \
+      if (IMPL->mQueue == NULL)      return MAMA_STATUS_NULL_ARG;      \
+   } while(0)
+
+/* Timeout is in milliseconds */
+#define     ZMQ_QUEUE_DISPATCH_TIMEOUT     500
+#define     ZMQ_QUEUE_MAX_SIZE             WOMBAT_QUEUE_MAX_SIZE
+#define     ZMQ_QUEUE_CHUNK_SIZE           WOMBAT_QUEUE_CHUNK_SIZE
+#define     ZMQ_QUEUE_INITIAL_SIZE         WOMBAT_QUEUE_CHUNK_SIZE
 
 #if defined(__cplusplus)
 extern "C" {
@@ -39,17 +45,10 @@ extern "C" {
 
 typedef void (MAMACALLTYPE* zmqQueueClosureCleanup)(void* closure);
 
-/*=========================================================================
-  =                  Public implementation functions                      =
-  =========================================================================*/
+void zmqBridgeMamaQueueImpl_setClosure(queueBridge queue,
+   void* closure, zmqQueueClosureCleanup callback);
 
-void
-zmqBridgeMamaQueueImpl_setClosure(queueBridge              queue,
-                                  void*                    closure,
-                                  zmqQueueClosureCleanup   callback);
-
-void*
-zmqBridgeMamaQueueImpl_getClosure(queueBridge              queue);
+void* zmqBridgeMamaQueueImpl_getClosure(queueBridge queue);
 
 
 #if defined(__cplusplus)
