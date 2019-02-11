@@ -655,7 +655,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // (which will happen if peer has already exited, for example)
       zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr);
 
-      //#define KICK_DATAPUB
+      #define KICK_DATAPUB
       #ifdef KICK_DATAPUB
       // In cases where a process doesn't send messages via dataPub socket, the socket must have an opportunity to
       // clean up resources (e.g., disconnected endpoints), and this is as good a place as any.
