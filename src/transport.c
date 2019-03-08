@@ -445,7 +445,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
    // prevents a race condition on mIsDispatching
    wsem_post(&impl->mIsReady);
 
-   // lock sockets
+   // lock (non-thread-safe) sockets
    wlock_lock(impl->mZmqDataSub.mLock);
    if (impl->mIsNaming == 1) {
       wlock_lock(impl->mZmqNamingSub.mLock);
@@ -458,14 +458,22 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       nextBeacon = getMillis() + wInterlocked_read(&impl->mBeaconInterval);
    }
 
+   // The naming socket is defined last so it can be excluded from the list if we're not running a
+   // "naming" transport.
+   #define CONTROL_SOCKET  0
+   #define NAMING_SOCKET   2
+   #define DATA_SOCKET     1
    zmq_pollitem_t items[] = {
       { impl->mZmqControlSub.mSocket, 0, ZMQ_POLLIN , 0},
       { impl->mZmqDataSub.mSocket,    0, ZMQ_POLLIN , 0},
       { impl->mZmqNamingSub.mSocket,  0, ZMQ_POLLIN , 0}
    };
-   // Check if we should be still dispatching.
+
+   // Following is the transport's main dispatch loop -- it runs "forever"
+   // i.e., until mIsDispatching is set to zero, in dispatchControlMsg, on receipt of an exit ("X") command.
    while (1 == wInterlocked_read(&impl->mIsDispatching)) {
 
+      // If we're beaconing, break out of the zmq_poll when it's time to send a beacon.
       long timeout = -1;
       if (wInterlocked_read(&impl->mBeaconInterval) > 0) {
          timeout = nextBeacon - lastBeacon;
@@ -478,7 +486,8 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       ++impl->mPolls;
 
       // TODO: is this the best place?
-      // send a "beacon"?
+      // Is it time to send a beacon? Note that doing this here means that once there is activity
+      // on *any* socket, we won't send another beacon until *all* sockets have been drained.
       if (nextBeacon > 0) {
          // if we're shutting down, beaconInterval will be 0, so dont send it
          uint32_t beaconInterval = wInterlocked_read(&impl->mBeaconInterval);
@@ -492,55 +501,53 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
          }
       }
 
-      int keepGoing;
-      do {
-         keepGoing = 0;
+      // This implementation drains each of the sockets (control, naming and data) in turn before reading from
+      // the next -- that is, it is not "fair", and it is theoretically possible for an earlier socket to starve
+      // later socket(s).  In practice this should not be a problem, as there should be little traffic on the
+      // control and naming sockets, and esp. for the control socket, its messages are more "important", as
+      // they affect the state of the transport.
 
-         // drain command msgs
-         while (items[0].revents & ZMQ_POLLIN) {
-            int size = zmq_msg_recv(&zmsg, impl->mZmqControlSub.mSocket, ZMQ_DONTWAIT);
-            if (size <= 0) {
-               items[0].revents = 0;
-               if (errno != EAGAIN) {
-                  MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no command msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
-               }
-            }
-            else {
-               keepGoing = 1;
-               zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+      // drain command msgs
+      while (items[CONTROL_SOCKET].revents & ZMQ_POLLIN) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqControlSub.mSocket, ZMQ_DONTWAIT);
+         if (size <= 0) {
+            items[CONTROL_SOCKET].revents = 0;
+            if (errno != EAGAIN) {
+               MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no command msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
             }
          }
+         else {
+            zmqBridgeMamaTransportImpl_dispatchControlMsg(impl, &zmsg);
+         }
+      }
 
-         // drain naming msgs
-         while (items[2].revents & ZMQ_POLLIN) {
-            int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSub.mSocket, ZMQ_DONTWAIT);
-            if (size <= 0) {
-               items[2].revents = 0;
-               if (errno != EAGAIN) {
-                  MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no naming msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
-               }
-            }
-            else {
-               keepGoing = 1;
-               zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
+      // drain naming msgs
+      while (items[NAMING_SOCKET].revents & ZMQ_POLLIN) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqNamingSub.mSocket, ZMQ_DONTWAIT);
+         if (size <= 0) {
+            items[NAMING_SOCKET].revents = 0;
+            if (errno != EAGAIN) {
+               MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no naming msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
             }
          }
+         else {
+            zmqBridgeMamaTransportImpl_dispatchNamingMsg(impl, &zmsg);
+         }
+      }
 
-         // drain normal msgs
-         while (items[1].revents & ZMQ_POLLIN) {
-            int size = zmq_msg_recv(&zmsg, impl->mZmqDataSub.mSocket, ZMQ_DONTWAIT);
-            if (size <= 0) {
-               items[1].revents = 0;
-               if (errno != EAGAIN) {
-                  MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no normal msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
-               }
-            }
-            else {
-               keepGoing = 1;
-               zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
+      // drain normal (data) msgs
+      while (items[DATA_SOCKET].revents & ZMQ_POLLIN) {
+         int size = zmq_msg_recv(&zmsg, impl->mZmqDataSub.mSocket, ZMQ_DONTWAIT);
+         if (size <= 0) {
+            items[DATA_SOCKET].revents = 0;
+            if (errno != EAGAIN) {
+               MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned w/ZMQ_POLLIN, but no normal msg - errorno %d(%s)", zmq_errno(), zmq_strerror(zmq_errno()));
             }
          }
-      } while (keepGoing == 1);
+         else {
+            zmqBridgeMamaTransportImpl_dispatchNormalMsg(impl, &zmsg);
+         }
+      }
    }
 
    // unlock sockets
@@ -655,6 +662,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // (which will happen if peer has already exited, for example)
       zmqBridgeMamaTransportImpl_disconnectSocket(&impl->mZmqDataSub, pMsg->mEndPointAddr);
 
+      // TODO: do we even need this?  only matters for transports that *never* publish data
       #define KICK_DATAPUB
       #ifdef KICK_DATAPUB
       // In cases where a process doesn't send messages via dataPub socket, the socket must have an opportunity to
@@ -838,7 +846,7 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
 // The ...Callback functions are dispatched from the queue/dispatcher associated with the subscription or inbox
 
 ///////////////////////////////////////////////////////////////////////////////
-// Called when inbox reply message removed from queue by dispatch thread
+// Called when inbox reply message removed from queue by callback thread
 // NOTE: Needs to check inbox, which may have been deleted after this event was queued but before it
 // was dequeued.
 // Note also that if the inbox is found, it is guaranteed to exist for the duration of the function,
@@ -900,7 +908,7 @@ exit:
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Called when regular subscription message removed from queue by dispatch thread
+// Called when regular subscription message removed from queue by callback thread
 // NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
 // was dequeued.
 // Note also that if the subscription is found, it is guaranteed to exist for the duration of the function,
@@ -973,7 +981,7 @@ exit:
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Called when wildcard subscription message removed from queue by dispatch thread
+// Called when wildcard subscription message removed from queue by callback thread
 // NOTE: Needs to check subscription, which may have been deleted after this event was queued but before it
 // was dequeued.
 // Note also that if the subscription is found, it is guaranteed to exist for the duration of the function,
