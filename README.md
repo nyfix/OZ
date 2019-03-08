@@ -38,6 +38,6 @@ ZeroMQ can be built to take advantage of newer language features (e.g., C++11 su
 
 We are hopeful that, with help from the OpenMAMA and ZeroMQ communities, these limitations can be resolved in the near future.
 
-### Footnotes
 [^mama]: MAMA, for Middleware Agnostic Messaging API
 [^0mqrefs]: <http://zeromq.org/intro:read-the-manual>
+
