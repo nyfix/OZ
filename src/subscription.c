@@ -57,8 +57,6 @@ mama_status zmqBridgeMamaSubscriptionImpl_createWildcard(zmqSubscription* impl, 
 
 mama_status zmqBridgeMamaSubscriptionImpl_create(zmqSubscription* impl, const char* source, const char* symbol);
 
-mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char** mamaTopic, int* isWildcard);
-
 /*=========================================================================
   =               Public interface implementation functions               =
   =========================================================================*/
@@ -411,50 +409,5 @@ mama_status zmqBridgeMamaSubscriptionImpl_unsubscribe(zmqTransportBridge* transp
    msg.command = 'U';
    wmStrSizeCpy(msg.arg1, topic, sizeof(msg.arg1));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_sendCommand(transport, &msg, sizeof(msg)));
-   return MAMA_STATUS_OK;
-}
-
-
-// converts Transact subject (hierarchical topic, as per WS-Topic) to Mama topic (extended regular expression)
-mama_status zmqBridgeMamaSubscriptionImpl_regex(const char* wsTopic, const char** mamaTopic, int* isWildcard)
-{
-   // copy input
-   // TODO: check len
-   char inTopic[MAX_SUBJECT_LENGTH*2 +1];
-   strcpy(inTopic, wsTopic);
-
-   // TODO: check len
-   char regex[1024] = "^";       // anchor at beginning
-
-   *isWildcard = 0;
-
-   char* p = inTopic;
-   char* end = p+strlen(p);      // trailing null
-
-   while (p < end) {
-      char* q = strchr(p, '*');  // find wildcard char
-      if (q == NULL) {
-         break;                  // no (more) wildcards
-      }
-
-      *isWildcard = 1;
-      *q = '\0';                 // overwrite wildcard w/null
-      strcat(regex, p);          // append string up to wildcard
-      strcat(regex, "[^/]+");    // append regex (any char other than "/")
-      p = q+1;                   // advance past wildcard
-   }
-
-   strcat(regex, p);             // append whatever is left of topic
-
-   // check for special trailing wildcard -- convert to "super" wildcard if found
-   int l = strlen(regex);
-   if (strcmp(&regex[l-3], "//.") == 0) {
-      *isWildcard = 1;
-      strcpy(&regex[l-3], "/.*");
-   }
-
-   strcat(regex, "$");           // anchor at end
-
-   *mamaTopic = strdup(regex);
    return MAMA_STATUS_OK;
 }
