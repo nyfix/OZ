@@ -102,7 +102,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    // init logging
    char* temp = getenv("MAMA_STDERR_LOGGING");
    if (temp) {
-      logLevel = atoi(temp);
+      int logLevel = atoi(temp);
       mama_enableLogging(stderr, (MamaLogLevel) logLevel);
    }
 
