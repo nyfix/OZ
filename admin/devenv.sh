@@ -18,10 +18,9 @@ source ${SCRIPT_DIR}/dependencies $*
 
 # certain build types imply a particular configuration
 [[ ${BUILD_TYPE} == *san ]] && export CONFIG=clang
-# if build type not specified, assume "dev"
-[[ -z ${BUILD_TYPE} ]] && export BUILD_TYPE=dev
 # defaults for dev
 [[ -z ${INSTALL_BASE} ]] && export INSTALL_BASE="${HOME}/install"
+[[ -z ${BUILD_TYPE} ]]   && export BUILD_TYPE="dev"
 
 #################################################################
 # look for files of the form devenv.$user.$host.sh and devenv.$user.sh
