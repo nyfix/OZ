@@ -1,8 +1,25 @@
 #!/bin/bash -x
 
-SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)                           # get current directory
+# get script directory
+SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)
+
+# get cmd line params
+while getopts ':v:b:c:i:' flag; do
+  case "${flag}" in
+    b) export BUILD_TYPE="${OPTARG}"   ; shift ;;
+    c) export CONFIG="${OPTARG}"       ; shift ;;
+    i) export INSTALL_BASE="${OPTARG}" ; shift ;;
+    v) export VERBOSE="VERBOSE=1"      ; shift ;;
+  esac
+done
+
+# source dependencies
 source ${SCRIPT_DIR}/dependencies $*
 
+# certain build types imply a particular configuration
+[[ ${BUILD_TYPE} == *san ]] && export CONFIG=clang
+# if build type not specified, assume "dev"
+[[ -z ${BUILD_TYPE} ]] && export BUILD_TYPE=dev
 # defaults for dev
 [[ -z ${INSTALL_BASE} ]] && export INSTALL_BASE="${HOME}/install"
 
