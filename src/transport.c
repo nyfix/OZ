@@ -99,6 +99,15 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    impl->mControlMessages      = 0;
    impl->mPolls                = 0;
 
+   {
+   // init logging
+   char* temp = getenv("MAMA_STDERR_LOGGING");
+   if (temp) {
+      int logLevel = atoi(temp);
+      mama_enableLogging(stderr, (MamaLogLevel) logLevel);
+   }
+   }
+
    MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Initializing transport with name %s", impl->mName);
 
    // parse params

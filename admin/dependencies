@@ -1,15 +1,23 @@
 #!/bin/bash -xv
 
 ###############################################################################
-# The immediately following definitions are constant for a particular version
 export PROJECT_NAME=OpenMAMA-zmq
 export PROJECT_VERSION=2.0
 export JIRA_RELEASE=BUS-1780           # release artifact in jira
 
 # internal dependencies
-export LIBEVENT_VERSION=1.4.15
 export LIBZMQ_VERSION=4.3.0
 export OPENMAMA_VERSION=6.2.1
+export OPENMAMA_OMNM_VERSION=1.0
 
-# external dependencies
-export CMAKE_VERSION=2.8.12.2
+###############################################################################
+# if a specific config was specified, source that
+if [[ -n "${CONFIG}" ]]; then
+  FILENAME=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)/dependencies.${CONFIG}
+  if [[ -f ${FILENAME} ]]; then
+    source ${FILENAME}
+  else
+    echo "${FILENAME} not found!"
+    return 2
+  fi
+fi

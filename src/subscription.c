@@ -195,10 +195,12 @@ mama_status zmqBridgeMamaSubscription_destroy(subscriptionBridge subscriber)
 
    free((void*)impl->mSubjectKey);
    free((void*)impl->mEndpointIdentifier);
-   free((void*)impl->mOrigRegex);
-   if (NULL != impl->mCompRegex) {
-      regfree(impl->mCompRegex);
-      free((void*)impl->mCompRegex);
+   if (impl->mIsWildcard == 1) {
+      free((void*)impl->mOrigRegex);
+      if (NULL != impl->mCompRegex) {
+         regfree(impl->mCompRegex);
+         free((void*)impl->mCompRegex);
+      }
    }
 
    free(impl);
