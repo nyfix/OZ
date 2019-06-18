@@ -8,7 +8,7 @@ CMAKE_BUILD_TYPE="Debug"
 [[ ${BUILD_TYPE} == "release" ]] && CMAKE_BUILD_TYPE="RelWithDebInfo"
 
 # set install location
-INSTALL_PREFIX="${INSTALL_BASE}/${PROJECT_NAME}/${PROJECT_VERSION}/${BUILD_TYPE}"
+INSTALL_PREFIX="${INSTALL_BASE}/${PROJECT_NAME}/${PROJECT_VERSION}${SUFFIX}/${BUILD_TYPE}"
 
 # delete old install
 [[ -n ${INSTALL_PREFIX} && -d ${INSTALL_PREFIX} ]] && rm -rf ${INSTALL_PREFIX}
