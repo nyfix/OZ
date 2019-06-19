@@ -9,15 +9,3 @@ export JIRA_RELEASE=BUS-1780           # release artifact in jira
 export LIBZMQ_VERSION=4.3.0
 export OPENMAMA_VERSION=6.2.1
 export OPENMAMA_OMNM_VERSION=1.0
-
-###############################################################################
-# if a specific config was specified, source that
-if [[ -n "${CONFIG}" ]]; then
-  FILENAME=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)/dependencies.${CONFIG}
-  if [[ -f ${FILENAME} ]]; then
-    source ${FILENAME}
-  else
-    echo "${FILENAME} not found!"
-    return 2
-  fi
-fi

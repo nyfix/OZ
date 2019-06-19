@@ -2,7 +2,7 @@
 
 source ${BUILD_DIR}/admin/devenv.buildmaster.sh $*
 
-[[ -n ${BUILD_NUMBER} ]] && SUFFIX="-s -${BUILD_NUMBER}"
+[[ -n ${BUILD_NUMBER} ]] && export SUFFIX="-${BUILD_NUMBER}"
 
 # build release version
-./build.sh -v ${SUFFIX}
+./build.sh -v
