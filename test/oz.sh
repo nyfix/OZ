@@ -1,5 +1,7 @@
 #!/bin/bash -x
 
+source ../admin/devenv.sh $@
+
 # OpenMAMA
 export OPENMAMA_ROOT=${INSTALL_BASE}/OpenMAMA/${OPENMAMA_VERSION}/${BUILD_TYPE}
 export PATH=${OPENMAMA_ROOT}/bin:$PATH
