@@ -5,7 +5,9 @@ source ${SCRIPT_DIR}/admin/devenv.sh $@
 
 # debug/release
 CMAKE_BUILD_TYPE="Debug"
-[[ ${BUILD_TYPE} == "release" ]] && CMAKE_BUILD_TYPE="RelWithDebInfo"
+if [[ ${BUILD_TYPE} == "release" ]] ; then
+   CMAKE_BUILD_TYPE="RelWithDebInfo"
+fi
 
 # set install location
 INSTALL_PREFIX="${INSTALL_BASE}/${PROJECT_NAME}/${PROJECT_VERSION}${SUFFIX}/${BUILD_TYPE}"
