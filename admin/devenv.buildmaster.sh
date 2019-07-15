@@ -8,9 +8,6 @@
 export BUILD_TYPE=release
 #export BUILD_TYPE=debug
 
-# prevent annoying debug messages
-unset MALLOC_CHECK_
-
 # standard install location
 export INSTALL_BASE=/build/share
 
@@ -25,6 +22,7 @@ if [[ "${OS}" == "el5" ]]; then
 
    # need cmake for RH5
    export PATH=/build/share/cmake/2.8.12.2/bin:$PATH
+
    # use "nyfix" gcc
    export GCC_ROOT=/opt/nyfix/gcc/4.3.3
    export CC=${GCC_ROOT}/bin/gcc

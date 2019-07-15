@@ -2,12 +2,11 @@
 
 SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)
 source ${SCRIPT_DIR}/admin/devenv.sh $@
+[[ ${VERBOSE} == 1 ]] && VPARAM="VERBOSE=1"
 
 # debug/release
 CMAKE_BUILD_TYPE="Debug"
-if [[ ${BUILD_TYPE} == "release" ]] ; then
-   CMAKE_BUILD_TYPE="RelWithDebInfo"
-fi
+[[ ${BUILD_TYPE} == "release" ]] && CMAKE_BUILD_TYPE="RelWithDebInfo"
 
 # set install location
 INSTALL_PREFIX="${INSTALL_BASE}/${PROJECT_NAME}/${PROJECT_VERSION}${SUFFIX}/${BUILD_TYPE}"
@@ -27,7 +26,7 @@ cmake \
    -DMAMA_SRC=${OPENMAMA_SOURCE} -DMAMA_ROOT=${OPENMAMA_INSTALL} \
    -DZMQ_ROOT=${LIBZMQ_INSTALL} \
    ..
-make ${VERBOSE} && make ${VERBOSE} install
+make ${VPARAM} && make ${VPARAM} install
 rc=$?
 [[ $rc -ne 0 ]] && exit $rc
 

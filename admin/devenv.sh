@@ -4,17 +4,19 @@
 SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)
 
 # get cmd line params
-while getopts ':v:b:c:i:' flag; do
+while getopts ':s:b:c:i:v' flag; do
   case "${flag}" in
-    b) export BUILD_TYPE="${OPTARG}"   ; shift ;;
-    c) export CONFIG="${OPTARG}"       ; shift ;;
-    i) export INSTALL_BASE="${OPTARG}" ; shift ;;
-    v) export VERBOSE="VERBOSE=1"      ; shift ;;
+    s) export SUFFIX="${OPTARG}"          ;;
+    b) export BUILD_TYPE="${OPTARG}"      ;;
+    c) export CONFIG="${OPTARG}"          ;;
+    i) export INSTALL_BASE="${OPTARG}"    ;;
+    v) export VERBOSE=1                   ;;
   esac
 done
+shift $(($OPTIND - 1))
 
 # source dependencies
-source ${SCRIPT_DIR}/dependencies $*
+source ${SCRIPT_DIR}/dependencies
 
 # certain build types imply a particular configuration
 [[ ${BUILD_TYPE} == *san ]] && export CONFIG=clang
