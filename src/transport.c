@@ -306,9 +306,9 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    // create control sockets for inter-thread commands
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSub, ZMQ_SERVER, "controlSub", 0));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSub, ZMQ_PULL, "controlSub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqControlSub,  ZMQ_CONTROL_ENDPOINT, NULL, 0, 0));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPub, ZMQ_CLIENT, "controlPub", 0));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPub, ZMQ_PUSH, "controlPub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqControlPub,  ZMQ_CONTROL_ENDPOINT, 0, 0));
 
    // create data sockets
@@ -1513,7 +1513,10 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 {
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "command=%c arg1=%s", msg->command, msg->arg1);
 
+   wlock_lock(impl->mZmqControlPub.mLock);
    int i = zmq_send(impl->mZmqControlPub.mSocket, msg, msgSize, 0);
+   wlock_unlock(impl->mZmqControlPub.mLock);
+
    if (i <= 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
       return MAMA_STATUS_PLATFORM;
