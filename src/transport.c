@@ -559,6 +559,8 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
       }
    }
 
+   zmq_msg_close(&zmsg);
+
    // unlock sockets
    wlock_unlock(impl->mZmqDataSub.mLock);
    if (impl->mIsNaming == 1) {
