@@ -80,6 +80,10 @@
 #include <wombat/mempool.h>
 #include <endpointpool.h>
 
+// required for definition of ZMQ_CLIENT, ZMQ_SERVER
+#define ZMQ_BUILD_DRAFT_API
+#include <zmq.h>
+
 // zmq bridge includes
 #include "queue.h"
 #include "util.h"
@@ -234,11 +238,7 @@ typedef struct zmqSubscription_ {
 typedef struct zmqTransportMsg_ {
    zmqTransportBridge*     mTransport;
    char*                   mEndpointIdentifier;    // UUID that uniquely identifies a specific subscriber
-   union {
-      uint8_t*             mNodeBuffer;
-      const char*          mSubject;               // for convenience -- w/zmq subject must be first part of message
-   };
-   size_t                  mNodeSize;              // size of mNodeBuffer
+   zmq_msg_t               mZmsg;
 } zmqTransportMsg;
 
 

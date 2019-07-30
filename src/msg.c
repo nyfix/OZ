@@ -348,13 +348,15 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, zmq_ms
 }
 
 
-mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, mama_size_t size, mamaMsg target)
+mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, zmq_msg_t *zmsg, mamaMsg target)
 {
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
    }
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
+   void *source = zmq_msg_data(zmsg);
+   mama_size_t size = zmq_msg_size(zmsg);
    uint8_t* bufferPos = (uint8_t*)source;
 
    // Skip past the subject - don't care about that here
