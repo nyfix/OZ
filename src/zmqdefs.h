@@ -310,8 +310,6 @@ typedef struct zmqBridgeMsgImpl {
    uint8_t             mMsgType;                               // pub/sub, request or reply
    char                mReplyHandle[ZMQ_REPLYHANDLE_SIZE +1];  // for a request msg, unique identifier of the sending inbox
    char                mSendSubject[MAX_SUBJECT_LENGTH +1];    // topic on which the msg is sent
-   void*               mSerializedBuffer;                      // flattened buffer in wire format
-   size_t              mSerializedBufferSize;                  // size of buffer
 } zmqBridgeMsgImpl;
 
 

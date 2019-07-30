@@ -326,25 +326,23 @@ mama_status zmqBridgeMamaPublisherImpl_sendSubject(publisherBridge publisher, ma
    }
 
    // serialize the msg
-   void* buf = NULL;
-   size_t bufSize = 0;
-   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_serialize(bridgeMsg, mamaMsg, &buf, &bufSize));
+   zmq_msg_t zmq_msg;
+   CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_serialize(bridgeMsg, mamaMsg, &zmq_msg));
 
    // send it
    mama_status status = MAMA_STATUS_OK;
    wlock_lock(impl->mTransport->mZmqDataPub.mLock);
    // ZMQ_DONTWAIT is superfluous w/PUB sockets, but...
-   int i = zmq_send(impl->mTransport->mZmqDataPub.mSocket, buf, bufSize, ZMQ_DONTWAIT);
+   int i = zmq_msg_send(&zmq_msg, impl->mTransport->mZmqDataPub.mSocket, ZMQ_DONTWAIT);
    wlock_unlock(impl->mTransport->mZmqDataPub.mLock);
-   if (i != bufSize) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed %d(%s)", zmq_errno(), zmq_strerror(errno));
+   if (i < 0) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_msg_send failed %d(%s)", zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
    else {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent msg w/subject:%s, size=%ld", buf, bufSize);
+      MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent msg w/subject:%s, size=%ld", zmq_msg_data(&zmq_msg), zmq_msg_size(&zmq_msg));
    }
-
-   free(buf);
+   zmq_msg_close (&zmq_msg);
 
    return status;
 }

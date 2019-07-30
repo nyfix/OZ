@@ -105,9 +105,6 @@ mama_status zmqBridgeMamaMsg_destroy(msgBridge msg, int destroyMsg)
    }
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
-   free((void*) impl->mSerializedBuffer);
-   free(msg);
-
    return MAMA_STATUS_OK;
 }
 
@@ -297,7 +294,8 @@ mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge* msg)
 }
 
 
-mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void** target, size_t* size)
+
+mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, zmq_msg_t *zmsg)
 {
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
@@ -316,10 +314,14 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
    }
    serializedSize++;    // trailing null for reply handle (even if not present)
 
-   allocateBufferMemory(&impl->mSerializedBuffer, &impl->mSerializedBufferSize, serializedSize);
+   int rc =zmq_msg_init_size(zmsg, serializedSize);
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_msg_init_size failed %d(%s)", zmq_errno (), zmq_strerror (errno));
+      return MAMA_STATUS_PLATFORM;
+   }
 
    // Ok great - we have a buffer now of appropriate size, let's populate it
-   uint8_t* bufferPos = (uint8_t*)impl->mSerializedBuffer;
+   uint8_t* bufferPos = (uint8_t*)zmq_msg_data(zmsg);
 
    // Copy across the subject
    size_t msgSubjectByteCount = strlen(impl->mSendSubject) + 1;
@@ -341,10 +343,6 @@ mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void**
 
    // Copy across the payload
    memcpy((void*)bufferPos, payloadBuffer, payloadSize);
-
-   // Populate return pointers
-   *target = impl->mSerializedBuffer;
-   *size = serializedSize;
 
    return MAMA_STATUS_OK;
 }
@@ -394,8 +392,6 @@ mama_status zmqBridgeMamaMsgImpl_init(zmqBridgeMsgImpl* msg)
    msg->mMsgType = ZMQ_MSG_PUB_SUB;
    strcpy(msg->mReplyHandle, "");
    strcpy(msg->mSendSubject, "");
-   msg->mSerializedBuffer = NULL;
-   msg->mSerializedBufferSize = 0;
 
    return MAMA_STATUS_OK;
 }

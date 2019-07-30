@@ -32,6 +32,7 @@
 
 #include <bridge.h>
 #include "zmqdefs.h"
+#include "transport.h"
 
 
 #if defined(__cplusplus)
@@ -80,7 +81,7 @@ zmqBridgeMamaMsgImpl_getSendSubject(msgBridge    msg,
 mama_status zmqBridgeMamaMsgImpl_createMsgOnly(msgBridge*  msg);
 
 
-mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, void** target, size_t* size);
+mama_status zmqBridgeMamaMsgImpl_serialize(msgBridge msg, mamaMsg source, zmq_msg_t *zmsg);
 mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, const void* source, mama_size_t size, mamaMsg target);
 const char* zmqBridgeMamaMsg_getReplyHandle(msgBridge msg);
 msgBridge zmqBridgeMamaMsgImpl_getBridgeMsg(mamaMsg mamaMsg);
