@@ -36,10 +36,6 @@
 #include <mama/mama.h>
 #include <bridge.h>
 
-// required for definition of ZMQ_CLIENT, ZMQ_SERVER
-#define ZMQ_BUILD_DRAFT_API
-#include <zmq.h>
-
 #include "zmqdefs.h"
 
 #if defined(__cplusplus)

@@ -306,9 +306,9 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    }
 
    // create control sockets for inter-thread commands
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSub, ZMQ_SERVER, "controlSub", 0));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSub, ZMQ_PULL, "controlSub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqControlSub,  ZMQ_CONTROL_ENDPOINT, NULL, 0, 0));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPub, ZMQ_CLIENT, "controlPub", 0));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPub, ZMQ_PUSH, "controlPub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqControlPub,  ZMQ_CONTROL_ENDPOINT, 0, 0));
 
    // create data sockets
@@ -558,6 +558,8 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
          }
       }
    }
+
+   zmq_msg_close(&zmsg);
 
    // unlock sockets
    wlock_unlock(impl->mZmqDataSub.mLock);
@@ -891,7 +893,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, voi
    }
 
    /* Unpack this bridge message into a MAMA msg implementation */
-   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, tmsg->mNodeBuffer, tmsg->mNodeSize, tmpMsg);
+   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, &tmsg->mZmsg, tmpMsg);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaMsgImpl_deserialize() failed. [%s]", mamaStatus_stringForStatus(status));
       goto exit;
@@ -901,6 +903,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, voi
 
 exit:
    free(tmsg->mEndpointIdentifier);
+   zmq_msg_close(&tmsg->mZmsg);
 
    // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
    zmqQueueBridge* queueImpl = NULL;
@@ -926,15 +929,16 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void*
 {
    memoryNode* node = (memoryNode*) closure;
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   const char *subject = (const char*) zmq_msg_data(&tmsg->mZmsg);
 
    // find the subscription based on its identifier
    zmqSubscription* subscription = NULL;
-   endpointPool_getEndpointByIdentifiers(tmsg->mTransport->mSubEndpoints, tmsg->mSubject,
+   endpointPool_getEndpointByIdentifiers(tmsg->mTransport->mSubEndpoints, subject,
                                          tmsg->mEndpointIdentifier, (endpoint_t*) &subscription);
 
    /* Can't do anything without a subscriber */
    if (NULL == subscription) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
       goto exit;
    }
 
@@ -960,7 +964,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void*
    }
 
    /* Unpack this bridge message into a MAMA msg implementation */
-   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, tmsg->mNodeBuffer, tmsg->mNodeSize, tmpMsg);
+   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, &tmsg->mZmsg, tmpMsg);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaMsgImpl_deserialize() failed. [%s]", mamaStatus_stringForStatus(status));
    }
@@ -974,6 +978,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void*
 
 exit:
    free(tmsg->mEndpointIdentifier);
+   zmq_msg_close(&tmsg->mZmsg);
 
    // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
    zmqQueueBridge* queueImpl = NULL;
@@ -999,6 +1004,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
 {
    memoryNode* node = (memoryNode*) closure;
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   const char *subject = (const char*) zmq_msg_data(&tmsg->mZmsg);
 
    // is this subscription still in the list?
    zmqFindWildcardClosure findClosure;
@@ -1006,11 +1012,11 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
    findClosure.mSubscription = NULL;
    list_for_each(tmsg->mTransport->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_findWildcard, &findClosure);
    if (findClosure.mSubscription == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No endpoint found for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
       goto exit;
    }
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Found wildcard subscriber for topic %s with id %s", tmsg->mSubject, tmsg->mEndpointIdentifier);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Found wildcard subscriber for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
    zmqSubscription* subscription = findClosure.mSubscription;
 
    /* Make sure that the subscription is processing messages */
@@ -1035,12 +1041,12 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
    }
 
    /* Unpack this bridge message into a MAMA msg implementation */
-   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, tmsg->mNodeBuffer, tmsg->mNodeSize, tmpMsg);
+   status = zmqBridgeMamaMsgImpl_deserialize(bridgeMsg, &tmsg->mZmsg, tmpMsg);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmqBridgeMamaMsgImpl_deserialize() failed. [%s]", mamaStatus_stringForStatus(status));
    }
    else {
-      status = mamaSubscription_processWildCardMsg(subscription->mMamaSubscription, tmpMsg, tmsg->mSubject, subscription->mClosure);
+      status = mamaSubscription_processWildCardMsg(subscription->mMamaSubscription, tmpMsg, subject, subscription->mClosure);
       if (MAMA_STATUS_OK != status) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "mamaSubscription_processMsg() failed. [%s]", mamaStatus_stringForStatus(status));
       }
@@ -1048,6 +1054,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
 
 exit:
    free(tmsg->mEndpointIdentifier);
+   zmq_msg_close(&tmsg->mZmsg);
 
    // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
    zmqQueueBridge* queueImpl = NULL;
@@ -1151,13 +1158,12 @@ memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* imp
    }
 
    // mNodeBuffer consists of zmqTransportMsg followed by a copy of the zmq data
-   memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg) + zmq_msg_size(zmsg));
+   memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg));
    zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
    tmsg->mTransport    = impl;
-   tmsg->mNodeBuffer   = (uint8_t*)(tmsg + 1);
-   tmsg->mNodeSize     = zmq_msg_size(zmsg);
    tmsg->mEndpointIdentifier = NULL;
-   memcpy(tmsg->mNodeBuffer, zmq_msg_data(zmsg), tmsg->mNodeSize);
+   zmq_msg_init(&tmsg->mZmsg);
+   zmq_msg_copy(&tmsg->mZmsg, zmsg);
 
    return node;
 }
@@ -1513,7 +1519,10 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 {
    MAMA_LOG(MAMA_LOG_LEVEL_FINER, "command=%c arg1=%s", msg->command, msg->arg1);
 
+   wlock_lock(impl->mZmqControlPub.mLock);
    int i = zmq_send(impl->mZmqControlPub.mSocket, msg, msgSize, 0);
+   wlock_unlock(impl->mZmqControlPub.mLock);
+
    if (i <= 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_send failed  %d(%s)", errno, zmq_strerror(errno));
       return MAMA_STATUS_PLATFORM;
