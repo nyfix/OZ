@@ -87,6 +87,7 @@
 // zmq bridge includes
 #include "queue.h"
 #include "util.h"
+#include "uqueue.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -233,18 +234,9 @@ typedef struct zmqSubscription_ {
 } zmqSubscription;
 
 
-// created by the dispatch thread (thread that reads zmq directly), and enqueued to the callback thread
-// it has everything the callback thread needs to process the message
-typedef struct zmqTransportMsg_ {
-   zmqTransportBridge*     mTransport;
-   char*                   mEndpointIdentifier;    // UUID that uniquely identifies a specific subscriber
-   zmq_msg_t               mZmsg;
-} zmqTransportMsg;
-
-
 typedef struct zmqQueueBridge {
    mamaQueue               mParent;
-   wombatQueue             mQueue;
+   uQueue                  mQueue;
    void*                   mEnqueueClosure;
    uint8_t                 mHighWaterFired;
    size_t                  mHighWatermark;
@@ -252,9 +244,7 @@ typedef struct zmqQueueBridge {
    uint32_t                mIsDispatching;
    uint32_t                mIsActive;
    mamaQueueEnqueueCB      mEnqueueCallback;
-   void*                   mClosure;
    wthread_mutex_t         mDispatchLock;
-   zmqQueueClosureCleanup  mClosureCleanupCb;
 } zmqQueueBridge;
 
 
@@ -302,6 +292,15 @@ typedef struct zmqInboxImpl {
    mamaInbox                       mParent;
    const char*                     mReplyHandle;               // unique reply address for this inbox
 } zmqInboxImpl;
+
+
+// created by the dispatch thread (thread that reads zmq directly), and enqueued to the callback thread
+// it has everything the callback thread needs to process the message
+typedef struct zmqTransportMsg_ {
+    zmqTransportBridge*     mTransport;
+    char                    mEndpointIdentifier[ZMQ_REPLYHANDLE_INBOXNAME_SIZE+1];    // UUID that uniquely identifies a specific subscriber
+    zmq_msg_t               mZmsg;
+} zmqTransportMsg;
 
 
 // this is the internal msg structure implemented in msg.c

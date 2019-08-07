@@ -40,6 +40,8 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
                    msg.c
                    msg.h
                    publisher.c
+                   uqueue.c
+                   uqueue.h
                    queue.c
                    queue.h
                    subscription.c
