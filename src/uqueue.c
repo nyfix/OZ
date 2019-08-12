@@ -299,7 +299,7 @@ uQueue_dispatch (uQueue queue)
 }
 
 wombatQueueStatus
-uQueueimedDispatch (uQueue queue, uint64_t timeout)
+uQueue_timedDispatch (uQueue queue, uint64_t timeout)
 {
    return uQueue_dispatchInt (queue, 1, timeout);
 }
