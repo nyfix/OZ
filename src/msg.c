@@ -103,8 +103,8 @@ mama_status zmqBridgeMamaMsg_destroy(msgBridge msg, int destroyMsg)
    if (NULL == msg) {
       return MAMA_STATUS_NULL_ARG;
    }
-   zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
 
+   free(msg);
    return MAMA_STATUS_OK;
 }
 
