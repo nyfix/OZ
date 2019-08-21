@@ -27,6 +27,8 @@
 
 #include "zmqdefs.h"
 
+struct zmqTransportMsg_;
+
 #define     CHECK_QUEUE(IMPL)                                          \
    do {                                                                \
       if (IMPL == NULL)              return MAMA_STATUS_NULL_ARG;      \
@@ -43,13 +45,7 @@
 extern "C" {
 #endif
 
-typedef void (MAMACALLTYPE* zmqQueueClosureCleanup)(void* closure);
-
-void zmqBridgeMamaQueueImpl_setClosure(queueBridge queue,
-   void* closure, zmqQueueClosureCleanup callback);
-
-void* zmqBridgeMamaQueueImpl_getClosure(queueBridge queue);
-
+mama_status zmqBridgeMamaQueue_enqueueMsg(queueBridge queue, mamaQueueEnqueueCB callback, struct zmqTransportMsg_ *msg);
 
 #if defined(__cplusplus)
 }

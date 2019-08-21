@@ -753,12 +753,14 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
    wlock_unlock(impl->mInboxesLock);
 
    // TODO: can/should move following to zmqBridgeMamaTransportImpl_queueCallback?
-   memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, queue, zmsg);
-   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-   tmsg->mEndpointIdentifier = strdup(inboxName);
+   zmqTransportMsg tmsg;
+   tmsg.mTransport = impl;
+   strcpy(tmsg.mEndpointIdentifier, inboxName);
+   zmq_msg_init(&tmsg.mZmsg);
+   zmq_msg_copy(&tmsg.mZmsg, zmsg);
 
    // callback (queued) will release the message
-   zmqBridgeMamaQueue_enqueueEventEx(queue, zmqBridgeMamaTransportImpl_inboxCallback, node);
+   zmqBridgeMamaQueue_enqueueMsg(queue, zmqBridgeMamaTransportImpl_inboxCallback, &tmsg);
 
    return MAMA_STATUS_OK;
 }
@@ -812,12 +814,14 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
          MAMA_LOG(MAMA_LOG_LEVEL_WARN, "muted - not queueing update for symbol %s", subject);
       }
       else {
-         memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(impl, subscription->mZmqQueue, zmsg);
-         zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-         tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
+         zmqTransportMsg tmsg;
+         tmsg.mTransport = impl;
+         strcpy(tmsg.mEndpointIdentifier, subscription->mEndpointIdentifier);
+         zmq_msg_init(&tmsg.mZmsg);
+         zmq_msg_copy(&tmsg.mZmsg, zmsg);
 
          // callback (queued) will release the message
-         zmqBridgeMamaQueue_enqueueEventEx(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, node);
+         zmqBridgeMamaQueue_enqueueMsg(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, &tmsg);
       }
    }
    wlock_unlock(impl->mSubsLock);
@@ -844,12 +848,14 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
 
    // it's a match
    closure->found++;
-   memoryNode* node = zmqBridgeMamaTransportImpl_allocTransportMsg(subscription->mTransport, subscription->mZmqQueue, closure->zmsg);
-   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-   tmsg->mEndpointIdentifier = strdup(subscription->mEndpointIdentifier);
+   zmqTransportMsg tmsg;
+   tmsg.mTransport = subscription->mTransport;
+   strcpy(tmsg.mEndpointIdentifier, subscription->mEndpointIdentifier);
+   zmq_msg_init(&tmsg.mZmsg);
+   zmq_msg_copy(&tmsg.mZmsg, closure->zmsg);
 
    // callback (queued) will release the message
-   zmqBridgeMamaQueue_enqueueEventEx(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_wcCallback, node);
+   zmqBridgeMamaQueue_enqueueMsg(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_wcCallback, &tmsg);
 }
 
 
@@ -864,8 +870,7 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
 // so long as all deletes are done from this thread (the callback thread), which is guaranteed by MME.
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, void* closure)
 {
-   memoryNode* node = (memoryNode*) closure;
-   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) closure;
    zmqTransportBridge* impl = (zmqTransportBridge*) tmsg->mTransport;
 
    // find the inbox
@@ -902,18 +907,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, voi
    zmqBridgeMamaInboxImpl_onMsg(NULL, tmpMsg, inbox, NULL);
 
 exit:
-   free(tmsg->mEndpointIdentifier);
    zmq_msg_close(&tmsg->mZmsg);
-
-   // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
-   zmqQueueBridge* queueImpl = NULL;
-   mamaQueue_getNativeHandle(queue, (void**)&queueImpl);
-   if (queueImpl) {
-      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
-      if (pool) {
-         memoryPool_returnNode(pool, node);
-      }
-   }
 
    return;
 }
@@ -927,8 +921,7 @@ exit:
 // so long as all deletes are done from this thread (the callback thread), which is guaranteed by MME.
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void* closure)
 {
-   memoryNode* node = (memoryNode*) closure;
-   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) closure;
    const char *subject = (const char*) zmq_msg_data(&tmsg->mZmsg);
 
    // find the subscription based on its identifier
@@ -977,18 +970,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_subCallback(mamaQueue queue, void*
    }
 
 exit:
-   free(tmsg->mEndpointIdentifier);
    zmq_msg_close(&tmsg->mZmsg);
-
-   // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
-   zmqQueueBridge* queueImpl = NULL;
-   mamaQueue_getNativeHandle(queue, (void**)&queueImpl);
-   if (queueImpl) {
-      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
-      if (pool) {
-         memoryPool_returnNode(pool, node);
-      }
-   }
 
    return;
 }
@@ -1002,8 +984,7 @@ exit:
 // so long as all deletes are done from this thread (the callback thread), which is guaranteed by MME.
 void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* closure)
 {
-   memoryNode* node = (memoryNode*) closure;
-   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
+   zmqTransportMsg* tmsg = (zmqTransportMsg*) closure;
    const char *subject = (const char*) zmq_msg_data(&tmsg->mZmsg);
 
    // is this subscription still in the list?
@@ -1053,18 +1034,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
    }
 
 exit:
-   free(tmsg->mEndpointIdentifier);
    zmq_msg_close(&tmsg->mZmsg);
-
-   // Free the memory node (allocated in zmqBridgeMamaTransportImpl_dispatchThread) to the pool
-   zmqQueueBridge* queueImpl = NULL;
-   mamaQueue_getNativeHandle(queue, (void**)&queueImpl);
-   if (queueImpl) {
-      memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure((queueBridge) queueImpl);
-      if (pool) {
-         memoryPool_returnNode(pool, node);
-      }
-   }
 
    return;
 }
@@ -1134,38 +1104,6 @@ mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl,
 
    assert(status == MAMA_STATUS_OK);
    return status;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// ...dispatch helpers
-void MAMACALLTYPE  zmqBridgeMamaTransportImpl_queueClosureCleanupCb(void* closure)
-{
-   memoryPool* pool = (memoryPool*) closure;
-   if (NULL != pool) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "Destroying memory pool for queue %p.", closure);
-      memoryPool_destroy(pool, NULL);
-   }
-}
-
-memoryNode* zmqBridgeMamaTransportImpl_allocTransportMsg(zmqTransportBridge* impl, void* queue, zmq_msg_t* zmsg)
-{
-   queueBridge queueImpl = (queueBridge) queue;
-   memoryPool* pool = (memoryPool*) zmqBridgeMamaQueueImpl_getClosure(queueImpl);
-   if (NULL == pool) {
-      pool = memoryPool_create(impl->mMemoryPoolSize, impl->mMemoryNodeSize);
-      zmqBridgeMamaQueueImpl_setClosure(queueImpl, pool, zmqBridgeMamaTransportImpl_queueClosureCleanupCb);
-   }
-
-   // mNodeBuffer consists of zmqTransportMsg followed by a copy of the zmq data
-   memoryNode* node = memoryPool_getNode(pool, sizeof(zmqTransportMsg));
-   zmqTransportMsg* tmsg = (zmqTransportMsg*) node->mNodeBuffer;
-   tmsg->mTransport    = impl;
-   tmsg->mEndpointIdentifier = NULL;
-   zmq_msg_init(&tmsg->mZmsg);
-   zmq_msg_copy(&tmsg->mZmsg, zmsg);
-
-   return node;
 }
 
 
