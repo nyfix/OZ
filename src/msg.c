@@ -224,14 +224,9 @@ mama_status zmqBridgeMamaMsgImpl_setReplyHandle(msgBridge msg, void* handle)
    if (NULL == msg || NULL == handle) {
       return MAMA_STATUS_NULL_ARG;
    }
+
    zmqBridgeMsgImpl* impl = (zmqBridgeMsgImpl*) msg;
-
-   // TODO: compare first?
-   if (strcmp(impl->mReplyHandle, (const char*) handle) != 0) {
-      strcpy(impl->mReplyHandle, (const char*) handle);
-   }
-
-
+   strcpy(impl->mReplyHandle, (const char*) handle);
    return MAMA_STATUS_OK;
 }
 
