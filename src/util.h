@@ -28,22 +28,7 @@
 const char* zmqBridge_generateUuid();
 const char* zmqBridge_generateSerial(unsigned long long* id);
 
-#define USE_MAMA_LOG
-#ifdef  USE_MAMA_LOG
 #define MAMA_LOG(l, ...)    mama_log(l, ##__VA_ARGS__)
-#else
-// logging
-// NOTE: following code uses (deprecated) gMamaLogLevel directly, rather than calling mama_getLogLevel
-// (which acquires a read lock on gMamaLogLevel)
-#define MAMA_LOG(l, ...)                                                      \
-   do {                                                                       \
-      if (gMamaLogLevel >= l) {                                               \
-         mama_log_helper(l, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__); \
-      }                                                                       \
-   } while(0)
-
-void mama_log_helper (MamaLogLevel level, const char* function, const char* file, int lineno, const char *format, ...);
-#endif
 
 const char* get_zmqEventName(int event);
 int get_zmqEventLogLevel(int event);

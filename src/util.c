@@ -51,26 +51,6 @@ const char* zmqBridge_generateSerial(unsigned long long* id)
    return strdup(temp);
 }
 
-#ifndef  USE_MAMA_LOG
-#define MAX_LOG_MSG_SIZE 1024
-// TODO: figure out a way to do this without needing to call printf twice
-void mama_log_helper (MamaLogLevel level, const char* function, const char* file, int lineno, const char *format, ...)
-{
-   char temp[MAX_LOG_MSG_SIZE +1] = "";
-   if (format) {
-      va_list ap;
-      va_start(ap, format);
-      // NOTE: vsnprintf behaves differently on Windows & Linux, but following construct should work for both
-      if (vsnprintf(temp, MAX_LOG_MSG_SIZE, format, ap) == -1)
-         temp[MAX_LOG_MSG_SIZE] = '\0';
-      va_end(ap);
-   }
-
-   // TODO: is there a better way than calling basename?
-   mama_log(level, "%s:%s (%s:%d)", function, temp, basename(file), lineno);
-}
-#endif
-
 const char* get_zmqEventName(int event)
 {
    switch(event) {
