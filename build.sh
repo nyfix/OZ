@@ -21,6 +21,8 @@ cd build
 
 # do the build
 cmake \
+   -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer -std=gnu++98 -D_GLIBCXX_USE_CXX11_ABI=0" \
+   -DCMAKE_C_FLAGS="-fno-omit-frame-pointer -std=gnu99" \
    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
    -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
    -DMAMA_SRC=${OPENMAMA_SOURCE} -DMAMA_ROOT=${OPENMAMA_INSTALL} \
