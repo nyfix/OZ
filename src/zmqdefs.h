@@ -248,6 +248,7 @@ typedef struct zmqQueueBridge {
 } zmqQueueBridge;
 
 
+#pragma pack(push, 1)
 #define ZMQ_NAMING_PREFIX            "_NAMING"
 // defines discovery (naming) msgs sent by transport on startup and received by other transports
 // naming msgs use namingSubscriber/namingPublisher, which is connected to one or more zmq_proxy processes
@@ -256,10 +257,11 @@ typedef struct zmqNamingMsg {
    unsigned char           mType;                                       // "C"=connect, "D"=disconnect, "W"=welcome
    char                    mProgName[256 +1];                           // executable name
    char                    mHost[MAXHOSTNAMELEN + 1];                   // (short) hostname
-   int                     mPid;                                        // process ID
+   long                    mPid;                                        // process ID
    char                    mUuid[UUID_STRING_SIZE +1];                  // uuid of transport
    char                    mEndPointAddr[ZMQ_MAX_ENDPOINT_LENGTH +1];   // dataSub socket connects to this endpoint
-} zmqNamingMsg;
+}  zmqNamingMsg;
+#pragma pack(pop)
 
 
 // defines control msg sent to main dispatch thread via inproc transport

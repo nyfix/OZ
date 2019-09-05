@@ -614,7 +614,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
    zmqNamingMsg* pMsg = zmq_msg_data(zmsg);
 
-   MAMA_LOG(getNamingLogLevel(pMsg->mType), "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
+   MAMA_LOG(getNamingLogLevel(pMsg->mType), "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%ld topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
 
    if ((pMsg->mType == 'C') || (pMsg->mType == 'c')) {
       // connect
@@ -623,7 +623,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       if (pOrigMsg == NULL) {
          if (pMsg->mType == 'c') {
             // found peer via beacon message
-            MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
+            MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%ld topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
          }
 
          // we've never seen this peer before, so connect (sub => pub)
@@ -1490,11 +1490,11 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
    wlock_lock(impl->mZmqNamingPub.mLock);
    int i = zmq_send(impl->mZmqNamingPub.mSocket, &msg, sizeof(msg), 0);
    if (i != sizeof(msg)) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to publish endpoints: prog=%s host=%s pid=%d pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to publish endpoints: prog=%s host=%s pid=%ld pub=%s", msg.mProgName, msg.mHost, msg.mPid, msg.mEndPointAddr);
       status = MAMA_STATUS_PLATFORM;
    }
    else {
-      MAMA_LOG(getNamingLogLevel(msg.mType), "Published endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%d topic=%s pub=%s", msg.mType, msg.mProgName, msg.mHost, msg.mUuid, msg.mPid, msg.mTopic, msg.mEndPointAddr);
+      MAMA_LOG(getNamingLogLevel(msg.mType), "Published endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%ld topic=%s pub=%s", msg.mType, msg.mProgName, msg.mHost, msg.mUuid, msg.mPid, msg.mTopic, msg.mEndPointAddr);
       status = zmqBridgeMamaTransportImpl_kickSocket(impl->mZmqNamingPub.mSocket);
    }
    wlock_unlock(impl->mZmqNamingPub.mLock);

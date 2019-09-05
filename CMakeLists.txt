@@ -8,6 +8,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
 # enable warnings
 set(WARNFLAGS "${WARNFLAGS} -Wall")
 set(WARNFLAGS "${WARNFLAGS} -Wextra")
+set(WARNFLAGS "${WARNFLAGS} -Wcast-align")
 set(WARNFLAGS "${WARNFLAGS} -Wformat")
 set(WARNFLAGS "${WARNFLAGS} -Wformat-nonliteral")                # warn about non-literal format strings in printf etc.
 #set(WARNFLAGS "${WARNFLAGS} -Wexit-time-destructors")
