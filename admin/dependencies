@@ -2,10 +2,10 @@
 
 ###############################################################################
 export PROJECT_NAME=OpenMAMA-zmq
-export PROJECT_VERSION=2.0
+export PROJECT_VERSION=master
 export JIRA_RELEASE=BUS-1780           # release artifact in jira
 
 # internal dependencies
-export LIBZMQ_VERSION=4.3.0
-export OPENMAMA_VERSION=6.2.1
-export OPENMAMA_OMNM_VERSION=1.0
+export LIBZMQ_VERSION=master
+export OPENMAMA_VERSION=master
+export OPENMAMA_OMNM_VERSION=master
