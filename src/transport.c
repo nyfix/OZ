@@ -80,6 +80,7 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
    mama_status status = MAMA_STATUS_OK;
 
    zmqTransportBridge* impl = (zmqTransportBridge*) calloc(1, sizeof(zmqTransportBridge));
+   if (NULL == impl) return MAMA_STATUS_NOMEM;
 
    /* Back reference the MAMA transport */
    impl->mTransport           = parent;
@@ -634,6 +635,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
 
          // save peer in table
          pOrigMsg = malloc(sizeof(zmqNamingMsg));
+         if (NULL == pOrigMsg) return MAMA_STATUS_NOMEM;
          memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
          wtable_insert(impl->mPeers, pOrigMsg->mUuid, pOrigMsg);
 
@@ -1122,7 +1124,9 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    socket->mMonitor = monitor;
 
    // we dont use router/dealer or req/rep, so we hijack the identity property to set a name to make debugging easier
-   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_IDENTITY, name, strlen(name) +1));
+   if (NULL != name) {
+      CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_IDENTITY, name, strlen(name) +1));
+   }
 
    if ((socket->mMonitor != 0) && (name != NULL)) {
       char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
@@ -1152,18 +1156,24 @@ mama_status zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const ch
    if (reconnect == 1) {
       reconnectInterval = reconnect_timeout * 1000;
    }
-   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval)));
-
-   // connect socket
-   int rc = zmq_connect(socket->mSocket, uri);
+   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval));
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect(%p, %s) failed: %d(%s)", socket->mSocket, uri, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_RECONNECT_IVL, %d) failed: %d(%s)", socket->mSocket, reconnectInterval, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
    else {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINE, "zmq_connect(%p, %s) succeeded", socket->mSocket, uri);
-      status = zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket);
+      // connect socket
+      rc = zmq_connect(socket->mSocket, uri);
+      if (0 != rc) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_connect(%p, %s) failed: %d(%s)", socket->mSocket, uri, zmq_errno(), zmq_strerror(errno));
+         status = MAMA_STATUS_PLATFORM;
+      }
+      else {
+         MAMA_LOG(MAMA_LOG_LEVEL_FINE, "zmq_connect(%p, %s) succeeded", socket->mSocket, uri);
+         status = zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket);
+      }
    }
+
    wlock_unlock(socket->mLock);
 
    return status;
@@ -1201,31 +1211,37 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    if (reconnect == 1) {
       reconnectInterval = reconnect_timeout;
    }
-   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval)));
-
-   // bind socket
-   int rc = zmq_bind(socket->mSocket, uri);
+   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval));
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_bind(%p, %s) failed %d(%s)", socket->mSocket, uri, errno, zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_RECONNECT_IVL, %d) failed: %d(%s)", socket->mSocket, reconnectInterval, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
    else {
-      zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket);
-   }
-
-   // get endpoint name
-   if (endpointName != NULL) {
-      char temp[ZMQ_MAX_ENDPOINT_LENGTH +1];
-      size_t tempSize = sizeof(temp);
-      int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
+      // bind socket
+      int rc = zmq_bind(socket->mSocket, uri);
       if (0 != rc) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%p) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_bind(%p, %s) failed %d(%s)", socket->mSocket, uri, errno, zmq_strerror(errno));
          status = MAMA_STATUS_PLATFORM;
       }
       else {
-         *endpointName = strdup(temp);
+         zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket);
+      }
+
+      // get endpoint name
+      if (endpointName != NULL) {
+         char temp[ZMQ_MAX_ENDPOINT_LENGTH +1];
+         size_t tempSize = sizeof(temp);
+         int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
+         if (0 != rc) {
+            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%p) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
+            status = MAMA_STATUS_PLATFORM;
+         }
+         else {
+            *endpointName = strdup(temp);
+         }
       }
    }
+
    wlock_unlock(socket->mLock);
 
    return status;
@@ -1384,10 +1400,24 @@ mama_status zmqBridgeMamaTransportImpl_bindOrConnect(void* socket, const char* u
 
 mama_status zmqBridgeMamaTransportImpl_setCommonSocketOptions(const char* name, zmqSocket* socket)
 {
+   mama_status status = MAMA_STATUS_OK;
+
    wlock_lock(socket->mLock);
+
    int value = 0;
-   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_RCVHWM, &value, sizeof(value)));
-   CALL_ZMQ_FUNC(zmq_setsockopt(socket->mSocket, ZMQ_SNDHWM, &value, sizeof(value)));
+   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RCVHWM, &value, sizeof(value));
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_RCVHWM, %d) failed: %d(%s)", socket->mSocket, value, zmq_errno(), zmq_strerror(errno));
+      status = MAMA_STATUS_PLATFORM;
+   }
+   else {
+      rc = zmq_setsockopt(socket->mSocket, ZMQ_SNDHWM, &value, sizeof(value));
+      if (0 != rc) {
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_SNDHWM, %d) failed: %d(%s)", socket->mSocket, value, zmq_errno(), zmq_strerror(errno));
+         status = MAMA_STATUS_PLATFORM;
+      }
+   }
+
    wlock_unlock(socket->mLock);
 
    return MAMA_STATUS_OK;
@@ -1398,6 +1428,7 @@ mama_status zmqBridgeMamaTransportImpl_setCommonSocketOptions(const char* name, 
 // NOTE: caller needs to have acquired lock
 mama_status zmqBridgeMamaTransportImpl_kickSocket(void* socket)
 {
+   // TODO: obsolete -- remove
    #if 0
    // see https://github.com/zeromq/libzmq/issues/2267
    zmq_pollitem_t pollitems [] = { { socket, 0, ZMQ_POLLIN, 0 } };
