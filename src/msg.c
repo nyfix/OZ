@@ -139,7 +139,7 @@ mama_status zmqBridgeMamaMsg_getPlatformError(msgBridge msg, void** error)
 
 mama_status zmqBridgeMamaMsg_setSendSubject(msgBridge msg, const char* symbol, const char* subject)
 {
-   if (NULL == msg || NULL == symbol || (NULL == symbol && NULL == subject)) {
+   if ((NULL == symbol && NULL == subject) || NULL == msg || NULL == symbol ) {
       return MAMA_STATUS_NULL_ARG;
    }
    zmqBridgeMsgImpl* impl     = (zmqBridgeMsgImpl*) msg;

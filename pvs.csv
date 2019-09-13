@@ -1,0 +1,1 @@
+"src/uqueue.c:322","warning: V522 There might be dereferencing of a potential null pointer 'result'. Check lines: 322, 321."
