@@ -221,14 +221,12 @@ void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, ma
    const char* msgReplyHandle = zmqBridgeMamaMsg_getReplyHandle(tmp);
    if ((msgReplyHandle == NULL) || (strlen(msgReplyHandle) == 0)) {
       // TODO: this should never happen?!
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Got inbox msg w/no reply handle for (%s)", impl->mReplyHandle);
-      assert(0);
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Got inbox msg w/no reply handle for (%s)", impl->mReplyHandle);
       return;
    }
    else {
       if (strcmp(impl->mReplyHandle, msgReplyHandle) != 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Discarding msg w/replyHandle(%s) which does not match our replyHandle(%s)", msgReplyHandle, impl->mReplyHandle);
-         assert(0);
+         MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Discarding msg w/replyHandle(%s) which does not match our replyHandle(%s)", msgReplyHandle, impl->mReplyHandle);
          return;
       }
    }

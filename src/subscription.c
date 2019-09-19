@@ -101,9 +101,11 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
    impl->mIsWildcard          = 1;
    // stupid api ... symbol is NULL, source contains source.symbol
    impl->mOrigRegex = strdup(source);
+   if (NULL == impl->mOrigRegex) return MAMA_STATUS_NULL_ARG;
 
    // generate zmq prefix from regex
    char* prefix = (char*) alloca(strlen(impl->mOrigRegex)+1);
+   if (NULL == prefix) return MAMA_STATUS_NOMEM;
    strcpy(prefix, impl->mOrigRegex);
    if (prefix[0] == '^') {
       ++prefix;                                  // skip beginning anchor
@@ -122,6 +124,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
 
    // create regex to match against
    impl->mCompRegex = calloc(1, sizeof(regex_t));
+   if (NULL == impl->mCompRegex) return MAMA_STATUS_NOMEM;
    int rc = regcomp(impl->mCompRegex, impl->mOrigRegex, REG_NOSUB | REG_EXTENDED);
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Unable to compile regex: %s", impl->mOrigRegex);
