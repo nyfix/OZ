@@ -201,9 +201,6 @@ typedef struct zmqTransportBridge_ {
    wLock                   mInboxesLock;          // NOTE: this lock protects ONLY the collection, NOT the individual objects contained in it....
    unsigned long long      mInboxUid;             // unique ID of inbox
 
-   long int                mMemoryPoolSize;
-   long int                mMemoryNodeSize;
-
    // misc stats
    long int                mNormalMessages;        // msgs received over dataSubscriber socket
    long int                mNamingMessages;        // msgs received over namingSubscriber socket
@@ -247,9 +244,10 @@ typedef struct zmqQueueBridge {
    wthread_mutex_t         mDispatchLock;
 } zmqQueueBridge;
 
-
-#pragma pack(push, 1)
 #define ZMQ_NAMING_PREFIX            "_NAMING"
+// Note: 0mq doesn't guarantee that messages will be aligned on any particular boundary, so use
+// pragma to ensure compiler knows that struct is unaligned
+#pragma pack(push, 1)
 // defines discovery (naming) msgs sent by transport on startup and received by other transports
 // naming msgs use namingSubscriber/namingPublisher, which is connected to one or more zmq_proxy processes
 typedef struct zmqNamingMsg {
@@ -264,11 +262,13 @@ typedef struct zmqNamingMsg {
 #pragma pack(pop)
 
 
+#pragma pack(push, 1)
 // defines control msg sent to main dispatch thread via inproc transport
 typedef struct zmqControlMsg {
    char     command;                         // "S"=subscribe, "U"=unsubscribe, "X"=exit
    char     arg1[MAX_SUBJECT_LENGTH +1];     // for subscribe & unsubscribe this is the topic
 } zmqControlMsg;
+#pragma pack(pop)
 
 
 // full reply handle is "_INBOX.<replyAddr>.<inboxID>" where:

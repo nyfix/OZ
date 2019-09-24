@@ -98,9 +98,6 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    impl->mSocketMonitor = getInt(name, "socket_monitor", 1);
    impl->mIsNaming = getInt(name, "is_naming", 1);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
-   impl->mMemoryPoolSize = getLong(name, "msg_pool_size", 1024);
-   impl->mMemoryNodeSize = getLong(name, "msg_node_size", 4096);
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Any message pools created will contain %lu nodes of %lu bytes.", impl->mMemoryPoolSize, impl->mMemoryNodeSize);
 }
 
 
