@@ -28,7 +28,6 @@
 // system includes
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 // Mama includes
 #include <mama/mama.h>
@@ -209,7 +208,6 @@ mama_status zmqBridgeMamaMsg_copyReplyHandle(const void* src, void** dest)
 
 mama_status zmqBridgeMamaMsg_destroyReplyHandle(void* result)
 {
-   // TODO: What do we do here if the replyHandle is attached to a message?
    if (NULL == result) {
       return MAMA_STATUS_NULL_ARG;
    }
@@ -375,10 +373,12 @@ mama_status zmqBridgeMamaMsgImpl_deserialize(msgBridge msg, zmq_msg_t *zmsg, mam
 
    // Parse the payload into a MAMA Message
    int payloadSize = size - (bufferPos - (uint8_t*)source);
-   assert(payloadSize > 0);
+   if (payloadSize < 0) {
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Payload size < 0 for message: %zu bytes [payload=%d; type=%d]", size, payloadSize, impl->mMsgType);
+      return MAMA_STATUS_SYSTEM_ERROR;
+   }
 
    MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Received %zu bytes [payload=%d; type=%d]", size, payloadSize, impl->mMsgType);
-
    return mamaMsgImpl_setMsgBuffer(target, (void*) bufferPos, payloadSize, *bufferPos);
 }
 

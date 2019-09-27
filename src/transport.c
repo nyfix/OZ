@@ -33,7 +33,6 @@
 // system includes
 #include <stdio.h>
 #include <errno.h>
-#include <assert.h>
 
 // MAMA includes
 #include <mama/mama.h>
@@ -342,9 +341,6 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
          impl->mNamingReconnect, impl->mNamingReconnectInterval));
       MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Bound publish socket to:%s ", impl->mPubEndpoint);
 
-      // prefer connecting sub to pub (see https://github.com/zeromq/libzmq/issues/2267)
-      //CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqDataSub, impl->mPubEndpoint, 0, 0));
-
       // connect sub socket to proxy
       for (int i = 0; (i < ZMQ_MAX_NAMING_URIS) && (impl->mNamingAddress[i] != NULL); ++i) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mNamingAddress[i],
@@ -393,7 +389,7 @@ mama_status zmqBridgeMamaTransportImpl_start(zmqTransportBridge* impl)
          usleep(impl->mNamingConnectInterval);
       }
       if (wInterlocked_read(&impl->mNamingConnected) != 1) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
+         MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Failed connecting to naming service after %d retries", impl->mNamingConnectRetries);
          return MAMA_STATUS_TIMEOUT;
       }
    }
@@ -431,7 +427,6 @@ mama_status zmqBridgeMamaTransportImpl_stop(zmqTransportBridge* impl)
    mama_status status = impl->mOmzmqDispatchStatus;
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Rejoined with status: %s.", mamaStatus_stringForStatus(status));
 
-   // TODO: return status?
    return MAMA_STATUS_OK;
 }
 
@@ -754,14 +749,12 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
    // at this point, we dont care if the inbox is deleted (as long as the queue remains)
    wlock_unlock(impl->mInboxesLock);
 
-   // TODO: can/should move following to zmqBridgeMamaTransportImpl_queueCallback?
+   // queue up message, callback will free
    zmqTransportMsg tmsg;
    tmsg.mTransport = impl;
    strcpy(tmsg.mEndpointIdentifier, inboxName);
    zmq_msg_init(&tmsg.mZmsg);
    zmq_msg_copy(&tmsg.mZmsg, zmsg);
-
-   // callback (queued) will release the message
    zmqBridgeMamaQueue_enqueueMsg(queue, zmqBridgeMamaTransportImpl_inboxCallback, &tmsg);
 
    return MAMA_STATUS_OK;
@@ -816,13 +809,12 @@ mama_status zmqBridgeMamaTransportImpl_dispatchSubMsg(zmqTransportBridge* impl, 
          MAMA_LOG(MAMA_LOG_LEVEL_WARN, "muted - not queueing update for symbol %s", subject);
       }
       else {
+         // queue up message, callback will free
          zmqTransportMsg tmsg;
          tmsg.mTransport = impl;
          strcpy(tmsg.mEndpointIdentifier, subscription->mEndpointIdentifier);
          zmq_msg_init(&tmsg.mZmsg);
          zmq_msg_copy(&tmsg.mZmsg, zmsg);
-
-         // callback (queued) will release the message
          zmqBridgeMamaQueue_enqueueMsg(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_subCallback, &tmsg);
       }
    }
@@ -850,13 +842,13 @@ void zmqBridgeMamaTransportImpl_matchWildcards(wList dummy, zmqSubscription** pS
 
    // it's a match
    closure->found++;
+
+   // queue up message, callback will free
    zmqTransportMsg tmsg;
    tmsg.mTransport = subscription->mTransport;
    strcpy(tmsg.mEndpointIdentifier, subscription->mEndpointIdentifier);
    zmq_msg_init(&tmsg.mZmsg);
    zmq_msg_copy(&tmsg.mZmsg, closure->zmsg);
-
-   // callback (queued) will release the message
    zmqBridgeMamaQueue_enqueueMsg(subscription->mZmqQueue, zmqBridgeMamaTransportImpl_wcCallback, &tmsg);
 }
 
@@ -1088,7 +1080,10 @@ mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, z
    wlock_lock(impl->mInboxesLock);
    mama_status status = wtable_insert(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX], inbox) >= 0 ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
    wlock_unlock(impl->mInboxesLock);
-   assert(status == MAMA_STATUS_OK);
+   if (status != MAMA_STATUS_OK) {
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "failed to register inbox (%s)", inbox->mReplyHandle);
+   }
+
    return status;
 }
 
@@ -1101,10 +1096,9 @@ mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl,
    mama_status status = wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
    wlock_unlock(impl->mInboxesLock);
    if (status != MAMA_STATUS_OK) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "failed to unregister inbox (%s)", inbox->mReplyHandle);
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "failed to unregister inbox (%s)", inbox->mReplyHandle);
    }
 
-   assert(status == MAMA_STATUS_OK);
    return status;
 }
 
@@ -1579,7 +1573,9 @@ void* zmqBridgeMamaTransportImpl_monitorThread(void* closure)
          { impl->mZmqMonitorSub.mSocket,     0, ZMQ_POLLIN , 0},
       };
       int rc = zmq_poll(items, 5, -1);
-      //assert(rc >= 0);
+      if ((rc < 0) && (errno != EINTR)) {
+         MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "zmq_poll failed  %d(%s)", errno, zmq_strerror(errno));
+      }
 
       if (items[0].revents & ZMQ_POLLIN) {
          zmqBridgeMamaTransportImpl_monitorEvent(dataPubMonitor, "dataPub");
@@ -1669,7 +1665,6 @@ int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName
    zmq_msg_init (&msg);
    if (zmq_msg_recv (&msg, socket, 0) == -1)
       return -1; // Interrupted, presumably
-   assert (zmq_msg_more (&msg));
 
    zmq_monitor_frame1* pFrame1 = (zmq_monitor_frame1*) zmq_msg_data (&msg);
    int event = pFrame1->event;
@@ -1680,7 +1675,6 @@ int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName
    zmq_msg_init (&msg);
    if (zmq_msg_recv (&msg, socket, 0) == -1)
       return -1; // Interrupted, presumably
-   assert (!zmq_msg_more (&msg));
 
    uint8_t* data = (uint8_t *) zmq_msg_data (&msg);
    size_t size = zmq_msg_size(&msg);

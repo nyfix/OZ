@@ -29,7 +29,6 @@
 // system includes
 #include <string.h>
 #include <errno.h>
-#include <assert.h>
 
 // MAMA includes
 #include <mama/mama.h>
@@ -177,16 +176,14 @@ mama_status zmqBridgeMamaPublisher_sendReplyToInbox(publisherBridge publisher, v
    /* Get the incoming bridge message from the mamaMsg */
    msgBridge bridgeMsg = zmqBridgeMamaMsgImpl_getBridgeMsg((mamaMsg) request);
    if (bridgeMsg == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle");
-      assert(0);
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Could not get reply handle");
       return MAMA_STATUS_NULL_ARG;
    }
 
    /* Get reply address from the bridge message */
    const char* replyHandle = zmqBridgeMamaMsg_getReplyHandle(bridgeMsg);
    if (replyHandle == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle");
-      assert(0);
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Could not get reply handle");
       return MAMA_STATUS_NULL_ARG;
    }
 
@@ -231,14 +228,12 @@ mama_status zmqBridgeMamaPublisher_sendFromInboxByIndex(publisherBridge publishe
    // Set the reply address
    inboxBridge inboxBridge = mamaInboxImpl_getInboxBridge(inbox);
    if (inboxBridge == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get inbox bridge");
-      assert(0);
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Could not get inbox bridge");
       return MAMA_STATUS_NULL_ARG;
    }
    const char* replyHandle = zmqBridgeMamaInboxImpl_getReplyHandle(inboxBridge);
    if (replyHandle == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Could not get reply handle");
-      assert(0);
+      MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Could not get reply handle");
       return MAMA_STATUS_NULL_ARG;
    }
    CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle((msgBridge) &bridgeMsg, (void*) replyHandle));
@@ -272,7 +267,8 @@ mama_status zmqBridgeMamaPublisher_setUserCallbacks(publisherBridge publisher, m
  =                  Private implementation functions                     =
  =========================================================================*/
 
-// TODO: wtf is this all about?
+// TODO: this whole topic/root/source business needs to be revisited if/when we
+// synchronize w/upstream OpenMAMA
 mama_status zmqBridgeMamaPublisherImpl_buildSendSubject(zmqPublisherBridge* impl)
 {
    char* keyTarget = NULL;
