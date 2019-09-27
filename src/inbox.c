@@ -27,7 +27,6 @@
   =========================================================================*/
 // system includes
 #include <string.h>
-#include <assert.h>
 
 // Mama includes
 #include <mama/mama.h>
@@ -215,12 +214,10 @@ void MAMACALLTYPE zmqBridgeMamaInboxImpl_onMsg(mamaSubscription subscription, ma
    }
    zmqInboxImpl* impl = (zmqInboxImpl*) closure;
 
-   // TODO: following should not be necessary? what about error checking?
    msgBridge tmp;
    mamaMsgImpl_getBridgeMsg(msg, &tmp);
    const char* msgReplyHandle = zmqBridgeMamaMsg_getReplyHandle(tmp);
    if ((msgReplyHandle == NULL) || (strlen(msgReplyHandle) == 0)) {
-      // TODO: this should never happen?!
       MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "Got inbox msg w/no reply handle for (%s)", impl->mReplyHandle);
       return;
    }

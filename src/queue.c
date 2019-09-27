@@ -22,9 +22,6 @@
  * THE SOFTWARE.
  */
 
-// system includes
-#include <assert.h>
-
 // MAMA includes
 #include <mama/mama.h>
 #include <wombat/wInterlocked.h>
@@ -294,9 +291,7 @@ static mama_status zmqBridgeMamaQueue_enqueueEventInt(queueBridge queue,
 
    // dont enqueue event if queue is not dispatching
    if (wInterlocked_read(&impl->mIsDispatching) != 1) {
-      //assert(0);
       MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Attempt to enqueue event on non-dispatching queue");
-      //return MAMA_STATUS_INVALID_ARG;
    }
 
    /* Call the underlying wombatQueue_enqueue method */
