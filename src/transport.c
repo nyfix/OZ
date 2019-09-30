@@ -484,8 +484,8 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
          timeout = nextBeacon - lastBeacon;
       }
       int rc = zmq_poll(items, (impl->mIsNaming == 1) ? 3 : 2, timeout);
-      if (rc < 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_poll returned %d - errorno %d(%s)", rc, zmq_errno(), zmq_strerror(zmq_errno()));
+      if ((rc < 0) && (errno != EINTR)) {
+         MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "zmq_poll failed  %d(%s)", errno, zmq_strerror(errno));
          continue;
       }
       ++impl->mPolls;
@@ -1575,6 +1575,7 @@ void* zmqBridgeMamaTransportImpl_monitorThread(void* closure)
       int rc = zmq_poll(items, 5, -1);
       if ((rc < 0) && (errno != EINTR)) {
          MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "zmq_poll failed  %d(%s)", errno, zmq_strerror(errno));
+         continue;
       }
 
       if (items[0].revents & ZMQ_POLLIN) {
