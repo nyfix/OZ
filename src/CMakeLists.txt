@@ -90,6 +90,8 @@ elseif(UNIX)
                           event)
     install(TARGETS mamazmqimpl${MAMA_LIB_SUFFIX} DESTINATION lib)
 
+    # need to use c++ linker w/nsd under certain conditions (e.g., w/ubsan)
+    set_target_properties(nsd PROPERTIES LINKER_LANGUAGE CXX)
     target_link_libraries(nsd wombatcommon mama zmq)
     install(TARGETS nsd DESTINATION bin)
 endif()
