@@ -33,6 +33,19 @@ if("$ENV{BUILD_TYPE}" STREQUAL "tsan")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread -pie ")
 endif()
 
+# use undefined behavior sanitizer?
+if("$ENV{BUILD_TYPE}" STREQUAL "ubsan")
+  set(UBSAN_FLAGS "${UBSAN_FLAGS} -fsanitize=undefined")
+  set(UBSAN_FLAGS "${UBSAN_FLAGS} -fsanitize=implicit-conversion")
+  set(UBSAN_FLAGS "${UBSAN_FLAGS} -fsanitize=implicit-integer-truncation")
+  set(UBSAN_FLAGS "${UBSAN_FLAGS} -fsanitize=integer")
+  set(UBSAN_FLAGS "${UBSAN_FLAGS} -fsanitize=nullability")
+  set(UBSAN_FLAGS "${UBSAN_FLAGS} -fsanitize=vptr ")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${UBSAN_FLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${UBSAN_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${UBSAN_FLAGS}")
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARNFLAGS}")
 
 add_subdirectory(src)
