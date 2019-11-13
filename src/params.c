@@ -93,8 +93,8 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    // the name of the transport
    const char* name = impl->mName;
 
-   impl->mDataReconnect = getInt(name, "retry_connects", 0);
-   impl->mDataReconnectInterval = getFloat(name, "retry_interval", .1) * 1000;    // millis
+   impl->mDataReconnect = getInt(name, "retry_connects", 1);
+   impl->mDataReconnectInterval = getFloat(name, "retry_interval", 10) * 1000;    // millis
    impl->mSocketMonitor = getInt(name, "socket_monitor", 1);
    impl->mIsNaming = getInt(name, "is_naming", 1);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
@@ -111,7 +111,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    impl->mNamingConnectInterval = getFloat(name, "naming.connect_interval", .1) * ONE_MILLION;    // micros
    impl->mNamingConnectRetries = getInt(name, "naming.connect_retries", 100);
    impl->mNamingReconnect = getInt(name, "naming.retry_connects", 1);
-   impl->mNamingReconnectInterval = getFloat(name, "naming.retry_interval", .1) * 1000;           // millis
+   impl->mNamingReconnectInterval = getFloat(name, "naming.retry_interval", 10) * 1000;           // millis
    double f = getFloat(name, "naming.beacon_interval", 1);
    if (f <= 0) {
       impl->mBeaconInterval = 0;

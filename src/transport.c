@@ -322,8 +322,13 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqDataSub.mSocket, impl->mInboxSubject));
 
    if (impl->mIsNaming == 1) {
+      // when using naming protocol, we want to stop data socket reconnecting on certain errors
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_stopReconnectOnError(&impl->mZmqDataSub));
       // create naming sockets
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingPub, ZMQ_PUB_TYPE, "namingPub", impl->mSocketMonitor));
+      // namingPub wants to stop reconnecting on error
+      // (if nsd crashes, namingPub will reconnect to address in welcome msg)
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_stopReconnectOnError(&impl->mZmqNamingPub));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingSub, ZMQ_SUB_TYPE, "namingSub", impl->mSocketMonitor));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqNamingSub.mSocket, ZMQ_NAMING_PREFIX));
    }
@@ -1145,11 +1150,8 @@ mama_status zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const ch
 
    wlock_lock(socket->mLock);
 
-   // set reconnect before bind
-   int reconnectInterval = -1;
-   if (reconnect == 1) {
-      reconnectInterval = reconnect_timeout * 1000;
-   }
+   // set reconnect before connect
+   int reconnectInterval = reconnect == 1 ? reconnect_timeout : -1;
    int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval));
    if (0 != rc) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_RECONNECT_IVL, %d) failed: %d(%s)", socket->mSocket, reconnectInterval, zmq_errno(), zmq_strerror(errno));
@@ -1200,39 +1202,27 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
 
    wlock_lock(socket->mLock);
 
-   // set reconnect before bind
-   int reconnectInterval = -1;
-   if (reconnect == 1) {
-      reconnectInterval = reconnect_timeout;
-   }
-   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval));
+   // bind socket
+   int rc = zmq_bind(socket->mSocket, uri);
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_RECONNECT_IVL, %d) failed: %d(%s)", socket->mSocket, reconnectInterval, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_bind(%p, %s) failed %d(%s)", socket->mSocket, uri, errno, zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
    else {
-      // bind socket
-      int rc = zmq_bind(socket->mSocket, uri);
+      zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket);
+   }
+
+   // get endpoint name
+   if (endpointName != NULL) {
+      char temp[ZMQ_MAX_ENDPOINT_LENGTH +1];
+      size_t tempSize = sizeof(temp);
+      int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
       if (0 != rc) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_bind(%p, %s) failed %d(%s)", socket->mSocket, uri, errno, zmq_strerror(errno));
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%p) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
          status = MAMA_STATUS_PLATFORM;
       }
       else {
-         zmqBridgeMamaTransportImpl_kickSocket(socket->mSocket);
-      }
-
-      // get endpoint name
-      if (endpointName != NULL) {
-         char temp[ZMQ_MAX_ENDPOINT_LENGTH +1];
-         size_t tempSize = sizeof(temp);
-         int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
-         if (0 != rc) {
-            MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%p) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
-            status = MAMA_STATUS_PLATFORM;
-         }
-         else {
-            *endpointName = strdup(temp);
-         }
+         *endpointName = strdup(temp);
       }
    }
 
@@ -1289,14 +1279,15 @@ mama_status zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket)
    return status;
 }
 
-
-mama_status zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket)
+// sets the socket to stop trying to reconnect if it gets an error condition on
+// reconnect (e.g., ECONNREFUSED)
+mama_status zmqBridgeMamaTransportImpl_stopReconnectOnError(zmqSocket* socket)
 {
    mama_status status = MAMA_STATUS_OK;
 
    wlock_lock(socket->mLock);
-   int reconnectInterval = -1;
-   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_IVL, &reconnectInterval, sizeof(reconnectInterval));
+   int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED | ZMQ_RECONNECT_STOP_HANDSHAKE_FAILED;
+   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_STOP, &reconnectOption, sizeof(reconnectOption));
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;

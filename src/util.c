@@ -73,13 +73,14 @@ const char* get_zmqEventName(int event)
    }
 }
 
+// Note: this code must be synchronized w/get_zmqEventMask
 int get_zmqEventLogLevel(int event)
 {
    switch(event) {
       case ZMQ_EVENT_CONNECTED                  : return MAMA_LOG_LEVEL_NORMAL;
-      case ZMQ_EVENT_CONNECT_DELAYED            : return MAMA_LOG_LEVEL_FINEST;
-      case ZMQ_EVENT_CONNECT_RETRIED            : return MAMA_LOG_LEVEL_FINEST;
-      case ZMQ_EVENT_LISTENING                  : return MAMA_LOG_LEVEL_FINER;
+      case ZMQ_EVENT_CONNECT_DELAYED            : return MAMA_LOG_LEVEL_FINER;
+      case ZMQ_EVENT_CONNECT_RETRIED            : return MAMA_LOG_LEVEL_FINE;
+      case ZMQ_EVENT_LISTENING                  : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_BIND_FAILED                : return MAMA_LOG_LEVEL_ERROR;
       case ZMQ_EVENT_ACCEPTED                   : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_ACCEPT_FAILED              : return MAMA_LOG_LEVEL_ERROR;
@@ -98,6 +99,7 @@ int get_zmqEventLogLevel(int event)
 
 // Returns a bit-mask of events that are logged at specified log level.
 // Ensures that we don't ask for more events than we care about
+// Note: this code must be synchronized w/get_zmqEventLogLevel
 int get_zmqEventMask(int logLevel)
 {
    int eventMask = 0;
@@ -105,13 +107,12 @@ int get_zmqEventMask(int logLevel)
    switch(logLevel) {
 
       case MAMA_LOG_LEVEL_FINEST:
-         eventMask |= ZMQ_EVENT_CONNECT_DELAYED;
-         eventMask |= ZMQ_EVENT_CONNECT_RETRIED;
 
       case MAMA_LOG_LEVEL_FINER:
-         eventMask |= ZMQ_EVENT_LISTENING;
+         eventMask |= ZMQ_EVENT_CONNECT_DELAYED;
 
       case MAMA_LOG_LEVEL_FINE:
+         eventMask |= ZMQ_EVENT_CONNECT_RETRIED;
          eventMask |= ZMQ_EVENT_CLOSED;
          eventMask |= ZMQ_EVENT_MONITOR_STOPPED;
 
@@ -120,6 +121,7 @@ int get_zmqEventMask(int logLevel)
          eventMask |= ZMQ_EVENT_ACCEPTED;
          eventMask |= ZMQ_EVENT_DISCONNECTED;
          eventMask |= ZMQ_EVENT_HANDSHAKE_SUCCEEDED;
+         eventMask |= ZMQ_EVENT_LISTENING;
 
       case MAMA_LOG_LEVEL_ERROR:
          eventMask |= ZMQ_EVENT_BIND_FAILED;

@@ -67,7 +67,7 @@ mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_unbindSocket(zmqSocket* sock
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_connectSocket(zmqSocket* socket, const char* uri,
    int reconnect, double reconnect_timeout);
 mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disconnectSocket(zmqSocket* socket, const char* uri);
-mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_disableReconnect(zmqSocket* socket);
+mama_status MAMACALLTYPE zmqBridgeMamaTransportImpl_stopReconnectOnError(zmqSocket* socket);
 mama_status zmqBridgeMamaTransportImpl_bindOrConnect(void* socket, const char* uri, zmqTransportDirection direction,
    int reconnect, double reconnect_timeout);
 
