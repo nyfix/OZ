@@ -1390,22 +1390,29 @@ mama_status zmqBridgeMamaTransportImpl_setCommonSocketOptions(const char* name, 
    wlock_lock(socket->mLock);
 
    int value = 0;
-   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RCVHWM, &value, sizeof(value));
+   int rc;
+   rc = zmq_setsockopt(socket->mSocket, ZMQ_RCVHWM, &value, sizeof(value));
    if (0 != rc) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_RCVHWM, %d) failed: %d(%s)", socket->mSocket, value, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
-   else {
-      rc = zmq_setsockopt(socket->mSocket, ZMQ_SNDHWM, &value, sizeof(value));
-      if (0 != rc) {
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_SNDHWM, %d) failed: %d(%s)", socket->mSocket, value, zmq_errno(), zmq_strerror(errno));
-         status = MAMA_STATUS_PLATFORM;
-      }
+
+   rc = zmq_setsockopt(socket->mSocket, ZMQ_SNDHWM, &value, sizeof(value));
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_SNDHWM, %d) failed: %d(%s)", socket->mSocket, value, zmq_errno(), zmq_strerror(errno));
+      status = MAMA_STATUS_PLATFORM;
+   }
+
+   value = 200;
+   rc = zmq_setsockopt(socket->mSocket, ZMQ_BACKLOG, &value, sizeof(value));
+   if (0 != rc) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p, ZMQ_BACKLOG, %d) failed: %d(%s)", socket->mSocket, value, zmq_errno(), zmq_strerror(errno));
+      status = MAMA_STATUS_PLATFORM;
    }
 
    wlock_unlock(socket->mLock);
 
-   return MAMA_STATUS_OK;
+   return status;
 }
 
 // "Sometimes" it is necessary to trigger the processing of outstanding commands against a
