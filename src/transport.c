@@ -247,6 +247,8 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
       free((void*) impl->mNamingAddress[i]);
    }
 
+   uint32_t peers = wtable_get_count(impl->mPeers);
+   MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Peers = %lu", peers);
    wtable_free_all(impl->mPeers);
    wtable_destroy(impl->mPeers);
 
