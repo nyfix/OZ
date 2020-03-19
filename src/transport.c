@@ -36,20 +36,21 @@
 
 // MAMA includes
 #include <mama/mama.h>
+#include <mama/integration/subscription.h>
+#include <mama/integration/transport.h>
+#include <mama/integration/msg.h>
+#include <mama/integration/queue.h>
+#include <timers.h>
+#include <mama/integration/endpointpool.h>
 #include <wombat/wInterlocked.h>
 #include <wombat/mempool.h>
 #include <wombat/memnode.h>
 #include <wombat/queue.h>
-#include <queueimpl.h>
-#include <msgimpl.h>
-#include <subscriptionimpl.h>
-#include <transportimpl.h>
-#include <timers.h>
+#include <wombat/strutils.h>
 
 // local includes
 #include "subscription.h"
 #include "msg.h"
-#include "endpointpool.h"
 #include "zmqbridgefunctions.h"
 #include "util.h"
 #include "inbox.h"
@@ -1288,7 +1289,8 @@ mama_status zmqBridgeMamaTransportImpl_stopReconnectOnError(zmqSocket* socket)
    mama_status status = MAMA_STATUS_OK;
 
    wlock_lock(socket->mLock);
-   int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED | ZMQ_RECONNECT_STOP_HANDSHAKE_FAILED;
+   //int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED | ZMQ_RECONNECT_STOP_HANDSHAKE_FAILED;
+   int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED;
    int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_STOP, &reconnectOption, sizeof(reconnectOption));
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));

@@ -31,8 +31,8 @@
 
 // Mama includes
 #include <mama/mama.h>
-#include <msgimpl.h>
 #include <wombat/memnode.h>
+#include <wombat/strutils.h>
 
 // local includes
 #include "transport.h"

@@ -24,11 +24,10 @@
 
 // MAMA includes
 #include <mama/mama.h>
+#include <mama/integration/queue.h>
 #include <wombat/wInterlocked.h>
-#include <bridge.h>
 
 // local includes
-#include "queueimpl.h"
 #include "zmqbridgefunctions.h"
 #include "zmqdefs.h"
 #include "uqueue.h"

@@ -76,9 +76,10 @@
 #include <wombat/wSemaphore.h>
 #include <wombat/wtable.h>
 #include <list.h>
+#include <wlock.h>
 #include <wombat/queue.h>
 #include <wombat/mempool.h>
-#include <endpointpool.h>
+#include <mama/integration/types.h>
 
 // required for definition of ZMQ_CLIENT, ZMQ_SERVER
 #define ZMQ_BUILD_DRAFT_API

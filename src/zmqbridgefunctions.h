@@ -26,7 +26,18 @@
 #define ZMQ_BRIDGE_FUNCTIONS__
 
 #include <mama/mama.h>
-#include <bridge.h>
+#include <mama/io.h>
+
+#include <mama/integration/types.h>
+#include <mama/integration/bridge.h>
+#include <mama/integration/inbox.h>
+#include <mama/integration/queue.h>
+#include <mama/integration/subscription.h>
+#include <mama/integration/transport.h>
+#include <mama/integration/publisher.h>
+#include <mama/integration/msg.h>
+
+
 
 #if defined(__cplusplus)
 extern "C" {

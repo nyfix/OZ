@@ -34,9 +34,9 @@
 #include <mama/mama.h>
 #include <mama/inbox.h>
 #include <mama/publisher.h>
-#include <bridge.h>
-#include <inboximpl.h>
-#include <msgimpl.h>
+#include <mama/integration/inbox.h>
+#include <mama/integration/msg.h>
+#include <mama/integration/endpointpool.h>
 
 // local includes
 #include "transport.h"
@@ -44,7 +44,6 @@
 #include "msg.h"
 #include "inbox.h"
 #include "subscription.h"
-#include "endpointpool.h"
 #include "zmqbridgefunctions.h"
 
 #include <zmq.h>

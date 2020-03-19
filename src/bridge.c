@@ -28,11 +28,13 @@
 
 // MAMA includes
 #include <mama/mama.h>
+#include <mama/io.h>
 #include <timers.h>
 
 // local includes
 #include "io.h"
 #include "zmqbridgefunctions.h"
+#include <mama/integration/mama.h>
 #include "util.h"
 
 #include <zmq.h>
@@ -78,8 +80,8 @@ mama_status zmqBridge_init(mamaBridge bridgeImpl)
 mama_status
 zmqBridge_open(mamaBridge bridgeImpl)
 {
-   mama_status         status  = MAMA_STATUS_OK;
-   mamaBridgeImpl*     bridge  = (mamaBridgeImpl*) bridgeImpl;
+   mama_status status = MAMA_STATUS_OK;
+   mamaQueue defaultEventQueue = NULL;
 
    wsocketstartup();
 
@@ -88,15 +90,16 @@ zmqBridge_open(mamaBridge bridgeImpl)
    }
 
    /* Create the default event queue */
-   status = mamaQueue_create(&bridge->mDefaultEventQueue, bridgeImpl);
+   status = mamaQueue_create(&defaultEventQueue, bridgeImpl);
    if (MAMA_STATUS_OK != status) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to create zmq queue (%s).", mamaStatus_stringForStatus(status));
       return status;
    }
 
+   mamaImpl_setDefaultEventQueue(bridgeImpl, defaultEventQueue);
+
    /* Set the queue name (used to identify this queue in MAMA stats) */
-   mamaQueue_setQueueName(bridge->mDefaultEventQueue,
-                          ZMQ_DEFAULT_QUEUE_NAME);
+   mamaQueue_setQueueName(defaultEventQueue, ZMQ_DEFAULT_QUEUE_NAME);
 
    /* Create the timer heap */
    if (0 != createTimerHeap(&gOmzmqTimerHeap)) {
@@ -120,7 +123,7 @@ mama_status
 zmqBridge_close(mamaBridge bridgeImpl)
 {
    mama_status      status      = MAMA_STATUS_OK;
-   mamaBridgeImpl*  bridge      = (mamaBridgeImpl*) bridgeImpl;
+   mamaQueue defaultEventQueue = NULL;
    wthread_t        timerThread;
 
    if (NULL ==  bridgeImpl) {
@@ -141,8 +144,8 @@ zmqBridge_close(mamaBridge bridgeImpl)
    gOmzmqTimerHeap = NULL;
 
    /* Destroy once queue has been emptied */
-   mamaQueue_destroyTimedWait(bridge->mDefaultEventQueue,
-                              ZMQ_SHUTDOWN_TIMEOUT);
+   mama_getDefaultEventQueue(bridgeImpl, &defaultEventQueue);
+   mamaQueue_destroyTimedWait(defaultEventQueue, ZMQ_SHUTDOWN_TIMEOUT);
 
    /* Stop and destroy the io thread */
    zmqBridgeMamaIoImpl_stop();

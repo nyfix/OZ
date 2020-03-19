@@ -9,3 +9,4 @@ export JIRA_RELEASE=BUS-1780           # release artifact in jira
 export LIBZMQ_VERSION=master
 export OPENMAMA_VERSION=master
 export OPENMAMA_OMNM_VERSION=master
+export OPENMAMA_ZMQ_VERSION=${PROJECT_VERSION}

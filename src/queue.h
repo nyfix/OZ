@@ -25,6 +25,8 @@
 #ifndef MAMA_BRIDGE_ZMQ_QUEUE_H__
 #define MAMA_BRIDGE_ZMQ_QUEUE_H__
 
+#include <mama/integration/types.h>
+#include <mama/queue.h>
 #include "zmqdefs.h"
 
 struct zmqTransportMsg_;

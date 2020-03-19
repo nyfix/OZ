@@ -1,16 +1,10 @@
 include_directories(.)
-include_directories(${MAMA_SRC}/common/c_cpp/src/c)
-include_directories(${MAMA_SRC}/mama/c_cpp/src/c)
-include_directories(${MAMA_SRC}/mama/c_cpp/src/c/bridge/qpid)
 include_directories(${MAMA_ROOT}/include)
 include_directories(${EVENT_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)
 
 link_directories(${MAMA_ROOT}/lib)
-# version 4.2 and later put shared object in lib64
 link_directories(${ZMQ_ROOT}/lib64)
-# version 4.1 and earlier put shared object in lib64
-#link_directories(${ZMQ_ROOT}/lib)
 link_directories(${EVENT_ROOT}/lib)
 
 # while libzmq exposes a C api, it is coded in C++ and requires C++ stdlib and that libstdc++ MUST be at least as recent as the
@@ -19,7 +13,7 @@ execute_process(COMMAND bash "-c" "dirname $(${CMAKE_CXX_COMPILER} -m64 -print-f
 message("ZMQ_CXX_LINK_DIRS=${ZMQ_CXX_LINK_DIRS}")
 link_directories(${ZMQ_CXX_LINK_DIRS})
 
-add_definitions(-DBRIDGE -DMAMA_DLL)
+add_definitions(-DBRIDGE -DMAMA_DLL -DOPENMAMA_INTEGRATION)
 
 if(WIN32)
     if (CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -52,7 +46,6 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
                    zmqbridgefunctions.h
                    zmqdefs.h
                    util.h util.c
-                   ${MAMA_SRC}/mama/c_cpp/src/c/bridge/qpid/endpointpool.c
                    notimpl.c
                    params.c
                    )
@@ -68,6 +61,7 @@ if(WIN32)
                           uuid
                           Ws2_32)
 
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     set_target_properties(mamazmqimpl${MAMA_LIB_SUFFIX} PROPERTIES PREFIX "lib")
 
     # Windows Targets
@@ -79,9 +73,6 @@ if(WIN32)
             DESTINATION bin/dynamic-debug)
 
 elseif(UNIX)
-    # note: io.c uses u_char (gnu extension)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-
     target_link_libraries(mamazmqimpl${MAMA_LIB_SUFFIX}
                           wombatcommon
                           mama

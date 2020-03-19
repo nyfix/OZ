@@ -34,7 +34,6 @@
 #include <string.h>
 
 #include <mama/mama.h>
-#include <bridge.h>
 
 #include "zmqdefs.h"
 

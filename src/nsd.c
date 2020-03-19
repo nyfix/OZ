@@ -9,8 +9,9 @@
 #include <signal.h>
 #include <string.h>
 
-#include <zmq.h>
+#include <wombat/strutils.h>
 
+#include <zmq.h>
 #include "zmqdefs.h"
 
 void sighandler(int unused)

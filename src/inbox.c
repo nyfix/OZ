@@ -30,9 +30,9 @@
 
 // Mama includes
 #include <mama/mama.h>
-#include <msgimpl.h>
 #include <wombat/wUuid.h>
 #include <wombat/port.h>
+#include <mama/integration/inbox.h>
 
 // local includes
 #include "zmqdefs.h"

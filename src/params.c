@@ -3,7 +3,10 @@
 //
 
 #include <mama/mama.h>
+#include <mama/integration/mama.h>
+#include <property.h>
 #include <wombat/wInterlocked.h>
+
 #include "zmqdefs.h"
 #include "params.h"
 

@@ -7,7 +7,12 @@
 
 // MAMA includes
 #include <mama/mama.h>
-#include <transportimpl.h>
+#include <mama/integration/types.h>
+#include <mama/integration/subscription.h>
+#include <mama/integration/transport.h>
+#include <mama/integration/msg.h>
+#include <mama/integration/queue.h>
+#include <mama/integration/inbox.h>
 
 
 mama_status zmqBridgeMamaTransport_forceClientDisconnect(transportBridge*   transports,
