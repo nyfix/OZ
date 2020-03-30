@@ -32,9 +32,15 @@
 const char* zmqBridge_generateUuid()
 {
    wUuid tempUuid;
+   #ifdef wUuid_generate_time_safe
    if (wUuid_generate_time_safe(tempUuid) == -1) {
       return NULL;
    }
+   #else
+   if (wUuid_generate(tempUuid) == -1) {
+      return NULL;
+   }
+   #endif
 
    char uuidStringBuffer[UUID_STRING_SIZE+ 1];
    wUuid_unparse(tempUuid, uuidStringBuffer);

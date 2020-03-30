@@ -1,7 +1,9 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Frank Quinn (http://fquinner.github.io)
+ * Original work Copyright (c) 2015 Frank Quinn (http://fquinner.github.io)
+ * Modified work Copyright (c) 2020 Bill Torpey (http://btorpey.github.io)
+ * and assigned to NYFIX, a division of Itiviti Group AB
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
