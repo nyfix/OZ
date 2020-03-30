@@ -3,6 +3,11 @@ include_directories(${MAMA_ROOT}/include)
 include_directories(${EVENT_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)
 
+# Default to installing directly to MAMA directory
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set (CMAKE_INSTALL_PREFIX "${MAMA_ROOT}" CACHE PATH "default install path" FORCE)
+endif()
+
 link_directories(${MAMA_ROOT}/lib)
 link_directories(${ZMQ_ROOT}/lib64)
 link_directories(${EVENT_ROOT}/lib)
@@ -85,9 +90,4 @@ elseif(UNIX)
     set_target_properties(nsd PROPERTIES LINKER_LANGUAGE CXX)
     target_link_libraries(nsd wombatcommon mama zmq)
     install(TARGETS nsd DESTINATION bin)
-endif()
-
-# Default to installing directly to MAMA directory unless provided already
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set (CMAKE_INSTALL_PREFIX "${MAMA_ROOT}" CACHE PATH "default install path" FORCE)
 endif()
