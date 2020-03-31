@@ -44,6 +44,8 @@ OZ runs over standard TCP/IP networks.
 ## How do I get started?
 See the [Getting Started](doc/get-start.md) documentation.
 
+And/or check out the rest of the docs in the [doc](doc) directory.
+
 ## Acknowledgements 
 OZ is based on work originally done by Frank Quinn, who implemented an earlier version of an OpenMAMA-ZeroMQ bridge, which can be found [here](https://github.com/cascadium/OpenMAMA-zmq). 
 

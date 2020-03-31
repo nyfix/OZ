@@ -113,20 +113,7 @@ source oz-nsd.sh
 3/31 15:18:20.417985|main|4086-7fbcb718c7c0|INFO(0,0) nsd running at tcp://127.0.0.1:5756|nsd.c(109)
 ```
 
-From another terminal session:
-
-```
-cd test
-source setenv.sh
-source oz-nsd.sh
-./sub.sh
-...
-mamasubscriberc: Created inbound subscription.
-...
-
-```
-
-From another terminal session:
+After starting the nsd (see above), open another terminal window for the publisher:
 
 ```
 cd test
@@ -135,64 +122,50 @@ source oz-nsd.sh
 ./pub.sh
 ...
 Created inbound subscription.
-...
-3/31 15:20:39.712429|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 1 to MAMA_TOPIC {{MdMsgType[1]=1,MdMsgStatus[2]=0,MdSeqNum[10]=1,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:40.212552|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 2 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=2,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:40.712589|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 3 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=3,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:41.212964|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 4 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=4,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:41.713553|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 5 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=5,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:42.214053|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 6 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=6,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:42.714598|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 7 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=7,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-3/31 15:20:43.215114|publishMessage|4945-7fdea1823780|INFO(0,0) Publishing message 8 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=8,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
-^C
-```
-
-Going back to the subscriber, you'll see the messages from the publisher:
+3/31 15:36:35.451520|publishMessage|7776-7f2394270780|INFO(0,0) Publishing message 1 to MAMA_TOPIC {{MdMsgType[1]=1,MdMsgStatus[2]=0,MdSeqNum[10]=1,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
+3/31 15:36:35.952012|publishMessage|7776-7f2394270780|INFO(0,0) Publishing message 2 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=2,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
+3/31 15:36:36.452572|publishMessage|7776-7f2394270780|INFO(0,0) Publishing message 3 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=3,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
+3/31 15:36:36.953120|publishMessage|7776-7f2394270780|INFO(0,0) Publishing message 4 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=4,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)
+3/31 15:36:37.453664|publishMessage|7776-7f2394270780|INFO(0,0) Publishing message 5 to MAMA_TOPIC {{MdMsgType[1]=0,MdMsgStatus[2]=0,MdSeqNum[10]=5,MdFeedHost[12]=MAMA_TOPIC}}|mamapublisherc.c(341)...
 
 ```
-...
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    1
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    1
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    2
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    3
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    4
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    5
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    6
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    7
-              MdFeedHost    12               STRING           MAMA_TOPIC
-mamasubscriberc: Recieved msg.
-               MdMsgType     1                  I32                    0
-             MdMsgStatus     2                  I32                    0
-                MdSeqNum    10                  I32                    8
-              MdFeedHost    12               STRING           MAMA_TOPIC
-...              
+
+Then open another terminal window and start the subscriber -- as soon as you start the subscriber you should start seeing messages from the publisher:
+
 ```
+cd test
+source setenv.sh
+source oz-nsd.sh
+./pub.sh
+...
+mamasubscriberc: Created inbound subscription.
+mamasubscriberc: Recieved msg.
+               MdMsgType     1                  I32                    0
+             MdMsgStatus     2                  I32                    0
+                MdSeqNum    10                  I32                   27
+              MdFeedHost    12               STRING           MAMA_TOPIC
+mamasubscriberc: Recieved msg.
+               MdMsgType     1                  I32                    0
+             MdMsgStatus     2                  I32                    0
+                MdSeqNum    10                  I32                   28
+              MdFeedHost    12               STRING           MAMA_TOPIC
+mamasubscriberc: Recieved msg.
+               MdMsgType     1                  I32                    0
+             MdMsgStatus     2                  I32                    0
+                MdSeqNum    10                  I32                   29
+              MdFeedHost    12               STRING           MAMA_TOPIC
+mamasubscriberc: Recieved msg.
+               MdMsgType     1                  I32                    0
+             MdMsgStatus     2                  I32                    0
+                MdSeqNum    10                  I32                   30
+              MdFeedHost    12               STRING           MAMA_TOPIC
+mamasubscriberc: Recieved msg.
+               MdMsgType     1                  I32                    0
+             MdMsgStatus     2                  I32                    0
+                MdSeqNum    10                  I32                   31
+              MdFeedHost    12               STRING           MAMA_TOPIC
+```
+
 
 ### Producer/consumer
 
