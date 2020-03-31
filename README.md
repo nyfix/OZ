@@ -41,6 +41,9 @@ Currently, OZ runs on Linux (CentOS 7) and OSX.  (We hope to provide support for
 
 OZ runs over standard TCP/IP networks. 
 
+## How do I get started?
+See the [Getting Started](doc/get-start.md) documentation.
+
 ## Acknowledgements 
 OZ is based on work originally done by Frank Quinn, who implemented an earlier version of an OpenMAMA-ZeroMQ bridge, which can be found [here](https://github.com/cascadium/OpenMAMA-zmq). 
 
