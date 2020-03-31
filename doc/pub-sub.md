@@ -1,4 +1,4 @@
-# Publish/Subscribe
+# Publish/Subscribe Messaging
 The central paradigm for many distributed messaging applications is "publish/subscribe" messaging -- this is where messages are sent, not to individual destinations, but to "subjects" or "topics", which are typically arbitrary strings.
 
 Applications receive these messages by "subscribing" to specific topics which they are interested in, and the middleware software is responsible for routing these messages over the physical transport(s) (e.g., TCP) to subscribers.

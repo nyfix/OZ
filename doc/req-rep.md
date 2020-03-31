@@ -1,4 +1,4 @@
-## Request/Reply Messaging
+# Request/Reply Messaging
 Request/reply messaging refers to the ability of an application to send a message which expects one or more replies, and to have those reply messages automatically routed to the request originator.  
 
 While ZeroMQ includes its own version of request/reply messaging (ZMQ_REQ & ZMQ_REP socket types), its use [has been rather fragile in practice](https://stackoverflow.com/questions/26915347/zeromq-reset-req-rep-socket-state) -- specifically, ZeroMQ assumes a rigid ordering of requests and replies that is not flexible enough for many distributed applications.<sup>[1](#footnote1)</sup>

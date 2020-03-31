@@ -1,3 +1,4 @@
+# Configuration
 OZ is configured using the "mama.properties" file, as described in the [OpenMAMA Developer's Guide](http://www.openmama.org/sites/default/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf). 
 
 In the following examples, settings are prefixed by "mama.zmq.transport.{name}.", where "{name}" is the name of the transport, as specified in `mamaTransport_create`.
