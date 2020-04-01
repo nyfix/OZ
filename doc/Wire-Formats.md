@@ -34,10 +34,10 @@ OZ uses the following wire-format for all application messages (messages sent us
  - 0x2: inbox request
  - 0x3: inbox reply
 - reply addr - if the messsage is an inbox request, the reply address follows.  It is exactly 60 bytes.
-- payload - the serialized buffer obtained from the payload bridge by calling `mamaMsg_getByteBuffer`   
+- payload - the serialized buffer obtained from the payload bridge by calling `mamaMsg_getByteBuffer`
 
 ## Naming messages
-Naming messages are exchanged by peers via the nsd proxy (see [Naming Service](nsd.md) for more information):
+Naming messages are exchanged by peers via the nsd proxy (see [Naming Service](Naming-Service.md) for more information):
 
 ```
           +--------------------+
@@ -88,9 +88,9 @@ Naming messages are exchanged by peers via the nsd proxy (see [Naming Service](n
 - pid - process ID
 - transport uuid - unique ID of the transport
 - endpoint addr - the endpoint address of the transport's PUB socket, established by `zmq_bind`.  This is the address that peers' SUB sockets specify in `zmq_connect` call.
-  
+
 ## Control messages
-Control messages are used to communicate between the application and the main dispatch thread.  
+Control messages are used to communicate between the application and the main dispatch thread.
 
 
 ```
@@ -103,11 +103,11 @@ Control messages are used to communicate between the application and the main di
           +--------------------+
           |     null (1)       |
           +--------------------+
-```  
+```
 
 - command - the command to execute.  Currently-used values are:
- - 'S': subscribe to the topic specified in the command argument  
- - 'U': un-subscribe from the topic specified in the command argument  
+ - 'S': subscribe to the topic specified in the command argument
+ - 'U': un-subscribe from the topic specified in the command argument
  - 'X': exit from dispatch loop/thread
 
 

@@ -42,7 +42,7 @@ Currently, OZ runs on Linux (CentOS 7) and OSX.  (We hope to provide support for
 OZ runs over standard TCP/IP networks. 
 
 ## How do I get started?
-See the [Getting Started](doc/get-start.md) documentation.
+See the [Getting Started](doc/Getting-Started.md) documentation.
 
 And/or check out the rest of the docs in the [doc](doc) directory.
 
