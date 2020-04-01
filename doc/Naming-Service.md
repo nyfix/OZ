@@ -10,9 +10,9 @@ However, with no central broker, a mechanism is needed to provide nodes with the
 OZ introduces a hybrid approach, which distinguishes between discovery (naming) messages and data messages.  
 
 - "Naming" (i.e., discovery) messages are used to tell nodes how to connect to their peers, and are routed through one or more broker processes (or "proxy" in ZeroMQ terms).  These broker processes are configured at well-known addresses that each node uses to connect to them.
- - Each node has both a PUB and SUB socket that are connected to the broker ("naming" sockets).
+  - Each node has both a PUB and SUB socket that are connected to the broker ("naming" sockets).
 - Data messages are sent directly between nodes, bypassing the broker.
- - Each node has both a PUB and SUB socket that are connected to all other peer nodes ("data" sockets).
+  - Each node has both a PUB and SUB socket that are connected to all other peer nodes ("data" sockets).
 
 That architecture is illustrated below:
 
@@ -21,15 +21,17 @@ That architecture is illustrated below:
 - Each node connects to a broker (zmq_proxy) process to publish and subscribe to discovery messages.
 
 - Each node connects directly for data messages to any node for which it receives a discovery message.  
- - SUB sockets always connect to PUB sockets.  This eliminates the possiblity that two nodes will "cross-connect" in such a way as to cause duplicate messages.
- - This is also the preferred way to connect sockets in ZeroMQ (see <https://github.com/zeromq/libzmq/issues/2267>).  
+  - SUB sockets always connect to PUB sockets.  This eliminates the possiblity that two nodes will "cross-connect" in such a way as to cause duplicate messages.
+  - This is also the preferred way to connect sockets in ZeroMQ (see <https://github.com/zeromq/libzmq/issues/2267>).  
+
 - At startup, each node publishes its address information via the broker process:
- - The node binds its "data" PUB socket to an ephemeral port.  This endpoint is published in subsequent discovery messages sent by the node.
- - The node connects its "naming" SUB socket to the broker's PUB port.
- - When the node receives the welcome message from the broker:
+  - The node binds its "data" PUB socket to an ephemeral port.  This endpoint is published in subsequent discovery messages sent by the node.
+  - The node connects its "naming" SUB socket to the broker's PUB port.
+  - When the node receives the welcome message from the broker:
      - It connects its "naming" PUB socket to the broker's SUB socket.  (The endpoint of the broker's SUB socket is contained in the welcome message).
      - It begins publishing its discovery information on the "naming" PUB socket. 
      - It continues to publish its address information until it receives its own message. This ensures that at least one broker has received and forwarded the message.
+
 - When a node receives a discovery message for a peer which it has not already seen, it re-publishes its own address information.  This ensures that "late joiners" get all discovery messages.
 - Subscription information is exchanged when the nodes connect.  (This is handled by the ZeroMQ layer).
 
