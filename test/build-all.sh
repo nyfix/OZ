@@ -20,9 +20,8 @@ CMAKE_CXX_FLAGS="-fno-omit-frame-pointer -DNYFIX_LOG"
 
 # libzmq
 rm -rf libzmq || true
-git clone https://github.com/nyfix/libzmq.git
+git clone -b nyfix https://github.com/nyfix/libzmq.git
 pushd libzmq
-git checkout nyfix
 rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
@@ -32,9 +31,8 @@ popd
 
 # OpenMAMA
 rm -rf OpenMAMA || true
-git clone https://github.com/nyfix/OpenMAMA.git
+git clone -b nyfix https://github.com/nyfix/OpenMAMA.git
 pushd OpenMAMA
-git checkout nyfix
 rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWITH_UNITTEST=ON \
@@ -44,9 +42,8 @@ popd
 
 # OpenMAMA-omnm
 rm -rf OpenMAMA-omnm || true
-git clone https://github.com/nyfix/OpenMAMA-omnm.git
+git clone -b nyfix https://github.com/nyfix/OpenMAMA-omnm.git
 pushd OpenMAMA-omnm
-git checkout nyfix
 rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DMAMA_ROOT=${INSTALL_BASE} \

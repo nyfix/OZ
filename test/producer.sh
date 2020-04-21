@@ -2,8 +2,7 @@
 SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)
 source ${SCRIPT_DIR}/setenv.sh
 
-[[ ${BUILD_TYPE} == "release"  ]] && PREFIX="taskset -c 1"
+# uncomment following to run w/process pinned to a CPU
+#[[ ${BUILD_TYPE} == "release"  ]] && PREFIX="taskset -c 3"
 
-${PREFIX} `which mamaproducerc_v2` -tport ${MAMA_TPORT_PUB} -m ${MAMA_MW} \
--rt -steps 5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100 -stepInterval 10 \
-$*
+${PREFIX} `which mamaproducerc_v2` -tport ${MAMA_TPORT_PUB} -m ${MAMA_MW} $*
