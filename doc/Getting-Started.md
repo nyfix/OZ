@@ -95,7 +95,15 @@ For comparison purposes, you may want to run the unit tests with OpenMAMA's buil
 
 ```
 cd test
-source qpid.sh
+source qpid-pubsub.sh
 ./ut.sh
 ```
 
+#### See also
+[OpenMAMA Build Instructions](https://openmama.github.io/openmama_build_instructions.html)
+
+[OpenMAMA Unit Testing](https://openmama.github.io/openmama_unit_testing.html)
+
+[OpenMAMA Qpid Bridge](https://openmama.github.io/openmama_qpid_bridge.html)
+
+[ZeroMQ installation](https://github.com/zeromq/libzmq/blob/master/INSTALL)
