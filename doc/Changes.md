@@ -53,7 +53,10 @@ OZ takes a somewhat more relaxed approach -- most objects are defined in header 
 Opaque pointers are still used by functions that implement the OpenMAMA API, but internal functions use pointers to concrete types.
 
 # Public vs. private functions
-For the most part, OZ adheres to the convention that "public" functions (functions defined as part of the OpenMAMA API) are named using the form "object_operation", while "private" functions (not part of the API) are named using "objectImpl_operation".
+For the most part, OZ adheres to the convention that "public" functions (functions defined as part of the OpenMAMA API) are named using the form "object_operation", while "private" functions (not part of the API) are named using "objectImpl_operation".  Applications should not be calling any "impl" functions:
+
+> Patient:  Doctor, it hurts when I do this.<br>
+> Doctor:   So don't do that.
 
 # Thread Safety
 ZeroMQ is very fussy about how to properly access sockets in a multi-threaded environment, and it is quite easy to get that wrong, with serious consequences (e.g., `SEGV`).  
