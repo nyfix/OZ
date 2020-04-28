@@ -2,7 +2,7 @@
 
 ## Working with OZ
 
-- [Getting Started](Getting-Started)
+- [Getting Started](Getting-Started.md)
 - [Running the OpenMAMA Examples](Running-Examples.md)
 - [Running the OpenMAMA Performance Tests](Performance.md)
 - [Configuration](Configuration.md)
