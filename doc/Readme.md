@@ -4,7 +4,7 @@
 
 - [Getting Started](Getting-Started)
 - [Running the OpenMAMA Examples](Running-Examples.md)
-- [Running Performance Tests](Performance.md)
+- [Running OpenMAMA Performance Tests](Performance.md)
 - [Configuration](Configuration.md)
 
 ## Design
