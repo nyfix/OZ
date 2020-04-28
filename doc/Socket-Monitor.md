@@ -4,7 +4,7 @@ ZeroMQ is able to provide connect/disconnect (and other) events via its API (<ht
 
 In normal operation, these events largely duplicate information that is already available in discovery messages.  Nevertheless, these events can be useful for troubleshooting, so the code logs them at "reasonable" severity levels, depending on the event -- increase the logging level to see more detail. 
 
-Currently the socket monitor is enabled by default -- it can be enabled by setting the following in mama.properties:
+Currently the socket monitor is enabled by default -- it can be disabled by setting the following in mama.properties:
 
     mama.zmq.transport.<transport_name>.socket_monitor=0
 

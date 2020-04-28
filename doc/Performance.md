@@ -62,7 +62,7 @@ source omnmnsg.sh
 ### Results
 The OpenMAMA producer/consumer test measures message *rates* -- the producer sends as quickly as possible.
 
-In this test, the qpid transport can acheive a rate of approximately 31,000 messages per second, while OZ with ZeroMQ manages at around 650,000 messages per second, or about 20x the rate with qpid.
+In this test, the qpid transport can acheive a rate of approximately 31,000 messages per second, while OZ with ZeroMQ manages around 650,000 messages per second, or about 20x the rate with qpid.
 
 > Note that these results are **without** pinning either process to a CPU, which confers an advantage on OZ -- ZeroMQ is better able to take advantage of multiple cores, while qpid is essentially single-threaded on both the producer and consumer. 
 

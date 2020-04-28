@@ -48,15 +48,18 @@ OpenMAMA goes to great lengths to ensure that internal data structures are only 
 
 The benefit of this approach is to make it literally impossible for another compilation unit to "peek" at the internal representation of the object (i.e., by casting the opaque pointer to a concrete type), since the definition of the concrete type is unknown outside its translation unit.
 
-OZ takes a somewhat more relaxed approach -- most objects are defined in header files that are included in the individual translation units, and objects are typically referred to by their concrete types, rather than as `void*`'s.  This avoids a whole class of potential problems caused by wayward casts, and as an added benefit greatly simplifies debugging.
+OZ takes a somewhat more relaxed approach -- most objects are defined in header files that are included in the individual translation units, and objects are typically referred to by their concrete types, rather than as `void*`'s.  This avoids a whole class of potential problems caused by wayward casts, and as an added benefit greatly simplifies debugging.  (You can read one person's opinions on the subject [here](http://btorpey.github.io/blog/2014/09/23/into-the-void/) ;-)
 
 Opaque pointers are still used by functions that implement the OpenMAMA API, but internal functions use pointers to concrete types.
 
 # Public vs. private functions
-For the most part, OZ adheres to the convention that "public" functions (functions defined as part of the OpenMAMA API) are named using the form "object_operation", while "private" functions (not part of the API) are named using "objectImpl_operation".
+For the most part, OZ adheres to the convention that "public" functions (functions defined as part of the OpenMAMA API) are named using the form "object_operation", while "private" functions (not part of the API) are named using "objectImpl_operation".  Applications should not be calling any "impl" functions:
+
+> Patient:  Doctor, it hurts when I do this.<br>
+> Doctor:   So don't do that.
 
 # Thread Safety
-ZeroMQ is quite fussy about how to properly access sockets in a multi-threaded environment, and it is quite easy to get that wrong, with serious consequences (e.g., `SIGSEGV`).  
+ZeroMQ is very fussy about how to properly access sockets in a multi-threaded environment, and it is quite easy to get that wrong, with serious consequences (e.g., `SEGV`).  
 
 OZ is completely thread-safe internally, and makes it difficult to misuse ZeroMQ in a non-thread-safe-manner.
 

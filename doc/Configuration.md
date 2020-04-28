@@ -9,8 +9,8 @@ Parameter | Default Value | Description
 -------- | -------- | ---------- 
 type|tcp|OZ currently supports only tcp.  Any other value is silently ignored.
 publish_address|lo|Specifies the interface the transport should use to publish messages.  Applies to both naming and data sockets.
-socket_monitor|1|Specifies whether to enable monitoring of socket connects/disconnects.  When active, socket activity will be logged to `stderr`.  For more information, see <http://api.zeromq.org/master:zmq-socket-monitor>.
-is_naming|1|Specifies that the transport is a "naming" transport.  For more information, see [Naming Service](Naming_Service).
+socket_monitor|1|Specifies whether to enable monitoring of socket connects/disconnects.  When active, socket activity will be logged to `stderr`.  For more information, see [Monitoring Socket Events](Socket-Monitor.md).
+is_naming|1|Specifies that the transport is a "naming" transport.  For more information, see [Naming Service/Peer Discovery](Naming-Service.md).
 
 
 ### Naming Sockets
