@@ -6,12 +6,12 @@ OpenMAMA includes rudimentary performance-testing programs, as documented at <ht
 ### Testing with qpid
 
 ```
-source qpid.sh
+source qpid-pubsub.sh
 ./producer.sh -s AAAA
 ```
 
 ```
-source qpid.sh
+source qpid-pubsub.sh
 ./consumer.sh -s AAAA
                  TIME     RATE  TRANS LOW  TRANS AVG TRANS HIGH     GAPS  MC GAPS MISSING FIDS 
 2020/04/21 - 12:05:33    32567         33         44       2431        0        0            0
@@ -73,3 +73,7 @@ The above results were obtained with:
 - CentOS 7.7
 
 The tests were run with qpid in point-to-point ("p2p") mode -- i.e., without a broker.  Performance with a brokered configuration, which is typical for qpid, would be much less.
+
+#### See also
+[Qpid Bridge](https://openmama.github.io/openmama_qpid_bridge.html)
+
