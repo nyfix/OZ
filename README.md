@@ -24,7 +24,7 @@ While there have been plenty of open-source middleware solutions (like [JMS](htt
 There are also a number of high-performance middleware solutions, but they are almost exclusively commercial products (e.g., [Tibco Rendezvous](https://en.wikipedia.org/wiki/TIBCO_Rendezvous), [Informatica Ultra Messaging](https://www.informatica.com/products/data-integration/ultra-messaging.html)). 
 
 ## Why is it called OZ?
-OZ brings together two world-class software projects: [OpenMAMA](openmama.org) and [ZeroMQ](zeromq.org):
+OZ brings together two world-class software projects: [OpenMAMA](https://openmama.org) and [ZeroMQ](https://zeromq.org/):
 
 - OpenMAMA provides a ["middleware-agnostic messaging API"](https://www.openmama.org/what-openmama) that has been used for many years in a number of [commercial products and in-house systems](https://www.openmama.org/what-is-openmama/the-openmama-organisation/steering-committee).  OpenMAMA grew out of the original MAMA implementation by Wombat Financial, and [was donated](https://www.linuxfoundation.org/press-release/2011/10/financial-services-industry-leads-collaboration-on-new-openmama-project/) to the Linux Foundation by the New York Stock Exchange.  OpenMAMA also provides utility functions including timers, queues, dispatchers, loggers, etc.
 
