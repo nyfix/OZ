@@ -99,7 +99,7 @@ source qpid-pubsub.sh
 ./ut.sh
 ```
 ## Where to go from here
-If the unit tests look good, you might want to proceed to [run the OpenMAMA examples programs](RunningExamples.md).
+If the unit tests look good, you might want to proceed to [run the OpenMAMA examples programs](Running-Examples.md).
 
 If you're interested in performance (and who isn't), you can also check out the [OpenMAMA performance tests](Performance.md
 ).

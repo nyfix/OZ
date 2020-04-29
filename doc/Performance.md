@@ -72,7 +72,7 @@ The above results were obtained with:
 - 16GB RAM
 - CentOS 7.7
 
-The tests were run with qpid in point-to-point ("p2p") mode -- i.e., without a broker.  Performance with a brokered configuration, which is typical for qpid, would be much less.
+The tests were run with qpid in point-to-point ("p2p") mode -- i.e., without a broker.  Performance with a brokered configuration, which is typical for qpid, would likely be less.
 
 #### See also
 [Qpid Bridge](https://openmama.github.io/openmama_qpid_bridge.html)
