@@ -141,15 +141,22 @@ int get_zmqEventMask(int logLevel)
    return eventMask;
 }
 
+
+// default log levels for "naming" messages
+#ifndef MAMA_LOG_LEVEL_BEACON
 #define MAMA_LOG_LEVEL_BEACON MAMA_LOG_LEVEL_FINEST
-//#define MAMA_LOG_LEVEL_BEACON MAMA_LOG_LEVEL_NORMAL
+#endif
+
+#ifndef MAMA_LOG_LEVEL_NAMING
+#define MAMA_LOG_LEVEL_NAMING MAMA_LOG_LEVEL_NORMAL
+#endif
 
 MamaLogLevel getNamingLogLevel(const char mType)
 {
    if (mType == 'c')
       return MAMA_LOG_LEVEL_BEACON;
    else
-      return MAMA_LOG_LEVEL_NORMAL;
+      return MAMA_LOG_LEVEL_NAMING;
 }
 
 
