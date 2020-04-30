@@ -21,7 +21,7 @@ OZ is the only commercial-quality, high-performance middleware solution that is 
 
 While there have been plenty of open-source middleware solutions (like [JMS](https://en.wikipedia.org/wiki/Java_Message_Service) and [AMQP](https://en.wikipedia.org/wiki/Apache_ActiveMQ)), none of them have really been suitable for the demands of real-time, low-latency, high-throughput messaging.
 
-There are also a number of high-performance middleware solutions, but they are almost exclusively commercial products (e.g., [Tibco Rendezvous](https://en.wikipedia.org/wiki/TIBCO_Rendezvous), [Informatica Ultra Messaging](https://www.informatica.com/products/data-integration/ultra-messaging.html)). 
+There *are* a number of high-performance middleware solutions, but they are almost exclusively commercial products.
 
 ## Why is it called OZ?
 OZ brings together two world-class software projects: [OpenMAMA](https://openmama.org) and [ZeroMQ](https://zeromq.org/):
