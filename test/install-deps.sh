@@ -7,6 +7,7 @@ yum install gcc gcc-c++
 yum install git
 yum install cmake
 yum install epel-release
+yum install ncurses-devel
 yum install libxml2 libxml2-devel
 yum install flex
 yum install gtest-devel

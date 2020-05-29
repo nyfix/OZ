@@ -14,6 +14,7 @@ gcc, gcc-c++ | all
 git | all
 cmake | all
 epel-release | (for gtest-devel)
+ncurses-devel | OpenMAMA
 libxml2-devel | OpenMAMA
 flex | OpenMAMA
 gtest-devel | OpenMAMA, OpenMAMA-omnm
