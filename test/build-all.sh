@@ -26,7 +26,8 @@ rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
-   .. &&  make && make install
+   ..
+make; make install
 popd
 
 # OpenMAMA
@@ -37,7 +38,8 @@ rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWITH_UNITTEST=ON \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
-   .. &&  make && make install
+   ..
+make; make install
 popd
 
 # OpenMAMA-omnm
@@ -48,7 +50,8 @@ rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DMAMA_ROOT=${INSTALL_BASE} \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
-   .. &&  make && make install
+   ..
+make; make install
 popd
 
 # OZ
@@ -57,7 +60,8 @@ rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DMAMA_ROOT=${INSTALL_BASE} -DZMQ_ROOT=${INSTALL_BASE} \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
-   .. &&  make && make install
+   ..
+make; make install
 popd
 
 popd
