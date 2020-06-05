@@ -26,16 +26,16 @@ uuidd | OZ
 The `install-deps.sh` script, located in the `test` directory, can be used to install the above.  (Note that installs must be done as root).  
 
 ## Re: uuid's
-OZ uses uuid's to uniquely identify nodes in the network.  To ensure that uuid's are unique, the code calls `uuid_generate_time_safe`, which requires that the uuidd daemon be running.  To start the daemon if it's not already running:
+OZ uses uuid's to uniquely identify nodes in the network.  To ensure that uuid's are unique, the code calls `uuid_generate_time_safe`, which requires that the uuidd daemon be running.  To start the daemon if it's not already running (following must be run as root):
 
 ### RH/CentOS 7
 ```
-sudo systemctl start uuidd
+systemctl start uuidd
 ```
 
 ### RH/CentOS 6
 ```
-sudo service uuidd start
+service uuidd start
 ```
 
 If the uuidd daemon is not running, you will get an error similar to the following when attempting to run any OZ binaries:
