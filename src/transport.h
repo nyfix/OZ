@@ -127,7 +127,7 @@ mama_status zmqBridgeMamaTransportImpl_sendCommand(zmqTransportBridge* impl, zmq
 void* zmqBridgeMamaTransportImpl_monitorThread(void* closure);
 mama_status zmqBridgeMamaTransportImpl_startMonitor(zmqTransportBridge* impl);
 mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl);
-int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName);
+uint64_t zmqBridgeMamaTransportImpl_monitorEvent_v2(void *socket, const char* socketName);
 
 
 #if defined(__cplusplus)

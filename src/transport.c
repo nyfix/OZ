@@ -1135,7 +1135,7 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    if ((socket->mMonitor != 0) && (name != NULL)) {
       char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
       sprintf(endpoint, "inproc://%s", name);
-      CALL_ZMQ_FUNC(zmq_socket_monitor(socket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel)));
+      CALL_ZMQ_FUNC(zmq_socket_monitor_versioned(socket->mSocket, endpoint, get_zmqEventMask(gMamaLogLevel), 2, ZMQ_PAIR));
    }
 
    // do this here, rather than when closing the socket
@@ -1265,7 +1265,7 @@ mama_status zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket)
    wlock_lock(socket->mLock);
 
    if (socket->mMonitor != 0) {
-      rc = zmq_socket_monitor(socket->mSocket, NULL, ZMQ_EVENT_ALL);
+      rc = zmq_socket_monitor_versioned(socket->mSocket, NULL, ZMQ_EVENT_ALL_V2, 2, ZMQ_PAIR);
       if (0 != rc) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_socket_monitor(%p) failed trying to disable monitoring %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
          status = MAMA_STATUS_PLATFORM;
@@ -1583,16 +1583,16 @@ void* zmqBridgeMamaTransportImpl_monitorThread(void* closure)
       }
 
       if (items[0].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(dataPubMonitor, "dataPub");
+         zmqBridgeMamaTransportImpl_monitorEvent_v2(dataPubMonitor, "dataPub");
       }
       if (items[1].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(dataSubMonitor, "dataSub");
+         zmqBridgeMamaTransportImpl_monitorEvent_v2(dataSubMonitor, "dataSub");
       }
       if (items[2].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(namingPubMonitor, "namingPub");
+         zmqBridgeMamaTransportImpl_monitorEvent_v2(namingPubMonitor, "namingPub");
       }
       if (items[3].revents & ZMQ_POLLIN) {
-         zmqBridgeMamaTransportImpl_monitorEvent(namingSubMonitor, "namingSub");
+         zmqBridgeMamaTransportImpl_monitorEvent_v2(namingSubMonitor, "namingSub");
       }
       if (items[4].revents & ZMQ_POLLIN) {
          // nothing to do -- just loop around and check mIsMonitoring flag
@@ -1657,47 +1657,70 @@ mama_status zmqBridgeMamaTransportImpl_stopMonitor(zmqTransportBridge* impl)
 
    return MAMA_STATUS_OK;
 }
-
-typedef struct __attribute__ ((packed)) zmq_monitor_frame1 {
-   uint16_t    event;
-   uint32_t    value;
-} zmq_monitor_frame1;
-
-int zmqBridgeMamaTransportImpl_monitorEvent(void *socket, const char* socketName)
+uint64_t zmqBridgeMamaTransportImpl_monitorEvent_v2(void *socket, const char* socketName)
 {
-   // First frame in message contains event number and value
-   zmq_msg_t msg;
-   zmq_msg_init (&msg);
-   if (zmq_msg_recv (&msg, socket, 0) == -1)
-      return -1; // Interrupted, presumably
+    //  First frame in message contains event number
+    zmq_msg_t msg;
+    zmq_msg_init (&msg);
+    if (zmq_msg_recv (&msg, socket, 0) == -1)
+        return -1;              //  Interrupted, presumably
+    //assert (zmq_msg_more (&msg));
 
-   zmq_monitor_frame1* pFrame1 = (zmq_monitor_frame1*) zmq_msg_data (&msg);
-   int event = pFrame1->event;
-   int value = pFrame1->value;
-   const char* eventName = get_zmqEventName(event);
+    uint64_t event;
+    memcpy (&event, zmq_msg_data (&msg), sizeof (event));
+    zmq_msg_close (&msg);
 
-   // Second frame in message contains event address
-   zmq_msg_init (&msg);
-   if (zmq_msg_recv (&msg, socket, 0) == -1)
-      return -1; // Interrupted, presumably
+    //  Second frame in message contains the number of values
+    zmq_msg_init (&msg);
+    if (zmq_msg_recv (&msg, socket, 0) == -1)
+        return -1;              //  Interrupted, presumably
+    //assert (zmq_msg_more (&msg));
 
-   uint8_t* data = (uint8_t *) zmq_msg_data (&msg);
-   size_t size = zmq_msg_size(&msg);
-   char endpoint[ZMQ_MAX_ENDPOINT_LENGTH +1];
-   memset(endpoint, '\0', sizeof(endpoint));
-   memcpy(endpoint, data, size);
+    uint64_t value_count;
+    memcpy (&value_count, zmq_msg_data (&msg), sizeof (value_count));
+    zmq_msg_close (&msg);
+
+    uint64_t value;
+    for (uint64_t i = 0; i < value_count; ++i) {
+        //  Subsequent frames in message contain event values
+        zmq_msg_init (&msg);
+        if (zmq_msg_recv (&msg, socket, 0) == -1)
+            return -1;              //  Interrupted, presumably
+        //assert (zmq_msg_more (&msg));
+
+        memcpy (&value, zmq_msg_data (&msg), sizeof (value));
+        zmq_msg_close (&msg);
+    }
+
+    //  Second-to-last frame in message contains local address
+    zmq_msg_init (&msg);
+    if (zmq_msg_recv (&msg, socket, 0) == -1)
+        return -1;              //  Interrupted, presumably
+    //assert (zmq_msg_more (&msg));
+    char local_address[ZMQ_MAX_ENDPOINT_LENGTH +1];
+    memset(local_address, '\0', sizeof(local_address));
+    uint8_t *data1 = (uint8_t *) zmq_msg_data (&msg);
+    size_t size1 = zmq_msg_size (&msg);
+    memcpy (local_address, data1, size1);
+    zmq_msg_close (&msg);
+
+    //  Last frame in message contains remote address
+    zmq_msg_init (&msg);
+    if (zmq_msg_recv (&msg, socket, 0) == -1)
+        return -1;              //  Interrupted, presumably
+    //assert (!zmq_msg_more (&msg));
+    char remote_address[ZMQ_MAX_ENDPOINT_LENGTH +1];
+    memset(remote_address, '\0', sizeof(remote_address));
+    uint8_t *data2 = (uint8_t *) zmq_msg_data (&msg);
+    size_t size2 = zmq_msg_size (&msg);
+    memcpy (remote_address, data2, size2);
+    zmq_msg_close (&msg);
 
    // how should this be logged?
+   const char* eventName = get_zmqEventName(event);
    int logLevel = get_zmqEventLogLevel(event);
-   // only log msgs w/port=":0" when MAMA's log level is MAMA_LOG_LEVEL_FINE or above,
-   // regardless of the msg's log level
-   // Note use of MAMA global variable gMamaLogLevel
-   char* port = strrchr(endpoint, ':');
-   if (((port == NULL) || (strcmp(port+1, "0") == 0)) && (gMamaLogLevel <= MAMA_LOG_LEVEL_NORMAL)) {
-      return 0;
-   }
-
-   MAMA_LOG(logLevel, "socket:%p name:%s value:%d event:%d desc:%s endpoint:%s", socket, socketName, value, event, eventName, endpoint);
+   MAMA_LOG(logLevel, "name:%s event:%s value:%llu local:%s remote:%s", socketName, eventName, value, local_address, remote_address);
 
    return 0;
 }
+

@@ -30,9 +30,9 @@ const char* zmqBridge_generateSerial(unsigned long long* id);
 
 #define MAMA_LOG(l, ...)    mama_log(l, ##__VA_ARGS__)
 
-const char* get_zmqEventName(int event);
-int get_zmqEventLogLevel(int event);
-int get_zmqEventMask(int logLevel);
+const char* get_zmqEventName(uint64_t event);
+int get_zmqEventLogLevel(uint64_t event);
+uint64_t get_zmqEventMask(int logLevel);
 
 
 MamaLogLevel getNamingLogLevel(const char mType);
