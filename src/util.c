@@ -90,7 +90,7 @@ int get_zmqEventLogLevel(uint64_t event)
       case ZMQ_EVENT_BIND_FAILED                : return MAMA_LOG_LEVEL_ERROR;
       case ZMQ_EVENT_ACCEPTED                   : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_ACCEPT_FAILED              : return MAMA_LOG_LEVEL_ERROR;
-      case ZMQ_EVENT_CLOSED                     : return MAMA_LOG_LEVEL_FINE;
+      case ZMQ_EVENT_CLOSED                     : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_CLOSE_FAILED               : return MAMA_LOG_LEVEL_ERROR;
       case ZMQ_EVENT_DISCONNECTED               : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_MONITOR_STOPPED            : return MAMA_LOG_LEVEL_FINE;

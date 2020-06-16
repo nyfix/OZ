@@ -11,6 +11,7 @@ type|tcp|OZ currently supports only tcp.  Any other value is silently ignored.
 publish_address|lo|Specifies the interface the transport should use to publish messages.  Applies to both naming and data sockets.
 socket_monitor|1|Specifies whether to enable monitoring of socket connects/disconnects.  When active, socket activity will be logged to `stderr`.  For more information, see [Monitoring Socket Events](Socket-Monitor.md).
 is_naming|1|Specifies that the transport is a "naming" transport.  For more information, see [Naming Service/Peer Discovery](Naming-Service.md).
+heartbeat_interval|0|Specifies the heartbeat interval for all sockets (naming and data).  The code calls `zmq_setsockopt(..., ZMQ_HEARTBEAT_IVL` with this value.  
 
 
 ### Naming Sockets

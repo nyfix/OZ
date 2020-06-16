@@ -27,9 +27,6 @@
 #ifndef MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 #define MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 
-#define ONE_MILLION           1000000
-
-
 ///////////////////////////////////////////////////////////////////////
 // the following definitions control how the library is built
 
@@ -148,6 +145,8 @@ typedef struct zmqTransportBridge_ {
    int                     mIsNaming;           // whether transport is a "naming" transport
    const char*             mPublishAddress;     // publish_address from mama.properties (e.g., "eth0")
    const char*             mUuid;               // unique id of this transport object
+   int                     mHeartbeatInterval;
+   int                     mReconnectInterval;
 
    // inproc socket for inter-thread commands
    zmqSocket               mZmqControlSub;
@@ -158,8 +157,6 @@ typedef struct zmqTransportBridge_ {
    zmqSocket               mZmqNamingSub;             // incoming connections from proxy
    const char*             mPubEndpoint;              // endpoint address for naming
    const char*             mNamingAddress[ZMQ_MAX_NAMING_URIS];
-   int                     mNamingReconnect;          // enable auto-reconnect for naming sockets?
-   int                     mNamingReconnectInterval;
    int                     mNamingWaitForConnect;     // wait until connected to proxy at startup/abort if failed?
    int                     mNamingConnectRetries;     // max number of proxy connect attempts
    int                     mNamingConnectInterval;    // interval between proxy connect attempts (in micros, as per usleep)
@@ -170,8 +167,6 @@ typedef struct zmqTransportBridge_ {
    zmqSocket               mZmqDataSub;
    const char*             mIncomingAddress[ZMQ_MAX_INCOMING_URIS];
    const char*             mOutgoingAddress[ZMQ_MAX_OUTGOING_URIS];
-   int                     mDataReconnect;
-   int                     mDataReconnectInterval;
 
    // main dispatch thread
    wthread_t               mOmzmqDispatchThread;

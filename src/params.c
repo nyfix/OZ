@@ -59,33 +59,61 @@ const char* zmqBridgeMamaTransportImpl_getParameter(const char* defaultVal, cons
 
 //////////////////////////////////////////
 // helper routines for above ...
-int getInt(const char* name, const char* property, int value)
+int getInt(const char* name, const char* property, int defaultValue, int minValue)
 {
    char valStr[256];
-   sprintf(valStr, "%d", value);
+   sprintf(valStr, "%d", defaultValue);
    const char* result = zmqBridgeMamaTransportImpl_getParameter(valStr, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
-   return atoi(result);
+   int temp = atoi(result);
+   if (temp < 0) {
+      temp = 0;
+   }
+   if ((temp > 0) && (temp < minValue)) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "%s cannot be less than %d", property, minValue);
+      temp = minValue;
+   }
+
+   return temp;
 }
 
-long long getLong(const char* name, const char* property, long long value)
+long long getLong(const char* name, const char* property, long long defaultValue, long long minValue)
 {
    char valStr[256];
-   sprintf(valStr, "%lld", value);
+   sprintf(valStr, "%lld", defaultValue);
    const char* result = zmqBridgeMamaTransportImpl_getParameter(valStr, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
-   return atoll(result);
+   long long temp = atoll(result);
+   if (temp < 0) {
+      temp = 0;
+   }
+   if (temp < minValue) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "%s cannot be less than %lld", property, minValue);
+      temp = minValue;
+   }
+
+   return temp;
 }
 
-double getFloat(const char* name, const char* property, double value)
+double getFloat(const char* name, const char* property, double defaultValue, double minValue)
 {
    char valStr[256];
-   sprintf(valStr, "%f", value);
+   sprintf(valStr, "%f", defaultValue);
    const char* result = zmqBridgeMamaTransportImpl_getParameter(valStr, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
-   return atof(result);
+   double temp = atof(result);
+   if (temp < 0) {
+      temp = 0;
+   }
+   if (temp < minValue) {
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "%s cannot be less than %f", property, minValue);
+      temp = minValue;
+   }
+
+   return temp;
+
 }
 
-const char* getStr(const char* name, const char* property, const char* value)
+const char* getStr(const char* name, const char* property, const char* defaultValue)
 {
-   const char* result = zmqBridgeMamaTransportImpl_getParameter(value, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
+   const char* result = zmqBridgeMamaTransportImpl_getParameter(defaultValue, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
    return result;
 }
 
@@ -96,10 +124,10 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    // the name of the transport
    const char* name = impl->mName;
 
-   impl->mDataReconnect = getInt(name, "retry_connects", 1);
-   impl->mDataReconnectInterval = getFloat(name, "retry_interval", 10) * 1000;    // millis
-   impl->mSocketMonitor = getInt(name, "socket_monitor", 1);
-   impl->mIsNaming = getInt(name, "is_naming", 1);
+   impl->mReconnectInterval = getFloat(name, "reconnect_interval", 10, -1) * 1000.0;    // millis
+   impl->mHeartbeatInterval = getFloat(name, "heartbeat_interval", 10, 0) * 1000.0;    // millis
+   impl->mSocketMonitor = getInt(name, "socket_monitor", 1, 0);
+   impl->mIsNaming = getInt(name, "is_naming", 1, 0);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
 }
 
@@ -110,23 +138,10 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    // the name of the transport
    const char* name = impl->mName;
 
-   impl->mNamingWaitForConnect = getInt(name, "naming.wait_for_connect", 1);
-   impl->mNamingConnectInterval = getFloat(name, "naming.connect_interval", .1) * ONE_MILLION;    // micros
-   impl->mNamingConnectRetries = getInt(name, "naming.connect_retries", 100);
-   impl->mNamingReconnect = getInt(name, "naming.retry_connects", 1);
-   impl->mNamingReconnectInterval = getFloat(name, "naming.retry_interval", 10) * 1000;           // millis
-   double f = getFloat(name, "naming.beacon_interval", 1);
-   if (f <= 0) {
-      impl->mBeaconInterval = 0;
-   }
-   else {
-      wInterlocked_set(f * 1000, &impl->mBeaconInterval);                                         // millis
-      if (impl->mBeaconInterval < 100) {
-         // cant be less than 100 ms
-         MAMA_LOG(MAMA_LOG_LEVEL_WARN, "beacon_interval cannot be less than 100ms");
-         wInterlocked_set(100,  &impl->mBeaconInterval);
-      }
-   }
+   impl->mNamingWaitForConnect = getInt(name, "naming.wait_for_connect", 1, 0);
+   impl->mNamingConnectInterval = getFloat(name, "naming.connect_interval", .1, .1) * 1000000.0;    // micros
+   impl->mNamingConnectRetries = getInt(name, "naming.connect_retries", 100, 10);
+   impl->mBeaconInterval = getFloat(name, "naming.beacon_interval", 1, .1) * 1000.0;    // millis;
 
    // The naming server address can be specified in any of the following formats:
    // 1. naming.subscribe_address[_n]/naming.subscribe_port[_n]
@@ -145,9 +160,9 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    if (address == NULL) {
       address =  getStr(name, "naming.subscribe_address_0", "127.0.0.1");
    }
-   port = getInt(name, "naming.subscribe_port", 0);
+   port = getInt(name, "naming.subscribe_port", 0, 0);
    if (port == 0) {
-      port = getInt(name, "naming.subscribe_port_0", 5756);
+      port = getInt(name, "naming.subscribe_port_0", 5756, 0);
    }
    sprintf(endpoint, "tcp://%s:%d", address, port);
    impl->mNamingAddress[0] = strdup(endpoint);
@@ -155,7 +170,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    // No default values for _1, _2
    address =  getStr(name, "naming.subscribe_address_1", NULL );
    if (address != NULL) {
-      port = getInt(name, "naming.subscribe_port_1", 0);
+      port = getInt(name, "naming.subscribe_port_1", 0, 0);
       if (port > 0) {
        sprintf(endpoint, "tcp://%s:%d", address, port);
        impl->mNamingAddress[1] = strdup(endpoint);
@@ -163,7 +178,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    }
    address =  getStr(name, "naming.subscribe_address_2", NULL );
    if (address != NULL) {
-      port = getInt(name, "naming.subscribe_port_2", 0);
+      port = getInt(name, "naming.subscribe_port_2", 0, 0);
       if (port > 0) {
        sprintf(endpoint, "tcp://%s:%d", address, port);
        impl->mNamingAddress[2] = strdup(endpoint);
