@@ -65,7 +65,7 @@ int getInt(const char* name, const char* property, int defaultValue, int minValu
    sprintf(valStr, "%d", defaultValue);
    const char* result = zmqBridgeMamaTransportImpl_getParameter(valStr, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
    int temp = atoi(result);
-   if (temp < 0) {
+   if ((minVal >= 0) && (temp < 0)) {
       temp = 0;
    }
    if ((temp > 0) && (temp < minValue)) {
@@ -82,7 +82,7 @@ long long getLong(const char* name, const char* property, long long defaultValue
    sprintf(valStr, "%lld", defaultValue);
    const char* result = zmqBridgeMamaTransportImpl_getParameter(valStr, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
    long long temp = atoll(result);
-   if (temp < 0) {
+   if ((minVal >= 0) && (temp < 0)) {
       temp = 0;
    }
    if (temp < minValue) {
@@ -99,7 +99,7 @@ double getFloat(const char* name, const char* property, double defaultValue, dou
    sprintf(valStr, "%f", defaultValue);
    const char* result = zmqBridgeMamaTransportImpl_getParameter(valStr, "%s.%s.%s", TPORT_PARAM_PREFIX, name, property);
    double temp = atof(result);
-   if (temp < 0) {
+   if ((minVal >= 0) && (temp < 0)) {
       temp = 0;
    }
    if (temp < minValue) {
