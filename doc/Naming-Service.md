@@ -76,10 +76,13 @@ Each node continually publishes its discovery message (i.e., "beaconing") at a r
 The default beaconing interval is one second.
 
 ## Automatic reconnection
-By default, automatic reconnection is enabled for the naming sockets, under control of the following settings in mama.properties:
+By default, automatic reconnection is enabled for all client (connecting) sockets, under control of the following settings in mama.properties:
 
-    mama.zmq.transport.<transport_name>.naming.naming.retry_connects=1
-    mama.zmq.transport.<transport_name>.naming.retry_interval=10
+    mama.zmq.transport.<transport_name>.reconnect_interval=10
+
+This applies to the namingSub connection to the nsd -- since the nsd must bind to a well-known address, it makes sense to automatically reconnect to that endpoint if the connection is dropped.  
+
+See [Reconnects & Heartbeats](Reconnects-Heartbeats.md) for more.
 
 <hr>
 

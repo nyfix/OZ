@@ -314,7 +314,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlSub, ZMQ_PULL, "controlSub", 0));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_bindSocket(&impl->mZmqControlSub,  ZMQ_CONTROL_ENDPOINT, NULL));
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqControlPub, ZMQ_PUSH, "controlPub", 0));
-   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqControlPub,  ZMQ_CONTROL_ENDPOINT, 0, 0));
+   CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqControlPub,  ZMQ_CONTROL_ENDPOINT, -1, 0));
 
    // create data sockets
    CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqDataPub, ZMQ_PUB_TYPE, "dataPub", impl->mSocketMonitor));
@@ -1293,8 +1293,7 @@ mama_status zmqBridgeMamaTransportImpl_stopReconnectOnError(zmqSocket* socket)
    mama_status status = MAMA_STATUS_OK;
 
    wlock_lock(socket->mLock);
-   //int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED | ZMQ_RECONNECT_STOP_HANDSHAKE_FAILED;
-   int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED;
+   int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED | ZMQ_RECONNECT_STOP_HANDSHAKE_FAILED;
    int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_STOP, &reconnectOption, sizeof(reconnectOption));
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
