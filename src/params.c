@@ -125,9 +125,6 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    const char* name = impl->mName;
 
    impl->mReconnectInterval = getFloat(name, "reconnect_interval", 10, 0) * 1000.0;    // millis
-   if (impl->mReconnectInterval <= 0) {
-      impl->mReconnectInterval = -1;
-   }
    impl->mHeartbeatInterval = getFloat(name, "heartbeat_interval", 10, 0) * 1000.0;    // millis
    impl->mSocketMonitor = getInt(name, "socket_monitor", 1, 0);
    impl->mIsNaming = getInt(name, "is_naming", 1, 0);
