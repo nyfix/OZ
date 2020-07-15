@@ -34,8 +34,6 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
             MODULE bridge.c
                    inbox.c
                    inbox.h
-                   io.c
-                   io.h
                    msg.c
                    msg.h
                    publisher.c
