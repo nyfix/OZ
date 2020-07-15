@@ -14,7 +14,7 @@
 - [Naming Service/Peer Dynamic Discovery](Naming-Service.md)
 - [Monitoring Socket Events](Socket-Monitor.md)
 - [Wire Formats](Wire-Formats.md)
-
+- [Reconnects & Heartbeats](Reconnects-Heartbeats.md)
 ## Miscellaneous
 
 - [Bibliography](Bibliography.md)
