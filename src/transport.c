@@ -28,9 +28,13 @@
   =                             Includes                                  =
   =========================================================================*/
 
-// required for definition of program_invocation_short_name, which is used for
-// naming messages
+// required for definition of progname/program_invocation_short_name,
+// which is used for naming messages
+#if defined __APPLE__
+#include <stdlib.h>
+#else
 #define _GNU_SOURCE
+#endif
 
 // system includes
 #include <stdio.h>
@@ -1493,7 +1497,11 @@ mama_status zmqBridgeMamaTransportImpl_sendEndpointsMsg(zmqTransportBridge* impl
    memset(&msg, '\0', sizeof(msg));
    strcpy(msg.mTopic, ZMQ_NAMING_PREFIX);
    msg.mType = command;
+   #if defined __APPLE__
+   wmStrSizeCpy(msg.mProgName, getprogname(), sizeof(msg.mProgName));
+   #else
    wmStrSizeCpy(msg.mProgName, program_invocation_short_name, sizeof(msg.mProgName));
+   #endif
    gethostname(msg.mHost, sizeof(msg.mHost));
    msg.mPid = getpid();
    strcpy(msg.mUuid, impl->mUuid);

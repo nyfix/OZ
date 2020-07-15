@@ -37,9 +37,7 @@ const char* zmqBridge_generateUuid()
       return NULL;
    }
    #else
-   if (wUuid_generate(tempUuid) == -1) {
-      return NULL;
-   }
+   wUuid_generate(tempUuid);
    #endif
 
    char uuidStringBuffer[UUID_STRING_SIZE+ 1];

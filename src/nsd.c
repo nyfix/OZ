@@ -2,7 +2,13 @@
 // This code was cribbed from "The ZeroMQ Guide - for C Developers" -- Example 2.7 Weather Update proxy
 //
 
+// required for definition of progname/program_invocation_short_name,
+// which is used for naming messages
+#if defined __APPLE__
+#include <stdlib.h>
+#else
 #define _GNU_SOURCE
+#endif
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -82,12 +88,20 @@ int main (int argc, char** argv)
    char pubEndpoint[1024];
    sprintf(pubEndpoint, "tcp://%s:%d", interface, port);
 
+   const char* programName;
+   #if defined __APPLE__
+   programName =  getprogname();
+   #else
+   programName = program_invocation_short_name;
+   #endif
+
+
    // set welcome msg to be delivered when sub connects
    zmqNamingMsg welcomeMsg;
    memset(&welcomeMsg, '\0', sizeof(welcomeMsg));
    strcpy(welcomeMsg.mTopic, ZMQ_NAMING_PREFIX);
    welcomeMsg.mType = 'W';
-   wmStrSizeCpy(welcomeMsg.mProgName, program_invocation_short_name, sizeof(welcomeMsg.mProgName));
+   wmStrSizeCpy(welcomeMsg.mProgName, programName, sizeof(welcomeMsg.mProgName));
    wmStrSizeCpy(welcomeMsg.mEndPointAddr, subEndpoint, sizeof(welcomeMsg.mEndPointAddr));
    gethostname(welcomeMsg.mHost, sizeof(welcomeMsg.mHost));
    welcomeMsg.mPid = getpid();
@@ -106,9 +120,9 @@ int main (int argc, char** argv)
 
    //  Run the proxy until the user interrupts us
    signal(SIGINT, &sighandler);
-   mama_log(MAMA_LOG_LEVEL_NORMAL, "%s running at %s", program_invocation_short_name, pubEndpoint);
+   mama_log(MAMA_LOG_LEVEL_NORMAL, "%s running at %s", programName, pubEndpoint);
    zmq_proxy (frontend, backend, NULL);
-   mama_log(MAMA_LOG_LEVEL_NORMAL, "%s shutting down at %s", program_invocation_short_name, pubEndpoint);
+   mama_log(MAMA_LOG_LEVEL_NORMAL, "%s shutting down at %s", programName, pubEndpoint);
 
    zmq_close (frontend);
    zmq_close (backend);
