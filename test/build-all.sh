@@ -2,6 +2,9 @@
 SCRIPT_DIR=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)
 source ${SCRIPT_DIR}/setenv.sh
 
+BRANCH="$@"
+[[ -z "${BRANCH}" ]] && BRANCH="-b nyfix"
+
 # stop on error
 set -e
 
@@ -20,31 +23,33 @@ CMAKE_CXX_FLAGS="-fno-omit-frame-pointer -DNYFIX_LOG"
 
 # libzmq
 rm -rf libzmq || true
-git clone -b nyfix https://github.com/nyfix/libzmq.git
+git clone --single-branch ${BRANCH} https://github.com/nyfix/libzmq.git
 pushd libzmq
 rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
+   -DENABLE_CURVE=Off -DENABLE_WS=Off \
    ..
 make; make install
 popd
 
 # OpenMAMA
 rm -rf OpenMAMA || true
-git clone -b nyfix https://github.com/nyfix/OpenMAMA.git
+git clone --single-branch ${BRANCH} https://github.com/nyfix/OpenMAMA.git
 pushd OpenMAMA
 rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWITH_UNITTEST=ON \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
+   -DWITH_UNITTEST=Off -DDEFAULT_APR_ROOT=/usr/local/Cellar/apr/1.7.0/libexec/ \
    ..
 make; make install
 popd
 
 # OpenMAMA-omnm
 rm -rf OpenMAMA-omnm || true
-git clone -b nyfix https://github.com/nyfix/OpenMAMA-omnm.git
+git clone --single-branch ${BRANCH} https://github.com/nyfix/OpenMAMA-omnm.git
 pushd OpenMAMA-omnm
 rm -rf build || true
 mkdir build && cd build
