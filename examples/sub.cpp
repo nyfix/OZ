@@ -1,5 +1,6 @@
 //
 #include <string>
+#include <iostream>
 using namespace std;
 
 #include <mama/mama.h>
@@ -8,12 +9,37 @@ using namespace std;
 
 namespace oz {
 
+class connection;
+
+class subscriber {
+
+public:
+   subscriber(connection* pConnection) : pConn_(pConnection), sub_(nullptr)
+   {
+   }
+
+   mama_status subscribe(std::string topic);
+
+private:
+   connection*          pConn_;
+   mamaSubscription     sub_;
+   string               topic_;
+
+   static void MAMACALLTYPE onCreate(mamaSubscription subscription, void* closure);
+   static void MAMACALLTYPE onError(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure);
+   static void MAMACALLTYPE onMsg(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure);
+
+};
+
 class connection {
+
+friend class subscriber;
 
 public:
    connection(std::string mw, std::string payload, std::string name);
    mama_status start(void);
    mama_status stop(void);
+   subscriber* createSubscriber();
 
 private:
    mama_status          status_;
@@ -26,7 +52,6 @@ private:
    mamaPayloadBridge    payloadBridge_;
 
    static void MAMACALLTYPE onStop(mama_status status, mamaBridge bridge, void* closure);
-
 };
 
 
@@ -65,9 +90,47 @@ void MAMACALLTYPE connection::onStop(mama_status status, mamaBridge bridge, void
    connection* pThis = static_cast<connection*>(closure);
 }
 
+subscriber* connection::createSubscriber()
+{
+   subscriber* pSub = new subscriber(this);
+   return pSub;
+}
+
+mama_status subscriber::subscribe(std::string topic)
+{
+   mamaMsgCallbacks cb;
+   memset(&cb, 0, sizeof(cb));
+   cb.onCreate       = onCreate;
+   cb.onError        = onError;
+   cb.onMsg          = onMsg;
+   cb.onQuality      = nullptr;
+   cb.onGap          = nullptr;
+   cb.onRecapRequest = nullptr;
+   cb.onDestroy      = nullptr;
+
+   CALL_MAMA_FUNC(mamaSubscription_allocate(&sub_));
+   CALL_MAMA_FUNC(mamaSubscription_createBasic(sub_, pConn_->transport_, pConn_->queue_, &cb, topic.c_str(), this));
+   return MAMA_STATUS_OK;
+}
+
 
 }
 
+void MAMACALLTYPE oz::subscriber::onCreate(mamaSubscription subscription, void* closure)
+{
+   // no-op
+}
+
+void MAMACALLTYPE oz::subscriber::onError(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure)
+{
+   // no-op
+}
+
+void MAMACALLTYPE oz::subscriber::onMsg(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
+{
+   subscriber* pThis = static_cast<subscriber*>(closure);
+   cout << pThis->topic_ << endl;
+}
 
 
 int main(int argc, char** argv)
@@ -75,6 +138,9 @@ int main(int argc, char** argv)
 
    oz::connection* conn = new oz::connection("zmq", "omnmmsg", "oz");
    mama_status status = conn->start();
+
+   oz::subscriber* sub = conn->createSubscriber();
+   status = sub->subscribe("topic");
 
    sleep(2);
 
