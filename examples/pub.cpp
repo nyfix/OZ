@@ -27,8 +27,6 @@ int main(int argc, char** argv)
    connection* conn = new connection("zmq", "omnmmsg", "oz");
    mama_status status = conn->start();
 
-   mySubscriber* sub = dynamic_cast<mySubscriber*>(conn->createSubscriber());
-   status = sub->subscribe("topic");
 
 
    sleep(2);
