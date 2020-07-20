@@ -1,4 +1,4 @@
-//
+// minimal wrapper for OpenMAMA API
 #include <string>
 #include <iostream>
 using namespace std;
@@ -47,15 +47,9 @@ void MAMACALLTYPE connection::onStop(mama_status status, mamaBridge bridge, void
    connection* pThis = static_cast<connection*>(closure);
 }
 
-subscriber* connection::createSubscriber()
-{
-   subscriber* pSub = new subscriber(this);
-   return pSub;
-}
-
 subscriber::~subscriber() {}
 
-mama_status subscriber::subscribe(std::string topic)
+mama_status subscriber::subscribe()
 {
    mamaMsgCallbacks cb;
    memset(&cb, 0, sizeof(cb));
@@ -68,13 +62,13 @@ mama_status subscriber::subscribe(std::string topic)
    cb.onDestroy      = nullptr;
 
    CALL_MAMA_FUNC(mamaSubscription_allocate(&sub_));
-   CALL_MAMA_FUNC(mamaSubscription_createBasic(sub_, pConn_->transport_, pConn_->queue_, &cb, topic.c_str(), this));
+   CALL_MAMA_FUNC(mamaSubscription_createBasic(sub_, pConn_->transport_, pConn_->queue_, &cb, topic_.c_str(), this));
    return MAMA_STATUS_OK;
 }
 
 void MAMACALLTYPE subscriber::createCB(mamaSubscription subscription, void* closure)
 {
-   subscriber* cb = static_cast<subscriber*>(closure);
+   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
    if (cb) {
       cb->onCreate();
    }
@@ -82,7 +76,7 @@ void MAMACALLTYPE subscriber::createCB(mamaSubscription subscription, void* clos
 
 void MAMACALLTYPE subscriber::errorCB(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure)
 {
-   subscriber* cb = static_cast<subscriber*>(closure);
+   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
    if (cb) {
       cb->onError(status, platformError, subject);
    }
@@ -90,7 +84,7 @@ void MAMACALLTYPE subscriber::errorCB(mamaSubscription subscription, mama_status
 
 void MAMACALLTYPE subscriber::msgCB(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
 {
-   subscriber* cb = static_cast<subscriber*>(closure);
+   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
    if (cb) {
       cb->onMsg(msg, itemClosure);
    }
@@ -102,4 +96,25 @@ void MAMACALLTYPE subscriber::onError(mama_status status, void* platformError, c
 void MAMACALLTYPE subscriber::onMsg(mamaMsg msg, void* itemClosure) {}
 
 
+publisher::~publisher() {}
+
+mama_status publisher::publish(mamaMsg msg)
+{
+   if (pub_ == nullptr) {
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->transport_, topic_.c_str(), NULL, NULL));
+   }
+
+   return mamaPublisher_send(pub_, msg);
 }
+
+//
+void ignoreSigHandler(int sig) {}
+void hangout(void)
+{
+   signal(SIGINT, ignoreSigHandler);
+   pause();
+}
+
+
+}
+

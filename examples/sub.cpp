@@ -1,6 +1,6 @@
 //
 #include <string>
-#include <iostream>
+#include <cstdio>
 using namespace std;
 
 #include <mama/mama.h>
@@ -10,16 +10,21 @@ using namespace std;
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriber : public oz::subscriber
+class mySubscriber : public subscriber
 {
 public:
+   mySubscriber(connection* pConnection, std::string topic) : subscriber(pConnection, topic)
+   {
+   }
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure);
 };
 
 void MAMACALLTYPE mySubscriber::onMsg(mamaMsg msg, void* itemClosure)
 {
-   cout << topic_ << endl;
+   const char* msgStr = mamaMsg_toString(msg);
+   printf("topic=%s,msg=%s\n", topic_.c_str(), msgStr);
 }
+
 
 
 int main(int argc, char** argv)
@@ -27,11 +32,10 @@ int main(int argc, char** argv)
    connection* conn = new connection("zmq", "omnmmsg", "oz");
    mama_status status = conn->start();
 
-   mySubscriber* sub = dynamic_cast<mySubscriber*>(conn->createSubscriber());
-   status = sub->subscribe("topic");
+   mySubscriber* sub = new mySubscriber(conn, "topic");
+   status = sub->subscribe();
 
-
-   sleep(2);
+   hangout();
 
    status = conn->stop();
 
