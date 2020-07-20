@@ -1,6 +1,5 @@
 // minimal wrapper for OpenMAMA API
 #include <string>
-#include <iostream>
 using namespace std;
 
 #include <mama/mama.h>
@@ -11,7 +10,8 @@ using namespace std;
 
 namespace oz {
 
-
+///////////////////////////////////////////////////////////////////////
+// connection
 connection::connection(string mw, string payload, string name) :
    status_(MAMA_STATUS_INVALID_ARG), bridge_(nullptr), queue_(nullptr), transport_(nullptr), payloadBridge_(nullptr)
 {
@@ -19,7 +19,6 @@ connection::connection(string mw, string payload, string name) :
    payload_ = payload;
    name_ = name;
 }
-
 
 mama_status connection::start(void)
 {
@@ -47,6 +46,8 @@ void MAMACALLTYPE connection::onStop(mama_status status, mamaBridge bridge, void
    connection* pThis = static_cast<connection*>(closure);
 }
 
+///////////////////////////////////////////////////////////////////////
+// subscriber
 subscriber::~subscriber() {}
 
 mama_status subscriber::subscribe()
@@ -96,6 +97,8 @@ void MAMACALLTYPE subscriber::onError(mama_status status, void* platformError, c
 void MAMACALLTYPE subscriber::onMsg(mamaMsg msg, void* itemClosure) {}
 
 
+///////////////////////////////////////////////////////////////////////
+// publisher
 publisher::~publisher() {}
 
 mama_status publisher::publish(mamaMsg msg)
@@ -107,7 +110,9 @@ mama_status publisher::publish(mamaMsg msg)
    return mamaPublisher_send(pub_, msg);
 }
 
-//
+
+///////////////////////////////////////////////////////////////////////
+// signal handling
 void ignoreSigHandler(int sig) {}
 void hangout(void)
 {
