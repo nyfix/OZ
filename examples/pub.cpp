@@ -19,10 +19,10 @@ void doneSigHandler(int sig)
 
 int main(int argc, char** argv)
 {
-   connection* conn = new connection("zmq", "omnmmsg", "oz");
-   mama_status status = conn->start();
+   connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
+   mama_status status = pConnection->start();
 
-   publisher* pub = new publisher(conn, "topic");
+   publisher* pub = new publisher(pConnection, "topic");
 
    mamaMsg msg;
    status = mamaMsg_create(&msg);
@@ -38,7 +38,8 @@ int main(int argc, char** argv)
       status = pub->publish(msg);
    }
 
-   status = conn->stop();
+   status = pConnection->stop();
+   status = pConnection->destroy();
 
    return 0;
 }

@@ -129,6 +129,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    impl->mSocketMonitor = getInt(name, "socket_monitor", 1, 0);
    impl->mIsNaming = getInt(name, "is_naming", 1, 0);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
+   impl->mDisableRefresh = getInt(name, "disable_refresh", 1, 0);
 }
 
 

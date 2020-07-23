@@ -127,6 +127,8 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       zmqBridgeMamaTransportImpl_parseNonNamingParams(impl);
    }
 
+   mamaTransport_disableRefresh(impl->mTransport, (uint8_t) impl->mDisableRefresh);
+
    // create wildcard endpoints
    impl->mWcEndpoints = list_create(sizeof(zmqSubscription*));
    if (impl->mWcEndpoints == INVALID_LIST) {

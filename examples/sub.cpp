@@ -13,7 +13,7 @@ using namespace oz;
 class mySubscriber : public subscriber
 {
 public:
-   mySubscriber(connection* pConnection, std::string topic) : subscriber(pConnection, topic)
+   mySubscriber(session* pSession, std::string topic) : subscriber(pSession, topic)
    {
    }
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure);
@@ -29,15 +29,24 @@ void MAMACALLTYPE mySubscriber::onMsg(mamaMsg msg, void* itemClosure)
 
 int main(int argc, char** argv)
 {
-   connection* conn = new connection("zmq", "omnmmsg", "oz");
-   mama_status status = conn->start();
+   connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
+   mama_status status = pConnection->start();
 
-   mySubscriber* sub = new mySubscriber(conn, "topic");
-   status = sub->subscribe();
+   session* pSession = session::create(pConnection);
+   status = pSession->start();
+
+   mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
+   status = pSubscriber->subscribe();
 
    hangout();
 
-   status = conn->stop();
+   status = pSubscriber->destroy();
+
+   status = pSession->stop();
+   status = pSession->destroy();
+
+   status = pConnection->stop();
+   status = pConnection->destroy();
 
    return 0;
 }

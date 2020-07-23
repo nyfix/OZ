@@ -147,6 +147,7 @@ typedef struct zmqTransportBridge_ {
    const char*             mUuid;               // unique id of this transport object
    int                     mHeartbeatInterval;
    int                     mReconnectInterval;
+   int                     mDisableRefresh;
 
    // inproc socket for inter-thread commands
    zmqSocket               mZmqControlSub;
