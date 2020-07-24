@@ -1,4 +1,5 @@
-//
+// minimal publisher example
+
 #include <string>
 #include <iostream>
 using namespace std;
@@ -22,7 +23,7 @@ int main(int argc, char** argv)
    connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
    mama_status status = pConnection->start();
 
-   publisher* pub = new publisher(pConnection, "topic");
+   publisher* pPublisher = publisher::create(pConnection, "topic");
 
    mamaMsg msg;
    status = mamaMsg_create(&msg);
@@ -35,8 +36,10 @@ int main(int argc, char** argv)
       sleep(1);
       ++i;
       status = mamaMsg_updateU32(msg, "num", 0, i);
-      status = pub->publish(msg);
+      status = pPublisher->publish(msg);
    }
+
+   status = pPublisher->destroy();
 
    status = pConnection->stop();
    status = pConnection->destroy();

@@ -1,4 +1,5 @@
-//
+// minimal subscriber example
+
 #include <string>
 #include <cstdio>
 using namespace std;
@@ -13,18 +14,16 @@ using namespace oz;
 class mySubscriber : public subscriber
 {
 public:
-   mySubscriber(session* pSession, std::string topic) : subscriber(pSession, topic)
+   mySubscriber(session* pSession, std::string topic)
+      : subscriber(pSession, topic)
+   {}
+
+   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure)
    {
+      const char* msgStr = mamaMsg_toString(msg);
+      printf("topic=%s,msg=%s\n", topic_.c_str(), msgStr);
    }
-   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure);
 };
-
-void MAMACALLTYPE mySubscriber::onMsg(mamaMsg msg, void* itemClosure)
-{
-   const char* msgStr = mamaMsg_toString(msg);
-   printf("topic=%s,msg=%s\n", topic_.c_str(), msgStr);
-}
-
 
 
 int main(int argc, char** argv)
@@ -34,9 +33,6 @@ int main(int argc, char** argv)
 
    session* pSession = session::create(pConnection);
    status = pSession->start();
-
-   mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
-   status = pSubscriber->subscribe();
 
    hangout();
 
