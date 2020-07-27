@@ -1,6 +1,7 @@
 // minimal wrapper for OpenMAMA API
 
 #include <string>
+#include <unordered_map>
 
 #include <mama/mama.h>
 
@@ -10,25 +11,49 @@ class connection;
 class session;
 
 ///////////////////////////////////////////////////////////////////////
-class inbox
+class reply
 {
 public:
-   static inbox* create(session* pSession, std::string topic);
+   static reply* create(connection* pConn);
    virtual mama_status destroy();
 
-   mama_status sendRequest(mamaMsg msg);
+   mama_status send(mamaMsg reply);
+   mama_status send(mamaMsg request, mamaMsg reply);
+
+   mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic);
+
+protected:
+   connection*          pConn_;
+   mamaPublisher        pub_;
+
+   reply(connection* pConn);
+   virtual ~reply();
+};
+
+
+///////////////////////////////////////////////////////////////////////
+class publisher;
+class request
+{
+public:
+   static request* create(session* pSession, std::string topic);
+   virtual mama_status destroy();
+
+   mama_status send(mamaMsg msg);
+   mama_status waitReply(mamaMsg& reply, double seconds);
 
    virtual void MAMACALLTYPE onError(mama_status status) ;
-   virtual void MAMACALLTYPE onReply(mamaMsg msg) ;
+   virtual void MAMACALLTYPE onReply(mamaMsg msg);
 
 protected:
    session*             pSession_;
+   publisher*           pub_;
    mamaInbox            inbox_;
-   mamaPublisher        pub_;
    string               topic_;
+   wsem_t               replied_;
 
-   inbox(session* pSession, std::string topic);
-   virtual ~inbox();
+   request(session* pSession, std::string topic);
+   virtual ~request();
 
    static void MAMACALLTYPE errorCB(mama_status status, void* closure);
    static void MAMACALLTYPE msgCB(mamaMsg msg, void* closure);
@@ -44,6 +69,10 @@ public:
    virtual mama_status destroy(void);
 
    mama_status publish(mamaMsg msg);
+   mama_status sendRequest(mamaMsg msg, mamaInbox inbox);
+   mama_status sendReply(mamaMsg request, mamaMsg reply);
+
+   mamaPublisher getPublisher(void)    { return pub_; }
 
 protected:
    connection*          pConn_;
@@ -119,6 +148,9 @@ public:
 
    mamaTransport transport(void)       { return transport_; }
    mamaBridge bridge(void)             { return bridge_; }
+   std::string mw(void)                { return mw_; }
+
+   publisher* getPublisher(std::string topic);
 
 protected:
    connection(std::string mw, std::string payload, std::string name);
@@ -134,6 +166,9 @@ protected:
    mamaPayloadBridge    payloadBridge_;
 
    static void MAMACALLTYPE onStop(mama_status status, mamaBridge bridge, void* closure);
+
+private:
+   std::unordered_map<std::string, publisher*>   pubs_;
 };
 
 void hangout(void);

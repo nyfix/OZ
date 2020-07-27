@@ -20,8 +20,20 @@ public:
 
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) override
    {
-      const char* msgStr = mamaMsg_toString(msg);
-      printf("topic=%s,msg=%s\n", topic_.c_str(), msgStr);
+      if (mamaMsg_isFromInbox(msg)) {
+         reply* pReply = reply::create(pSession_->connection());
+         mama_u32_t i;
+         mama_status status = mamaMsg_getU32(msg, "num", 0, &i);
+         status = mamaMsg_updateU32(msg, "reply", 0, i);
+         status = pReply->send(msg);
+
+         const char* msgStr = mamaMsg_toString(msg);
+         printf("REQUEST:topic=%s,msg=%s\n", topic_.c_str(), msgStr);
+      }
+      else {
+         const char* msgStr = mamaMsg_toString(msg);
+         printf("MSG:topic=%s,msg=%s\n", topic_.c_str(), msgStr);
+      }
    }
 };
 

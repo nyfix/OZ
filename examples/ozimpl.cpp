@@ -3,6 +3,7 @@
 #include <string>
 using namespace std;
 
+#include <wombat/wSemaphore.h>
 #include <mama/mama.h>
 
 #include "../src/util.h"
@@ -56,6 +57,21 @@ mama_status oz::connection::destroy(void)
 void MAMACALLTYPE oz::connection::onStop(mama_status status, mamaBridge bridge, void* closure)
 {
    connection* pThis = static_cast<connection*>(closure);
+}
+
+publisher* oz::connection::getPublisher(std::string topic)
+{
+   auto temp = pubs_.find(topic);
+   if (temp != pubs_.end()) {
+      return temp->second;
+   }
+
+   publisher* pub = publisher::create(this, topic);
+   if (pub) {
+      pubs_[topic] = pub;
+   }
+
+   return pub;
 }
 
 
@@ -198,6 +214,24 @@ mama_status publisher::publish(mamaMsg msg)
    return mamaPublisher_send(pub_, msg);
 }
 
+mama_status publisher::sendRequest(mamaMsg msg, mamaInbox inbox)
+{
+   if (pub_ == nullptr) {
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->transport(), topic_.c_str(), NULL, NULL));
+   }
+
+   return mamaPublisher_sendFromInbox(pub_, inbox, msg);
+}
+
+mama_status publisher::sendReply(mamaMsg request, mamaMsg reply)
+{
+   if (pub_ == nullptr) {
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->transport(), topic_.c_str(), NULL, NULL));
+   }
+
+   return mamaPublisher_sendReplyToInbox(pub_, request, reply);
+}
+
 
 ///////////////////////////////////////////////////////////////////////
 // signal handling
@@ -210,70 +244,162 @@ void hangout(void)
 
 
 ///////////////////////////////////////////////////////////////////////
-// inbox
-oz::inbox* inbox::create(session* pSession, std::string topic)
+// request
+request* request::create(session* pSession, std::string topic)
 {
-   return new inbox(pSession, topic);
+   return new request(pSession, topic);
 }
 
-inbox::inbox(session* pSession, std::string topic)
+request::request(session* pSession, std::string topic)
    : pSession_(pSession), inbox_(nullptr), pub_(nullptr), topic_(topic)
 {
+   wsem_init(&replied_, 0, 0);
 }
 
-mama_status inbox::destroy()
+mama_status request::destroy()
 {
    CALL_MAMA_FUNC(mamaInbox_destroy(inbox_));
    // Note: delete is done in destroyCB
    return MAMA_STATUS_OK;
 }
 
-inbox::~inbox() {}
+request::~request()
+{
+   wsem_destroy(&replied_);
+}
 
-mama_status inbox::sendRequest(mamaMsg msg)
+mama_status request::send(mamaMsg msg)
 {
    if (inbox_ == nullptr) {
       CALL_MAMA_FUNC(mamaInbox_create2(&inbox_, pSession_->connection()->transport(), pSession_->queue(), msgCB, errorCB, destroyCB, this));
    }
    if (pub_ == nullptr) {
-      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pSession_->connection()->transport(), topic_.c_str(), NULL, NULL));
-   }
+      pub_ = pSession_->connection()->getPublisher(topic_);
+  }
 
-   if (inbox_ && pub_) {
-      return mamaPublisher_sendFromInbox(pub_, inbox_, msg);
-   }
-
-   return MAMA_STATUS_INVALID_ARG;
+  return pub_->sendRequest(msg, inbox_);
 }
 
-
-void MAMACALLTYPE inbox::errorCB(mama_status status, void* closure)
+mama_status request::waitReply(mamaMsg& reply, double seconds)
 {
-   inbox* cb = dynamic_cast<inbox*>(static_cast<inbox*>(closure));
-   if (cb) {
-      cb->onError(status);
+   int millis = seconds / 1000.0;
+   int rc = wsem_timedwait(&replied_, millis);
+   if (rc < 0) {
+      switch (errno) {
+         case ETIMEDOUT:      return MAMA_STATUS_TIMEOUT;
+         case EINVAL:         return MAMA_STATUS_INVALID_ARG;
+         default:             return MAMA_STATUS_SYSTEM_ERROR;
+      }
+   }
+
+   return MAMA_STATUS_OK;
+}
+
+void MAMACALLTYPE request::errorCB(mama_status status, void* closure)
+{
+   request* pThis = dynamic_cast<request*>(static_cast<request*>(closure));
+   if (pThis) {
+      pThis->onError(status);
    }
 }
 
-void MAMACALLTYPE inbox::msgCB(mamaMsg msg, void* closure)
+void MAMACALLTYPE request::msgCB(mamaMsg msg, void* closure)
 {
-   inbox* cb = dynamic_cast<inbox*>(static_cast<inbox*>(closure));
-   if (cb) {
-      cb->onReply(msg);
+   request* pThis = dynamic_cast<request*>(static_cast<request*>(closure));
+   if (pThis) {
+      wsem_post(&pThis->replied_);
+      pThis->onReply(msg);
    }
 }
 
-void MAMACALLTYPE inbox::destroyCB(mamaInbox inbox, void* closure)
+void MAMACALLTYPE request::destroyCB(mamaInbox inbox, void* closure)
 {
-   oz::inbox* cb = dynamic_cast<oz::inbox*>(static_cast<oz::inbox*>(closure));
-   if (cb) {
-      delete cb;
+   request* pThis = dynamic_cast<request*>(static_cast<request*>(closure));
+   if (pThis) {
+      delete pThis;
    }
 }
 
 // no-op definitions
-void MAMACALLTYPE inbox::onError(mama_status status) {}
-void MAMACALLTYPE inbox::onReply(mamaMsg msg) {}
+void MAMACALLTYPE request::onError(mama_status status) {}
+void MAMACALLTYPE request::onReply(mamaMsg msg) {}
 
+
+///////////////////////////////////////////////////////////////////////
+// reply
+reply* reply::create(connection* pConnection)
+{
+   return new reply(pConnection);
 }
 
+reply::reply(connection* pConnection)
+   : pConn_(pConnection), pub_(nullptr)
+{
+}
+
+mama_status reply::destroy(void)
+{
+   delete this;
+   return MAMA_STATUS_OK;
+}
+
+reply::~reply() {}
+
+mama_status reply::send(mamaMsg msg)
+{
+   std::string replyTopic;
+   CALL_MAMA_FUNC(getReplyTopic(msg, replyTopic));
+   publisher* pPublisher = pConn_->getPublisher(replyTopic);
+   if (pPublisher == nullptr) {
+      return MAMA_STATUS_PLATFORM;
+   }
+
+   return pPublisher->sendReply(msg, msg);
+}
+
+mama_status reply::send(mamaMsg request, mamaMsg reply)
+{
+   std::string replyTopic;
+   CALL_MAMA_FUNC(getReplyTopic(request, replyTopic));
+   publisher* pPublisher = pConn_->getPublisher(replyTopic);
+   if (pPublisher == nullptr) {
+      return MAMA_STATUS_PLATFORM;
+   }
+
+   return pPublisher->sendReply(request, reply);
+}
+
+mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
+{
+   if (!mamaMsg_isFromInbox(msg)) {
+      return MAMA_STATUS_INVALID_ARG;
+   }
+
+   if (pConn_->mw() == "zmq") {
+      //
+      // OZ needs a reply topic
+      // this is a fugly hack, but there is no way to get reply address using public API
+      //
+      typedef struct mamaMsgReplyImpl_
+      {
+          void* mBridgeImpl;
+          void* replyHandle;
+      } mamaMsgReplyImpl;
+
+      mamaMsgReply replyHandle;
+      CALL_MAMA_FUNC(mamaMsg_getReplyHandle(msg, &replyHandle));
+      mamaMsgReplyImpl* pMamaReplyImpl = reinterpret_cast<mamaMsgReplyImpl*>(replyHandle);
+      replyTopic = std::string((char*) pMamaReplyImpl->replyHandle);
+   }
+   else {
+      // TODO: AFAIK none of the other transports care about topic for replies?
+      replyTopic = "_INBOX";
+   }
+
+   return MAMA_STATUS_OK;
+}
+
+
+
+
+}
