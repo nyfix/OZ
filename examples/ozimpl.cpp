@@ -209,5 +209,71 @@ void hangout(void)
 }
 
 
+///////////////////////////////////////////////////////////////////////
+// inbox
+oz::inbox* inbox::create(session* pSession, std::string topic)
+{
+   return new inbox(pSession, topic);
+}
+
+inbox::inbox(session* pSession, std::string topic)
+   : pSession_(pSession), inbox_(nullptr), pub_(nullptr), topic_(topic)
+{
+}
+
+mama_status inbox::destroy()
+{
+   CALL_MAMA_FUNC(mamaInbox_destroy(inbox_));
+   // Note: delete is done in destroyCB
+   return MAMA_STATUS_OK;
+}
+
+inbox::~inbox() {}
+
+mama_status inbox::sendRequest(mamaMsg msg)
+{
+   if (inbox_ == nullptr) {
+      CALL_MAMA_FUNC(mamaInbox_create2(&inbox_, pSession_->connection()->transport(), pSession_->queue(), msgCB, errorCB, destroyCB, this));
+   }
+   if (pub_ == nullptr) {
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pSession_->connection()->transport(), topic_.c_str(), NULL, NULL));
+   }
+
+   if (inbox_ && pub_) {
+      return mamaPublisher_sendFromInbox(pub_, inbox_, msg);
+   }
+
+   return MAMA_STATUS_INVALID_ARG;
+}
+
+
+void MAMACALLTYPE inbox::errorCB(mama_status status, void* closure)
+{
+   inbox* cb = dynamic_cast<inbox*>(static_cast<inbox*>(closure));
+   if (cb) {
+      cb->onError(status);
+   }
+}
+
+void MAMACALLTYPE inbox::msgCB(mamaMsg msg, void* closure)
+{
+   inbox* cb = dynamic_cast<inbox*>(static_cast<inbox*>(closure));
+   if (cb) {
+      cb->onReply(msg);
+   }
+}
+
+void MAMACALLTYPE inbox::destroyCB(mamaInbox inbox, void* closure)
+{
+   oz::inbox* cb = dynamic_cast<oz::inbox*>(static_cast<oz::inbox*>(closure));
+   if (cb) {
+      delete cb;
+   }
+}
+
+// no-op definitions
+void MAMACALLTYPE inbox::onError(mama_status status) {}
+void MAMACALLTYPE inbox::onReply(mamaMsg msg) {}
+
 }
 

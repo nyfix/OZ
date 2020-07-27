@@ -10,6 +10,33 @@ class connection;
 class session;
 
 ///////////////////////////////////////////////////////////////////////
+class inbox
+{
+public:
+   static inbox* create(session* pSession, std::string topic);
+   virtual mama_status destroy();
+
+   mama_status sendRequest(mamaMsg msg);
+
+   virtual void MAMACALLTYPE onError(mama_status status) ;
+   virtual void MAMACALLTYPE onReply(mamaMsg msg) ;
+
+protected:
+   session*             pSession_;
+   mamaInbox            inbox_;
+   mamaPublisher        pub_;
+   string               topic_;
+
+   inbox(session* pSession, std::string topic);
+   virtual ~inbox();
+
+   static void MAMACALLTYPE errorCB(mama_status status, void* closure);
+   static void MAMACALLTYPE msgCB(mamaMsg msg, void* closure);
+   static void MAMACALLTYPE destroyCB(mamaInbox inbox, void* closure);
+};
+
+
+///////////////////////////////////////////////////////////////////////
 class publisher
 {
 public:

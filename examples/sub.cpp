@@ -34,6 +34,9 @@ int main(int argc, char** argv)
    session* pSession = session::create(pConnection);
    status = pSession->start();
 
+   mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
+   status = pSubscriber->subscribe();
+
    hangout();
 
    status = pSubscriber->destroy();
