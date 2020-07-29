@@ -10,6 +10,10 @@ subscriber | Thin wrapper over mamaSubscription.  Supports only basic (not marke
 timer | 
 inbox |
 
+The classes' relationships are illustrated below:<br>
+
+![](ozimpl.png)
+
 All the above classes have the following characteristics:
 
 - The constructor is protected and so cannot be called from application code -- instead a (static) `create` method is provided that functions as the constructor.
