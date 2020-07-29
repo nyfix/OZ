@@ -1,5 +1,6 @@
 // minimal wrapper for OpenMAMA API
 
+#include <sys/errno.h>
 #include <string>
 using namespace std;
 
@@ -149,33 +150,33 @@ mama_status subscriber::subscribe()
 
 void MAMACALLTYPE subscriber::createCB(mamaSubscription subscription, void* closure)
 {
-   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
-   if (cb) {
-      cb->onCreate();
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if (pThis) {
+      pThis->onCreate();
    }
 }
 
 void MAMACALLTYPE subscriber::errorCB(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure)
 {
-   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
-   if (cb) {
-      cb->onError(status, platformError, subject);
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if (pThis) {
+      pThis->onError(status, platformError, subject);
    }
 }
 
 void MAMACALLTYPE subscriber::msgCB(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
 {
-   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
-   if (cb) {
-      cb->onMsg(msg, itemClosure);
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if (pThis) {
+      pThis->onMsg(msg, itemClosure);
    }
 }
 
 void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* closure)
 {
-   subscriber* cb = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
-   if (cb) {
-      delete cb;
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if (pThis) {
+      delete pThis;
    }
 }
 
