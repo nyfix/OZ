@@ -144,7 +144,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    impl->mNamingWaitForConnect = getInt(name, "naming.wait_for_connect", 1, 0);
    impl->mNamingConnectInterval = getFloat(name, "naming.connect_interval", .1, .1) * 1000000.0;    // micros
    impl->mNamingConnectRetries = getInt(name, "naming.connect_retries", 100, 10);
-   impl->mBeaconInterval = getFloat(name, "naming.beacon_interval", 1, .1) * 1000.0;    // millis;
+   impl->mBeaconInterval = getFloat(name, "naming.beacon_interval", 1, 0) * 1000.0;    // millis;
 
    // The naming server address can be specified in any of the following formats:
    // 1. naming.subscribe_address[_n]/naming.subscribe_port[_n]
