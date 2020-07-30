@@ -2,6 +2,7 @@
 
 #include <string>
 #include <cstdio>
+#include <memory>
 using namespace std;
 
 #include <mama/mama.h>
@@ -21,7 +22,8 @@ public:
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) override
    {
       if (mamaMsg_isFromInbox(msg)) {
-         reply* pReply = reply::create(pSession_->connection());
+         auto pReply = makeReply(pSession_->connection());
+         //reply* pReply = reply::create(pSession_->connection());
          mama_u32_t i;
          mama_status status = mamaMsg_getU32(msg, "num", 0, &i);
          status = mamaMsg_updateU32(msg, "reply", 0, i);

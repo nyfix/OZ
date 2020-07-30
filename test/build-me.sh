@@ -26,5 +26,3 @@ cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TY
    ..
 make; make install
 popd
-
-popd

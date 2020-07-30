@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <memory>
 
 #include <mama/mama.h>
 
@@ -22,13 +23,27 @@ public:
 
    mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic);
 
-protected:
-   connection*          pConn_;
-   mamaPublisher        pub_;
 
+protected:
    reply(connection* pConn);
    virtual ~reply();
+
+   connection*          pConn_;
+   mamaPublisher        pub_;
 };
+
+auto reply_deleter = [](reply* pReply)
+{
+   pReply->destroy();
+};
+
+template<typename... Ts>
+std::unique_ptr<reply, decltype(reply_deleter)> makeReply(Ts&&... args)
+{
+  std::unique_ptr<reply, decltype(reply_deleter)> pReply(nullptr, reply_deleter);
+  pReply.reset(reply::create(std::forward<Ts>(args)...));
+  return pReply;
+}
 
 
 ///////////////////////////////////////////////////////////////////////

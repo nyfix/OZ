@@ -2,6 +2,7 @@
 
 #include <sys/errno.h>
 #include <string>
+#include <memory>
 using namespace std;
 
 #include <wombat/wSemaphore.h>
