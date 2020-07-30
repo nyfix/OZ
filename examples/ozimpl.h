@@ -98,6 +98,17 @@ protected:
    virtual ~publisher();
 };
 
+///////////////////////////////////////////////////////////////////////
+class subscriberEvents
+{
+public:
+   virtual void MAMACALLTYPE onCreate(void) {}
+   virtual void MAMACALLTYPE onError(mama_status status, void* platformError, const char* subject) {}
+   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) {}
+
+};
+
+
 
 ///////////////////////////////////////////////////////////////////////
 class subscriber
@@ -106,15 +117,12 @@ public:
    static subscriber* create(session* pSession, std::string topic);
    virtual mama_status destroy();
 
-   mama_status subscribe();
-
-   virtual void MAMACALLTYPE onCreate(void) ;
-   virtual void MAMACALLTYPE onError(mama_status status, void* platformError, const char* subject) ;
-   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) ;
+   mama_status subscribe(subscriberEvents* pSink = nullptr);
 
 protected:
    session*             pSession_;
    mamaSubscription     sub_;
+   subscriberEvents*    pSink_;
    string               topic_;
 
    subscriber(session* pSession, std::string topic);
@@ -126,6 +134,18 @@ protected:
    static void MAMACALLTYPE destroyCB(mamaSubscription subscription, void* closure);
 };
 
+auto subscriber_deleter = [](subscriber* psubscriber)
+{
+   psubscriber->destroy();
+};
+
+template<typename... Ts>
+std::unique_ptr<subscriber, decltype(subscriber_deleter)> makesubscriber(Ts&&... args)
+{
+  std::unique_ptr<subscriber, decltype(subscriber_deleter)> psubscriber(nullptr, subscriber_deleter);
+  psubscriber.reset(subscriber::create(std::forward<Ts>(args)...));
+  return psubscriber;
+}
 
 ///////////////////////////////////////////////////////////////////////
 class session

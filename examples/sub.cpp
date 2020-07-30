@@ -11,13 +11,12 @@ using namespace std;
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriber : public subscriber
+class mySubscriber : public subscriber, public subscriberEvents
 {
 public:
    mySubscriber(session* pSession, std::string topic)
       : subscriber(pSession, topic)
    {}
-
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) override
    {
       const char* msgStr = mamaMsg_toString(msg);
@@ -34,7 +33,10 @@ int main(int argc, char** argv)
    session* pSession = session::create(pConnection);
    status = pSession->start();
 
-   mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
+   //mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
+   //mySubscriber* pSubscriber = mySubscriber::create(pSession, "topic");
+   auto pSubscriber = new mySubscriber(pSession, "topic");
+
    status = pSubscriber->subscribe();
 
    hangout();

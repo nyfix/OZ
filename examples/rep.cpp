@@ -2,7 +2,6 @@
 
 #include <string>
 #include <cstdio>
-#include <memory>
 using namespace std;
 
 #include <mama/mama.h>
@@ -12,14 +11,14 @@ using namespace std;
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriber : public subscriber
+class mySubscriber : public subscriber, public subscriberEvents
 {
 public:
    mySubscriber(session* pSession, std::string topic)
       : subscriber(pSession, topic)
    {}
 
-   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) override
+   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure)
    {
       if (mamaMsg_isFromInbox(msg)) {
          auto pReply = makeReply(pSession_->connection());

@@ -36,6 +36,10 @@ int main(int argc, char** argv)
       sleep(1);
       ++i;
       status = mamaMsg_updateU32(msg, "num", 0, i);
+
+      const char* msgStr = mamaMsg_toString(msg);
+      printf("msg=%s\n", msgStr);
+
       status = pPublisher->publish(msg);
    }
 

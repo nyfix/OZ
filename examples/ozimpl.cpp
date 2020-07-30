@@ -2,7 +2,6 @@
 
 #include <sys/errno.h>
 #include <string>
-#include <memory>
 using namespace std;
 
 #include <wombat/wSemaphore.h>
@@ -119,7 +118,7 @@ subscriber* subscriber::create(session* pSession, std::string topic)
 }
 
 subscriber::subscriber(session* pSession, std::string topic)
-   : pSession_(pSession), sub_(nullptr), topic_(topic)
+   : pSession_(pSession), sub_(nullptr), pSink_(nullptr), topic_(topic)
 {
 }
 
@@ -132,8 +131,15 @@ mama_status subscriber::destroy()
 
 subscriber::~subscriber() {}
 
-mama_status subscriber::subscribe()
+mama_status subscriber::subscribe(subscriberEvents* pSink)
 {
+   if (pSink) {
+      pSink_ = pSink;
+   }
+   else {
+      pSink_ = dynamic_cast<subscriberEvents*>(this);
+   }
+
    mamaMsgCallbacks cb;
    memset(&cb, 0, sizeof(cb));
    cb.onCreate       = createCB;
@@ -145,13 +151,13 @@ mama_status subscriber::subscribe()
    cb.onDestroy      = destroyCB;
 
    CALL_MAMA_FUNC(mamaSubscription_allocate(&sub_));
-   CALL_MAMA_FUNC(mamaSubscription_createBasic(sub_, pSession_->connection()->transport(), pSession_->queue(), &cb, topic_.c_str(), this));
+   CALL_MAMA_FUNC(mamaSubscription_createBasic(sub_, pSession_->connection()->transport(), pSession_->queue(), &cb, topic_.c_str(), pSink_));
    return MAMA_STATUS_OK;
 }
 
 void MAMACALLTYPE subscriber::createCB(mamaSubscription subscription, void* closure)
 {
-   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   subscriberEvents* pThis = dynamic_cast<subscriberEvents*>(static_cast<subscriberEvents*>(closure));
    if (pThis) {
       pThis->onCreate();
    }
@@ -159,7 +165,7 @@ void MAMACALLTYPE subscriber::createCB(mamaSubscription subscription, void* clos
 
 void MAMACALLTYPE subscriber::errorCB(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure)
 {
-   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   subscriberEvents* pThis = dynamic_cast<subscriberEvents*>(static_cast<subscriberEvents*>(closure));
    if (pThis) {
       pThis->onError(status, platformError, subject);
    }
@@ -167,7 +173,7 @@ void MAMACALLTYPE subscriber::errorCB(mamaSubscription subscription, mama_status
 
 void MAMACALLTYPE subscriber::msgCB(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
 {
-   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   subscriberEvents* pThis = dynamic_cast<subscriberEvents*>(static_cast<subscriberEvents*>(closure));
    if (pThis) {
       pThis->onMsg(msg, itemClosure);
    }
@@ -180,11 +186,6 @@ void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* clo
       delete pThis;
    }
 }
-
-// no-op definitions
-void MAMACALLTYPE subscriber::onCreate(void) {}
-void MAMACALLTYPE subscriber::onError(mama_status status, void* platformError, const char* subject) {}
-void MAMACALLTYPE subscriber::onMsg(mamaMsg msg, void* itemClosure) {}
 
 
 ///////////////////////////////////////////////////////////////////////
