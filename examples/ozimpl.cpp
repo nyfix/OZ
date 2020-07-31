@@ -50,19 +50,24 @@ void MAMACALLTYPE oz::connection::onStop(mama_status status, mamaBridge bridge, 
    connection* pThis = static_cast<connection*>(closure);
 }
 
-publisher* oz::connection::getPublisher(std::string topic)
+shared_ptr<publisher> oz::connection::getPublisher(std::string topic)
 {
    auto temp = pubs_.find(topic);
    if (temp != pubs_.end()) {
-      return temp->second;
+      return temp->second.lock();
    }
 
-   publisher* pub = publisher::create(this, topic);
+   auto pub = shared_ptr<publisher>(new publisher(this, topic), publisher_deleter);
    if (pub) {
       pubs_[topic] = pub;
    }
 
    return pub;
+}
+
+void oz::connection::removePublisher(std::string topic)
+{
+   pubs_.erase(topic);
 }
 
 
@@ -163,18 +168,14 @@ void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* clo
 
 ///////////////////////////////////////////////////////////////////////
 // publisher
-publisher* publisher::create(connection* pConnection, std::string topic)
-{
-   return new publisher(pConnection, topic);
-}
-
 publisher::publisher(connection* pConnection, std::string topic)
-   : pConn_(pConnection), pub_(nullptr), topic_(topic)
+   : pConn_(pConnection), topic_(topic)
 {
 }
 
 mama_status publisher::destroy(void)
 {
+   pConn_->removePublisher(topic_);
    delete this;
    return MAMA_STATUS_OK;
 }
@@ -309,7 +310,6 @@ reply* reply::create(connection* pConnection)
 }
 
 reply::reply(connection* pConnection)
-   : pConn_(pConnection), pub_(nullptr)
 {
 }
 
@@ -325,7 +325,7 @@ mama_status reply::send(mamaMsg msg)
 {
    std::string replyTopic;
    CALL_MAMA_FUNC(getReplyTopic(msg, replyTopic));
-   publisher* pPublisher = pConn_->getPublisher(replyTopic);
+   auto pPublisher = pConn_->getPublisher(replyTopic);
    if (pPublisher == nullptr) {
       return MAMA_STATUS_PLATFORM;
    }
@@ -337,7 +337,7 @@ mama_status reply::send(mamaMsg request, mamaMsg reply)
 {
    std::string replyTopic;
    CALL_MAMA_FUNC(getReplyTopic(request, replyTopic));
-   publisher* pPublisher = pConn_->getPublisher(replyTopic);
+   auto pPublisher = pConn_->getPublisher(replyTopic);
    if (pPublisher == nullptr) {
       return MAMA_STATUS_PLATFORM;
    }

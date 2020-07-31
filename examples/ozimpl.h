@@ -10,6 +10,7 @@ namespace oz {
 
 class connection;
 class session;
+class publisher;
 
 ///////////////////////////////////////////////////////////////////////
 class reply
@@ -28,8 +29,8 @@ protected:
    reply(connection* pConn);
    virtual ~reply();
 
-   connection*          pConn_;
-   mamaPublisher        pub_;
+   connection*                         pConn_         {nullptr};
+   std::shared_ptr<publisher>          pub_;
 };
 
 auto reply_deleter = [](reply* pReply)
@@ -61,11 +62,11 @@ public:
    virtual void MAMACALLTYPE onReply(mamaMsg msg);
 
 protected:
-   session*             pSession_;
-   publisher*           pub_;
-   mamaInbox            inbox_;
-   string               topic_;
-   wsem_t               replied_;
+   session*                            pSession_      {nullptr};
+   std::shared_ptr<publisher>          pub_;
+   mamaInbox                           inbox_         {nullptr};
+   string                              topic_;
+   wsem_t                              replied_;
 
    request(session* pSession, std::string topic);
    virtual ~request();
@@ -80,7 +81,8 @@ protected:
 class publisher
 {
 public:
-   static publisher* create(connection* pConnection, std::string topic);
+   publisher(connection* pConnection, std::string topic);
+
    virtual mama_status destroy(void);
 
    mama_status publish(mamaMsg msg);
@@ -90,13 +92,19 @@ public:
    mamaPublisher getPublisher(void)    { return pub_; }
 
 protected:
-   connection*          pConn_;
-   mamaPublisher        pub_;
-   string               topic_;
-
-   publisher(connection* pConnection, std::string topic);
    virtual ~publisher();
+
+private:
+   connection*          pConn_         {nullptr};
+   mamaPublisher        pub_           {nullptr};
+   string               topic_;
 };
+
+auto publisher_deleter = [](publisher* pPublisher)
+{
+   pPublisher->destroy();
+};
+
 
 ///////////////////////////////////////////////////////////////////////
 class subscriber;
@@ -204,7 +212,8 @@ public:
       return pSession;
    }
 
-   publisher* getPublisher(std::string topic);
+   std::shared_ptr<publisher> getPublisher(std::string topic);
+   void removePublisher(std::string topic);
 
 protected:
    virtual ~connection() {}
@@ -219,7 +228,8 @@ private:
    mamaQueue            queue_            {nullptr};
    mamaTransport        transport_        {nullptr};
    mamaPayloadBridge    payloadBridge_    {nullptr};
-   std::unordered_map<std::string, publisher*>   pubs_;
+
+   std::unordered_map<std::string, std::weak_ptr<publisher>>   pubs_;
 };
 
 auto connection_deleter = [](connection* pconnection)
