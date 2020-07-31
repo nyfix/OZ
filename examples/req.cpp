@@ -37,10 +37,10 @@ public:
 
 int main(int argc, char** argv)
 {
-   connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto pConnection = makeconnection();
+   mama_status status = pConnection->start("zmq", "omnmmsg", "oz");
 
-   session* pSession = session::create(pConnection);
+   auto pSession = pConnection->createSession();
    status = pSession->start();
 
    mamaMsg msg;

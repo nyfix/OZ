@@ -38,4 +38,13 @@ The `oz` classes target C++11 -- this allows the code to be cleaner and more rea
   - `onDestroyCB` actually calls `delete`
 - for non-event sinks, `destroy()` just calls `delete this`
 
+### Separation of source vs. sink
+It would be nice to be able to separate out the source class (e.g., `subscriber`) from the sink class (e.g., `subscriberEvents`).  
+
+This is easily done with timers and inboxes, since each of these classes provides a separate closure argument for the normal event (e.g., `onTimer`) and the destroy callback.
+
+That's not possible with subscriptions, however: there is a single closure specified for both `onMsg` etc. and the `onDestroy` callbacks.
+
+It is simple enough to provide a separate callback in `oz` class, but that requires a double indirection in the `onMsg` callback.  That's clearly not ideal, but for now that's the approach we've taken.  ("First make it work, then make it fast").
+
 

@@ -20,10 +20,10 @@ void doneSigHandler(int sig)
 
 int main(int argc, char** argv)
 {
-   connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto pConnection = makeconnection();
+   mama_status status = pConnection->start("zmq", "omnmmsg", "oz");
 
-   publisher* pPublisher = publisher::create(pConnection, "topic");
+   auto pPublisher = pConnection->getPublisher("topic");
 
    mamaMsg msg;
    status = mamaMsg_create(&msg);
@@ -44,9 +44,7 @@ int main(int argc, char** argv)
    }
 
    status = pPublisher->destroy();
-
    status = pConnection->stop();
-   status = pConnection->destroy();
 
    return 0;
 }

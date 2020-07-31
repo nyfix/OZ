@@ -11,43 +11,31 @@ using namespace std;
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriber : public subscriber, public subscriberEvents
+class mySubscriberEvents : public subscriberEvents
 {
-public:
-   mySubscriber(session* pSession, std::string topic)
-      : subscriber(pSession, topic)
-   {}
-   virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) override
+   virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, mamaMsg msg, void* itemClosure) override
    {
       const char* msgStr = mamaMsg_toString(msg);
-      printf("topic=%s,msg=%s\n", topic_.c_str(), msgStr);
+      printf("topic=%s,msg=%s\n", pSubscriber->topic().c_str(), msgStr);
    }
 };
 
 
 int main(int argc, char** argv)
 {
-   connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto pConnection = makeconnection();
+   mama_status status = pConnection->start("zmq", "omnmmsg", "oz");
 
-   session* pSession = session::create(pConnection);
+   auto pSession = pConnection->createSession();
    status = pSession->start();
 
-   //mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
-   //mySubscriber* pSubscriber = mySubscriber::create(pSession, "topic");
-   auto pSubscriber = new mySubscriber(pSession, "topic");
-
-   status = pSubscriber->subscribe();
+   mySubscriberEvents subscriberEvents;
+   auto pSubscriber = pSession->createSubscriber(&subscriberEvents);
+   status = pSubscriber->subscribe("topic");
 
    hangout();
 
-   status = pSubscriber->destroy();
-
    status = pSession->stop();
-   status = pSession->destroy();
-
    status = pConnection->stop();
-   status = pConnection->destroy();
-
    return 0;
 }

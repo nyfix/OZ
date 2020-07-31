@@ -11,13 +11,10 @@ using namespace std;
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriber : public subscriber, public subscriberEvents
+class mySubscriberEvents : public subscriberEvents
 {
 public:
-   mySubscriber(session* pSession, std::string topic)
-      : subscriber(pSession, topic)
-   {}
-
+   mySubscriberEvents(subscriber* pSubscriber) : pSubscriber_
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure)
    {
       if (mamaMsg_isFromInbox(msg)) {
@@ -41,13 +38,13 @@ public:
 
 int main(int argc, char** argv)
 {
-   connection* pConnection = connection::create("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto pConnection = makeconnection();
+   mama_status status = pConnection->start("zmq", "omnmmsg", "oz");
 
-   session* pSession = session::create(pConnection);
+   auto pSession = pConnection->createSession();
    status = pSession->start();
 
-   mySubscriber* pSubscriber = new mySubscriber(pSession, "topic");
+   auto pSubscriber = new mySubscriber(pSession.get(), "topic");
    status = pSubscriber->subscribe();
 
    hangout();

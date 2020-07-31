@@ -15,22 +15,12 @@ namespace oz {
 
 ///////////////////////////////////////////////////////////////////////
 // connection
-oz::connection* oz::connection::create(string mw, string payload, string name)
-{
-   oz::connection* pConn = new oz::connection(mw, payload, name);
-   return pConn;
-}
-
-oz::connection::connection(string mw, string payload, string name)
-   : status_(MAMA_STATUS_INVALID_ARG), bridge_(nullptr), queue_(nullptr), transport_(nullptr), payloadBridge_(nullptr)
+mama_status oz::connection::start(string mw, string payload, string name)
 {
    mw_ = mw;
    payload_ = payload;
    name_ = name;
-}
 
-mama_status oz::connection::start(void)
-{
    CALL_MAMA_FUNC(status_ = mama_loadBridge(&bridge_, mw_.c_str()));
    CALL_MAMA_FUNC(status_ = mama_loadPayloadBridge(&payloadBridge_, payload_.c_str()));
    CALL_MAMA_FUNC(status_ = mama_open());
@@ -78,17 +68,6 @@ publisher* oz::connection::getPublisher(std::string topic)
 
 ///////////////////////////////////////////////////////////////////////
 // session
-oz::session* oz::session::create(oz::connection* pConn)
-{
-   oz::session* pSession = new oz::session(pConn);
-   return pSession;
-}
-
-oz::session::session(oz::connection* pConn)
-   : pConn_(pConn)
-{
-}
-
 mama_status oz::session::start(void)
 {
    CALL_MAMA_FUNC(status_ = mamaQueue_create(&queue_, pConn_->bridge()));
@@ -104,7 +83,7 @@ mama_status oz::session::stop(void)
 
 mama_status oz::session::destroy(void)
 {
-   CALL_MAMA_FUNC(status_ = mamaQueue_destroy(queue_));
+   CALL_MAMA_FUNC(status_ = mamaQueue_destroyTimedWait(queue_, 100));
    delete this;
    return MAMA_STATUS_OK;
 }
@@ -112,33 +91,26 @@ mama_status oz::session::destroy(void)
 
 ///////////////////////////////////////////////////////////////////////
 // subscriber
-subscriber* subscriber::create(session* pSession, std::string topic)
+subscriber::subscriber(session* pSession, subscriberEvents* pSink)
+   : pSession_(pSession), pSink_(pSink)
 {
-   return new subscriber(pSession, topic);
-}
-
-subscriber::subscriber(session* pSession, std::string topic)
-   : pSession_(pSession), sub_(nullptr), pSink_(nullptr), topic_(topic)
-{
+   if (pSink == nullptr) {
+      pSink = dynamic_cast<subscriberEvents*>(this);
+   }
 }
 
 mama_status subscriber::destroy()
 {
-   CALL_MAMA_FUNC(mamaSubscription_destroyEx(sub_));
+   CALL_MAMA_FUNC(status_ = mamaSubscription_destroyEx(sub_));
    // Note: delete is done in destroyCB
    return MAMA_STATUS_OK;
 }
 
 subscriber::~subscriber() {}
 
-mama_status subscriber::subscribe(subscriberEvents* pSink)
+mama_status subscriber::subscribe(std::string topic)
 {
-   if (pSink) {
-      pSink_ = pSink;
-   }
-   else {
-      pSink_ = dynamic_cast<subscriberEvents*>(this);
-   }
+   topic_ = topic;
 
    mamaMsgCallbacks cb;
    memset(&cb, 0, sizeof(cb));
@@ -150,38 +122,39 @@ mama_status subscriber::subscribe(subscriberEvents* pSink)
    cb.onRecapRequest = nullptr;
    cb.onDestroy      = destroyCB;
 
-   CALL_MAMA_FUNC(mamaSubscription_allocate(&sub_));
-   CALL_MAMA_FUNC(mamaSubscription_createBasic(sub_, pSession_->connection()->transport(), pSession_->queue(), &cb, topic_.c_str(), pSink_));
+   CALL_MAMA_FUNC(status_ = mamaSubscription_allocate(&sub_));
+   CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->connection()->transport(), pSession_->queue(), &cb, topic_.c_str(), this));
    return MAMA_STATUS_OK;
 }
 
 void MAMACALLTYPE subscriber::createCB(mamaSubscription subscription, void* closure)
 {
-   subscriberEvents* pThis = dynamic_cast<subscriberEvents*>(static_cast<subscriberEvents*>(closure));
-   if (pThis) {
-      pThis->onCreate();
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if ((pThis) && (pThis->pSink_)) {
+      pThis->pSink_->onCreate(pThis);
    }
 }
 
 void MAMACALLTYPE subscriber::errorCB(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure)
 {
-   subscriberEvents* pThis = dynamic_cast<subscriberEvents*>(static_cast<subscriberEvents*>(closure));
-   if (pThis) {
-      pThis->onError(status, platformError, subject);
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if ((pThis) && (pThis->pSink_)) {
+      pThis->pSink_->onError(pThis, status, platformError, subject);
    }
 }
 
 void MAMACALLTYPE subscriber::msgCB(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure)
 {
-   subscriberEvents* pThis = dynamic_cast<subscriberEvents*>(static_cast<subscriberEvents*>(closure));
-   if (pThis) {
-      pThis->onMsg(msg, itemClosure);
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if ((pThis) && (pThis->pSink_)) {
+      // TODO: find a better way ...
+      pThis->pSink_->onMsg(pThis, msg, itemClosure);
    }
 }
 
 void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* closure)
 {
-   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriberEvents*>(closure));
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
    if (pThis) {
       delete pThis;
    }
