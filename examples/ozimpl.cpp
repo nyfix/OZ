@@ -181,7 +181,7 @@ void MAMACALLTYPE subscriber::msgCB(mamaSubscription subscription, mamaMsg msg, 
 
 void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* closure)
 {
-   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriberEvents*>(closure));
    if (pThis) {
       delete pThis;
    }
