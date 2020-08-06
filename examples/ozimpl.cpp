@@ -75,7 +75,7 @@ void oz::connection::removePublisher(std::string topic)
 // session
 mama_status oz::session::start(void)
 {
-   CALL_MAMA_FUNC(status_ = mamaQueue_create(&queue_, pConn_->bridge()));
+   CALL_MAMA_FUNC(status_ = mamaQueue_create(&queue_, pConn_->getBridge()));
    CALL_MAMA_FUNC(status_ = mamaDispatcher_create(&dispatcher_, queue_));
    return MAMA_STATUS_OK;
 }
@@ -96,8 +96,8 @@ mama_status oz::session::destroy(void)
 
 ///////////////////////////////////////////////////////////////////////
 // subscriber
-subscriber::subscriber(session* pSession, subscriberEvents* pSink)
-   : pSession_(pSession), pSink_(pSink)
+subscriber::subscriber(session* pSession, string topic, subscriberEvents* pSink)
+   : pSession_(pSession), topic_(topic),  pSink_(pSink)
 {
    if (pSink == nullptr) {
       pSink = dynamic_cast<subscriberEvents*>(this);
@@ -113,10 +113,8 @@ mama_status subscriber::destroy()
 
 subscriber::~subscriber() {}
 
-mama_status subscriber::subscribe(std::string topic)
+mama_status subscriber::subscribe()
 {
-   topic_ = topic;
-
    mamaMsgCallbacks cb;
    memset(&cb, 0, sizeof(cb));
    cb.onCreate       = createCB;
@@ -128,7 +126,7 @@ mama_status subscriber::subscribe(std::string topic)
    cb.onDestroy      = destroyCB;
 
    CALL_MAMA_FUNC(status_ = mamaSubscription_allocate(&sub_));
-   CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->connection()->transport(), pSession_->queue(), &cb, topic_.c_str(), this));
+   CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, topic_.c_str(), this));
    return MAMA_STATUS_OK;
 }
 
@@ -161,6 +159,7 @@ void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* clo
 {
    subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
    if (pThis) {
+      mamaSubscription_deallocate(pThis->sub_);
       delete pThis;
    }
 }
@@ -185,7 +184,7 @@ publisher::~publisher() {}
 mama_status publisher::publish(mamaMsg msg)
 {
    if (pub_ == nullptr) {
-      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->transport(), topic_.c_str(), NULL, NULL));
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->getTransport(), topic_.c_str(), NULL, NULL));
    }
 
    return mamaPublisher_send(pub_, msg);
@@ -194,7 +193,7 @@ mama_status publisher::publish(mamaMsg msg)
 mama_status publisher::sendRequest(mamaMsg msg, mamaInbox inbox)
 {
    if (pub_ == nullptr) {
-      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->transport(), topic_.c_str(), NULL, NULL));
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->getTransport(), topic_.c_str(), NULL, NULL));
    }
 
    return mamaPublisher_sendFromInbox(pub_, inbox, msg);
@@ -203,7 +202,7 @@ mama_status publisher::sendRequest(mamaMsg msg, mamaInbox inbox)
 mama_status publisher::sendReply(mamaMsg request, mamaMsg reply)
 {
    if (pub_ == nullptr) {
-      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->transport(), topic_.c_str(), NULL, NULL));
+      CALL_MAMA_FUNC(mamaPublisher_create(&pub_, pConn_->getTransport(), topic_.c_str(), NULL, NULL));
    }
 
    return mamaPublisher_sendReplyToInbox(pub_, request, reply);
@@ -222,21 +221,19 @@ void hangout(void)
 
 ///////////////////////////////////////////////////////////////////////
 // request
-request* request::create(session* pSession, std::string topic)
-{
-   return new request(pSession, topic);
-}
-
-request::request(session* pSession, std::string topic)
-   : pSession_(pSession), inbox_(nullptr), pub_(nullptr), topic_(topic)
+request::request(session* pSession, string topic, requestEvents* pSink)
+   : pSession_(pSession), topic_(topic), pSink_(pSink)
 {
    wsem_init(&replied_, 0, 0);
 }
 
 mama_status request::destroy()
 {
-   CALL_MAMA_FUNC(mamaInbox_destroy(inbox_));
-   // Note: delete is done in destroyCB
+   if (inbox_) {
+      // Note: delete is done in destroyCB
+      CALL_MAMA_FUNC(mamaInbox_destroy(inbox_));
+   }
+
    return MAMA_STATUS_OK;
 }
 
@@ -248,10 +245,10 @@ request::~request()
 mama_status request::send(mamaMsg msg)
 {
    if (inbox_ == nullptr) {
-      CALL_MAMA_FUNC(mamaInbox_create2(&inbox_, pSession_->connection()->transport(), pSession_->queue(), msgCB, errorCB, destroyCB, this));
+      CALL_MAMA_FUNC(mamaInbox_create2(&inbox_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), msgCB, errorCB, destroyCB, this));
    }
    if (pub_ == nullptr) {
-      pub_ = pSession_->connection()->getPublisher(topic_);
+      pub_ = pSession_->getConnection()->getPublisher(topic_);
   }
 
   return pub_->sendRequest(msg, inbox_);
@@ -275,17 +272,17 @@ mama_status request::waitReply(mamaMsg& reply, double seconds)
 void MAMACALLTYPE request::errorCB(mama_status status, void* closure)
 {
    request* pThis = dynamic_cast<request*>(static_cast<request*>(closure));
-   if (pThis) {
-      pThis->onError(status);
+   if ((pThis) && (pThis->pSink_)) {
+      pThis->pSink_->onError(pThis, status);
    }
 }
 
 void MAMACALLTYPE request::msgCB(mamaMsg msg, void* closure)
 {
    request* pThis = dynamic_cast<request*>(static_cast<request*>(closure));
-   if (pThis) {
+   if ((pThis) && (pThis->pSink_)) {
       wsem_post(&pThis->replied_);
-      pThis->onReply(msg);
+      pThis->pSink_->onReply(pThis, msg);
    }
 }
 
@@ -297,19 +294,11 @@ void MAMACALLTYPE request::destroyCB(mamaInbox inbox, void* closure)
    }
 }
 
-// no-op definitions
-void MAMACALLTYPE request::onError(mama_status status) {}
-void MAMACALLTYPE request::onReply(mamaMsg msg) {}
-
 
 ///////////////////////////////////////////////////////////////////////
 // reply
-reply* reply::create(connection* pConnection)
-{
-   return new reply(pConnection);
-}
-
 reply::reply(connection* pConnection)
+   : pConn_(pConnection)
 {
 }
 
@@ -351,7 +340,7 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
       return MAMA_STATUS_INVALID_ARG;
    }
 
-   if (pConn_->mw() == "zmq") {
+   if (pConn_->getMw() == "zmq") {
       //
       // OZ needs a reply topic
       // this is a fugly hack, but there is no way to get reply address using public API
@@ -361,11 +350,19 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
           void* mBridgeImpl;
           void* replyHandle;
       } mamaMsgReplyImpl;
-
       mamaMsgReply replyHandle;
       CALL_MAMA_FUNC(mamaMsg_getReplyHandle(msg, &replyHandle));
       mamaMsgReplyImpl* pMamaReplyImpl = reinterpret_cast<mamaMsgReplyImpl*>(replyHandle);
+      #if 1
       replyTopic = std::string((char*) pMamaReplyImpl->replyHandle);
+      #else
+      #define ZMQ_REPLYHANDLE_SIZE              81
+      #define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   43
+      char  zmqReplyAddr[ZMQ_REPLYHANDLE_SIZE];
+      strcpy(zmqReplyAddr, (const char*) pMamaReplyImpl->replyHandle);
+      zmqReplyAddr[ZMQ_REPLYHANDLE_INBOXNAME_INDEX-1] = '\0';
+      replyTopic = zmqReplyAddr;
+      #endif
    }
    else {
       // TODO: AFAIK none of the other transports care about topic for replies?

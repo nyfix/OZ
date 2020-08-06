@@ -43,6 +43,8 @@ int main(int argc, char** argv)
       status = pPublisher->publish(msg);
    }
 
+   status = mamaMsg_destroy(msg);
+
    status = pConnection->stop();
 
    return 0;

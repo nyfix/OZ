@@ -17,19 +17,15 @@ void doneSigHandler(int sig)
    notDone = false;
 }
 
-class myRequest : public request
+class myRequestEvents : public requestEvents
 {
 public:
-   myRequest(session* pSession, std::string topic)
-      : request(pSession, topic)
-   {}
-
-   virtual void MAMACALLTYPE onReply(mamaMsg msg) override
+   virtual void MAMACALLTYPE onReply(request* pRequest, mamaMsg msg) override
    {
       const char* msgStr = mamaMsg_toString(msg);
-      printf("topic=%s,msg=%s\n", topic_.c_str(), msgStr);
+      printf("topic=%s,msg=%s\n", pRequest->getTopic().c_str(), msgStr);
 
-      delete this;
+      pRequest->destroy();
    }
 };
 
@@ -49,17 +45,18 @@ int main(int argc, char** argv)
 
    signal(SIGINT, doneSigHandler);
 
+   myRequestEvents requestEvents;
    int i = 0;
    while(notDone && (status == MAMA_STATUS_OK)) {
       sleep(1);
       ++i;
       status = mamaMsg_updateU32(msg, "num", 0, i);
-      myRequest* pRequest = new myRequest(pSession, "topic");
+      request* pRequest = pSession->createRequest("topic", &requestEvents).release();
       status = pRequest->send(msg);
    }
 
+   status = pSession->stop();
    status = pConnection->stop();
-   status = pConnection->destroy();
 
    return 0;
 }

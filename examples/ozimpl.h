@@ -15,8 +15,9 @@ class publisher;
 ///////////////////////////////////////////////////////////////////////
 class reply
 {
+   friend class connection;
+
 public:
-   static reply* create(connection* pConn);
    virtual mama_status destroy();
 
    mama_status send(mamaMsg reply);
@@ -38,42 +39,49 @@ auto reply_deleter = [](reply* pReply)
    pReply->destroy();
 };
 
-template<typename... Ts>
-std::unique_ptr<reply, decltype(reply_deleter)> makeReply(Ts&&... args)
-{
-  std::unique_ptr<reply, decltype(reply_deleter)> pReply(nullptr, reply_deleter);
-  pReply.reset(reply::create(std::forward<Ts>(args)...));
-  return pReply;
-}
-
 
 ///////////////////////////////////////////////////////////////////////
+class request;
+class requestEvents
+{
+public:
+   virtual void MAMACALLTYPE onError(request* pRequest, mama_status status) {}
+   virtual void MAMACALLTYPE onReply(request* pRequest, mamaMsg msg) {}
+};
+
 class publisher;
 class request
 {
+   friend class session;
+
 public:
-   static request* create(session* pSession, std::string topic);
    virtual mama_status destroy();
 
    mama_status send(mamaMsg msg);
    mama_status waitReply(mamaMsg& reply, double seconds);
 
-   virtual void MAMACALLTYPE onError(mama_status status) ;
-   virtual void MAMACALLTYPE onReply(mamaMsg msg);
+   std::string getTopic(void) { return topic_; }
 
 protected:
-   session*                            pSession_      {nullptr};
-   std::shared_ptr<publisher>          pub_;
-   mamaInbox                           inbox_         {nullptr};
-   string                              topic_;
-   wsem_t                              replied_;
-
-   request(session* pSession, std::string topic);
+   request(session* pSession, string topic, requestEvents* pSink);
    virtual ~request();
 
    static void MAMACALLTYPE errorCB(mama_status status, void* closure);
    static void MAMACALLTYPE msgCB(mamaMsg msg, void* closure);
    static void MAMACALLTYPE destroyCB(mamaInbox inbox, void* closure);
+
+private:
+   session*                            pSession_      {nullptr};
+   string                              topic_;
+   requestEvents*                      pSink_         {nullptr};
+   std::shared_ptr<publisher>          pub_;
+   mamaInbox                           inbox_         {nullptr};
+   wsem_t                              replied_;
+};
+
+auto request_deleter = [](request* prequest)
+{
+   prequest->destroy();
 };
 
 
@@ -120,19 +128,22 @@ public:
 class subscriber
 {
    friend class session;
+
 public:
    virtual mama_status destroy();
 
-   mama_status subscribe(std::string topic);
+   mama_status subscribe();
 
-   std::string topic(void) { return topic_; }
+   std::string getTopic(void) { return topic_; }
+
+   session* getSession(void)  { return pSession_; }
 
    virtual void MAMACALLTYPE onCreate(void) {}
    virtual void MAMACALLTYPE onError(mama_status status, void* platformError, const char* subject) {}
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) {}
 
 protected:
-   subscriber(session* pSession, subscriberEvents* pSink);
+   subscriber(session* pSession, std::string topic, subscriberEvents* pSink);
    virtual ~subscriber();
 
    static void MAMACALLTYPE createCB(mamaSubscription subscription, void* closure);
@@ -146,7 +157,6 @@ private:
    mamaSubscription     sub_           {nullptr};
    subscriberEvents*    pSink_         {nullptr};
    string               topic_;
-
 };
 
 auto subscriber_deleter = [](subscriber* psubscriber)
@@ -165,14 +175,21 @@ public:
    mama_status start(void);
    mama_status stop(void);
 
-   mamaQueue queue(void)                { return queue_; }
-   oz::connection* connection(void)     { return pConn_; }
+   mamaQueue getQueue(void)                { return queue_; }
+   oz::connection* getConnection(void)     { return pConn_; }
 
-   std::unique_ptr<subscriber, decltype(subscriber_deleter)> createSubscriber(subscriberEvents* pSink = nullptr)
+   std::unique_ptr<subscriber, decltype(subscriber_deleter)> createSubscriber(std::string topic, subscriberEvents* pSink = nullptr)
    {
       unique_ptr<subscriber, decltype(subscriber_deleter)> pSubscriber(nullptr, subscriber_deleter);
-      pSubscriber.reset(new subscriber(this, pSink));
+      pSubscriber.reset(new subscriber(this, topic, pSink));
       return pSubscriber;
+   }
+
+   std::unique_ptr<request, decltype(request_deleter)> createRequest(std::string topic, requestEvents* pSink = nullptr)
+   {
+      unique_ptr<request, decltype(request_deleter)> pRequest(nullptr, request_deleter);
+      pRequest.reset(new request(this, topic, pSink));
+      return pRequest;
    }
 
 protected:
@@ -201,15 +218,22 @@ public:
    mama_status start(std::string mw, std::string payload, std::string name);
    mama_status stop(void);
 
-   mamaTransport transport(void)       { return transport_; }
-   mamaBridge bridge(void)             { return bridge_; }
-   std::string mw(void)                { return mw_; }
+   mamaTransport getTransport(void)       { return transport_; }
+   mamaBridge getBridge(void)             { return bridge_; }
+   std::string getMw(void)                { return mw_; }
 
    std::unique_ptr<session, decltype(session_deleter)> createSession(void)
    {
       unique_ptr<session, decltype(session_deleter)> pSession(nullptr, session_deleter);
       pSession.reset(new session(this));
       return pSession;
+   }
+
+   std::unique_ptr<reply, decltype(reply_deleter)> createReply(void)
+   {
+      unique_ptr<reply, decltype(reply_deleter)> pReply(nullptr, reply_deleter);
+      pReply.reset(new reply(this));
+      return pReply;
    }
 
    std::shared_ptr<publisher> getPublisher(std::string topic);

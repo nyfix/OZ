@@ -16,7 +16,7 @@ class mySubscriberEvents : public subscriberEvents
    virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, mamaMsg msg, void* itemClosure) override
    {
       const char* msgStr = mamaMsg_toString(msg);
-      printf("topic=%s,msg=%s\n", pSubscriber->topic().c_str(), msgStr);
+      printf("topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
    }
 };
 
@@ -30,8 +30,8 @@ int main(int argc, char** argv)
    status = pSession->start();
 
    mySubscriberEvents subscriberEvents;
-   auto pSubscriber = pSession->createSubscriber(&subscriberEvents);
-   status = pSubscriber->subscribe("topic");
+   auto pSubscriber = pSession->createSubscriber("topic", &subscriberEvents);
+   status = pSubscriber->subscribe();
 
    hangout();
 
