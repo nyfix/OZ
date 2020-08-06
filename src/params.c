@@ -12,6 +12,10 @@
 
 #define PARAM_NAME_MAX_LENGTH 1024
 
+extern int log_level_beacon;
+extern int log_level_naming;
+extern int log_level_inbox;
+
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(char* defaultVal, char* paramName, const char* format, va_list arguments)
 {
    const char* property = NULL;
@@ -130,6 +134,11 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    impl->mIsNaming = getInt(name, "is_naming", 1, 0);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
    impl->mDisableRefresh = getInt(name, "disable_refresh", 1, 0);
+
+   log_level_beacon = getInt(name, "log_level_beacon", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+   log_level_naming = getInt(name, "log_level_naming", MAMA_LOG_LEVEL_NORMAL, MAMA_LOG_LEVEL_OFF);
+   log_level_inbox = getInt(name, "log_level_inbox", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+
 }
 
 

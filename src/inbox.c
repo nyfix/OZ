@@ -159,7 +159,7 @@ mama_status zmqBridgeMamaInbox_createByIndex(inboxBridge* bridge, mamaTransport 
    /* Populate the bridge with the newly created implementation */
    *bridge = (inboxBridge) impl;
 
-   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
+   MAMA_LOG(log_level_inbox, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
 
    return MAMA_STATUS_OK;
 }
@@ -171,7 +171,7 @@ mama_status zmqBridgeMamaInbox_destroy(inboxBridge inbox)
    }
    zmqInboxImpl* impl = (zmqInboxImpl*) inbox;
 
-   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
+   MAMA_LOG(log_level_inbox, "mamaInbox=%p,replyAddr=%s", impl->mParent, impl->mReplyHandle);
 
    // unregister the inbox with the transport
    mama_status status = zmqBridgeMamaTransportImpl_unregisterInbox(impl->mTransport, impl);

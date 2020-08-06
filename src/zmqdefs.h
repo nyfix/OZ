@@ -28,11 +28,13 @@
 #define MAMA_BRIDGE_ZMQ_ZMQDEFS_H__
 
 ///////////////////////////////////////////////////////////////////////
-// the following definitions control how the library is built
+// external (global) definitions
+int log_level_beacon;
+int log_level_naming;
+int log_level_inbox;
 
-// for debugging inbox create/destroy
-//#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_NORMAL
-#define MAMA_LOG_INBOX_MSGS MAMA_LOG_LEVEL_FINER
+///////////////////////////////////////////////////////////////////////
+// the following definitions control how the library is built
 
 // Note that hash table size is actually 10x value specified in wtable_create
 // (to reduce collisions), and that there is no limit to # of entries

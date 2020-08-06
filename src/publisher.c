@@ -207,7 +207,7 @@ mama_status zmqBridgeMamaPublisher_sendReplyToInboxHandle(publisherBridge publis
    CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setMsgType((msgBridge) &bridgeMsg, ZMQ_MSG_INBOX_RESPONSE));
    CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle((msgBridge) &bridgeMsg, replyHandle));
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "Sent inbox reply to %s", (const char*) replyHandle);
+   MAMA_LOG(log_level_inbox, "Sent inbox reply to %s", (const char*) replyHandle);
 
    return zmqBridgeMamaPublisherImpl_sendSubject(publisher, reply, (msgBridge) &bridgeMsg, (const char*) replyHandle);
 }
@@ -239,7 +239,7 @@ mama_status zmqBridgeMamaPublisher_sendFromInboxByIndex(publisherBridge publishe
    }
    CALL_MAMA_FUNC(zmqBridgeMamaMsgImpl_setReplyHandle((msgBridge) &bridgeMsg, (void*) replyHandle));
 
-   MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyHandle);
+   MAMA_LOG(log_level_inbox, "zmqBridgeMamaPublisher_sendFromInboxByIndex: Send from inbox %s", replyHandle);
 
    return zmqBridgeMamaPublisherImpl_sendSubject(publisher, msg, (msgBridge) &bridgeMsg, NULL);
 }
