@@ -21,3 +21,11 @@ install(TARGETS req DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(rep rep.cpp)
 target_link_libraries(rep ozimpl mama)
 install(TARGETS rep DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(timer timer.cpp)
+target_link_libraries(timer ozimpl mama)
+install(TARGETS timer DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(timer2 timer2.cpp)
+target_link_libraries(timer2 ozimpl mama)
+install(TARGETS timer2 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})

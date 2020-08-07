@@ -25,11 +25,11 @@ public:
          status = pReply->send(msg);
 
          const char* msgStr = mamaMsg_toString(msg);
-         printf("REQUEST:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
+         fprintf(stderr, "REQUEST:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
       }
       else {
          const char* msgStr = mamaMsg_toString(msg);
-         printf("MSG:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
+         fprintf(stderr, "MSG:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
       }
    }
 };

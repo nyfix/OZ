@@ -12,7 +12,50 @@ class connection;
 class session;
 class publisher;
 
-///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+class timer;
+
+class timerEvents
+{
+public:
+   virtual void MAMACALLTYPE onTimer(void) {}
+};
+
+class timer
+{
+   friend class session;
+
+public:
+   virtual mama_status destroy();
+
+   mama_status start();
+
+   session* getSession(void)  { return pSession_; }
+
+   virtual void MAMACALLTYPE onTimer(void) {}
+
+protected:
+   timer(session* pSession, double interval, timerEvents* pSink);
+   virtual ~timer();
+
+   static void MAMACALLTYPE timerCB(mamaTimer timer, void* closure);
+   static void MAMACALLTYPE destroyCB(mamaTimer timer, void* closure);
+
+private:
+   mama_status          status_        {MAMA_STATUS_INVALID_ARG};
+   session*             pSession_      {nullptr};
+   double               interval_      {0};
+   mamaTimer            timer_         {nullptr};
+   timerEvents*         pSink_         {nullptr};
+};
+
+auto timer_deleter = [](timer* ptimer)
+{
+   ptimer->destroy();
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
 class reply
 {
    friend class connection;
@@ -40,7 +83,7 @@ auto reply_deleter = [](reply* pReply)
 };
 
 
-///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 class request;
 class requestEvents
 {
@@ -85,7 +128,7 @@ auto request_deleter = [](request* prequest)
 };
 
 
-///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 class publisher
 {
 public:
@@ -114,7 +157,7 @@ auto publisher_deleter = [](publisher* pPublisher)
 };
 
 
-///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 class subscriber;
 
 class subscriberEvents
@@ -165,7 +208,8 @@ auto subscriber_deleter = [](subscriber* psubscriber)
 };
 
 
-///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Represents a callback thread consisting of a queue and dispatcher
 class session
 {
    friend class connection;
@@ -192,6 +236,13 @@ public:
       return pRequest;
    }
 
+   std::unique_ptr<timer, decltype(timer_deleter)> createTimer(double interval, timerEvents* pSink = nullptr)
+   {
+      unique_ptr<timer, decltype(timer_deleter)> pTimer(nullptr, timer_deleter);
+      pTimer.reset(new timer(this, interval, pSink));
+      return pTimer;
+   }
+
 protected:
    session(oz::connection* pConn) : pConn_(pConn) {}
    virtual ~session() {}
@@ -209,7 +260,9 @@ auto session_deleter = [](session* pSession)
 };
 
 
-///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Represents a middleware connection (i.e., transport), including payload
+// library, identified by the tuple {middleware, payload, name}
 class connection
 {
 public:

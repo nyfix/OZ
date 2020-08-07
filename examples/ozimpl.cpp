@@ -373,6 +373,47 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
 }
 
 
+///////////////////////////////////////////////////////////////////////
+// timer
+timer::timer(session* pSession, double interval, timerEvents* pSink)
+   : pSession_(pSession), interval_(interval),  pSink_(pSink)
+{
+   if (pSink == nullptr) {
+      pSink = dynamic_cast<timerEvents*>(this);
+   }
+}
+
+mama_status timer::destroy()
+{
+   CALL_MAMA_FUNC(status_ = mamaTimer_destroy(timer_));
+   // Note: delete is done in destroyCB
+   return MAMA_STATUS_OK;
+}
+
+timer::~timer() {}
+
+mama_status timer::start()
+{
+   CALL_MAMA_FUNC(status_ = mamaTimer_create2(&timer_, pSession_->getQueue(), &timerCB, &destroyCB, interval_, this));
+   return MAMA_STATUS_OK;
+}
+
+void MAMACALLTYPE timer::timerCB(mamaTimer timer, void* closure)
+{
+   oz::timer* pThis = dynamic_cast<oz::timer*>(static_cast<oz::timer*>(closure));
+   if ((pThis) && (pThis->pSink_)) {
+      pThis->pSink_->onTimer();
+   }
+}
+
+void MAMACALLTYPE timer::destroyCB(mamaTimer timer, void* closure)
+{
+   oz::timer* pThis = dynamic_cast<oz::timer*>(static_cast<oz::timer*>(closure));
+   if (pThis) {
+      delete pThis;
+   }
+}
+
 
 
 }

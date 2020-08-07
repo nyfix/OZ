@@ -11,12 +11,12 @@ using namespace std;
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriberEvents : public subscriberEvents
+class myTimerEvents : public timerEvents
 {
-   virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, mamaMsg msg, void* itemClosure) override
+   virtual void MAMACALLTYPE onTimer() override
    {
-      const char* msgStr = mamaMsg_toString(msg);
-      fprintf(stderr, "topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
+      static int i = 0;
+      fprintf(stderr, "timer=%d\n", ++i);
    }
 };
 
@@ -29,13 +29,14 @@ int main(int argc, char** argv)
    auto pSession = pConnection->createSession();
    status = pSession->start();
 
-   mySubscriberEvents subscriberEvents;
-   auto pSubscriber = pSession->createSubscriber("topic", &subscriberEvents);
-   status = pSubscriber->subscribe();
+   myTimerEvents timerEvents;
+   auto pTimer = pSession->createTimer(0.5, &timerEvents);
+   status = pTimer->start();
 
-   hangout();
+   sleep(5);
 
    status = pSession->stop();
    status = pConnection->stop();
+
    return 0;
 }

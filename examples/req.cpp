@@ -23,7 +23,7 @@ public:
    virtual void MAMACALLTYPE onReply(request* pRequest, mamaMsg msg) override
    {
       const char* msgStr = mamaMsg_toString(msg);
-      printf("topic=%s,msg=%s\n", pRequest->getTopic().c_str(), msgStr);
+      fprintf(stderr, "topic=%s,msg=%s\n", pRequest->getTopic().c_str(), msgStr);
 
       pRequest->destroy();
    }
