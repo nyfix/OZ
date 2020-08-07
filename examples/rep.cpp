@@ -19,12 +19,14 @@ public:
       static auto pReply = pSubscriber->getSession()->getConnection()->createReply();
 
       if (mamaMsg_isFromInbox(msg)) {
+         mamaMsg temp;
+         mama_status status = mamaMsg_getTempCopy(msg, &temp);
          mama_u32_t i;
-         mama_status status = mamaMsg_getU32(msg, "num", 0, &i);
-         status = mamaMsg_updateU32(msg, "reply", 0, i);
-         status = pReply->send(msg);
+         status = mamaMsg_getU32(temp, "num", 0, &i);
+         status = mamaMsg_updateU32(temp, "reply", 0, i);
+         status = pReply->send(temp);
 
-         const char* msgStr = mamaMsg_toString(msg);
+         const char* msgStr = mamaMsg_toString(temp);
          fprintf(stderr, "REQUEST:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
       }
       else {

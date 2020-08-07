@@ -99,9 +99,6 @@ mama_status oz::session::destroy(void)
 subscriber::subscriber(session* pSession, string topic, subscriberEvents* pSink)
    : pSession_(pSession), topic_(topic),  pSink_(pSink)
 {
-   if (pSink == nullptr) {
-      pSink = dynamic_cast<subscriberEvents*>(this);
-   }
 }
 
 mama_status subscriber::destroy()
@@ -224,7 +221,6 @@ void hangout(void)
 request::request(session* pSession, string topic, requestEvents* pSink)
    : pSession_(pSession), topic_(topic), pSink_(pSink)
 {
-   wsem_init(&replied_, 0, 0);
 }
 
 mama_status request::destroy()
@@ -244,20 +240,20 @@ request::~request()
 
 mama_status request::send(mamaMsg msg)
 {
-   if (inbox_ == nullptr) {
-      CALL_MAMA_FUNC(mamaInbox_create2(&inbox_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), msgCB, errorCB, destroyCB, this));
+    if (inbox_ == nullptr) {
+       CALL_MAMA_FUNC(mamaInbox_create2(&inbox_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), msgCB, errorCB, destroyCB, this));
+    }
+    if (pub_ == nullptr) {
+       pub_ = pSession_->getConnection()->getPublisher(topic_);
    }
-   if (pub_ == nullptr) {
-      pub_ = pSession_->getConnection()->getPublisher(topic_);
-  }
 
-  return pub_->sendRequest(msg, inbox_);
+   wsem_init(&replied_, 0, 0);
+   return pub_->sendRequest(msg, inbox_);
 }
 
-mama_status request::waitReply(mamaMsg& reply, double seconds)
+mama_status request::waitReply(double seconds)
 {
-   int millis = seconds / 1000.0;
-   int rc = wsem_timedwait(&replied_, millis);
+   int rc = wsem_timedwait(&replied_, (int) (seconds * 1000.0));
    if (rc < 0) {
       switch (errno) {
          case ETIMEDOUT:      return MAMA_STATUS_TIMEOUT;
@@ -340,11 +336,9 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
       return MAMA_STATUS_INVALID_ARG;
    }
 
+   #if 0
    if (pConn_->getMw() == "zmq") {
-      //
-      // OZ needs a reply topic
       // this is a fugly hack, but there is no way to get reply address using public API
-      //
       typedef struct mamaMsgReplyImpl_
       {
           void* mBridgeImpl;
@@ -353,21 +347,19 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
       mamaMsgReply replyHandle;
       CALL_MAMA_FUNC(mamaMsg_getReplyHandle(msg, &replyHandle));
       mamaMsgReplyImpl* pMamaReplyImpl = reinterpret_cast<mamaMsgReplyImpl*>(replyHandle);
-      #if 1
-      replyTopic = std::string((char*) pMamaReplyImpl->replyHandle);
-      #else
-      #define ZMQ_REPLYHANDLE_SIZE              81
+      // another fugly hack -- we need a topic to create the publisher for OZ, but there is no
+      // way to do that using public API
       #define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   43
-      char  zmqReplyAddr[ZMQ_REPLYHANDLE_SIZE];
-      strcpy(zmqReplyAddr, (const char*) pMamaReplyImpl->replyHandle);
-      zmqReplyAddr[ZMQ_REPLYHANDLE_INBOXNAME_INDEX-1] = '\0';
-      replyTopic = zmqReplyAddr;
-      #endif
+      replyTopic = std::string((char*) pMamaReplyImpl->replyHandle).substr(0,ZMQ_REPLYHANDLE_INBOXNAME_INDEX);
+      CALL_MAMA_FUNC(mamaMsg_destroyReplyHandle(replyHandle));
    }
    else {
       // TODO: AFAIK none of the other transports care about topic for replies?
       replyTopic = "_INBOX";
    }
+   #else
+   replyTopic = "_INBOX";
+   #endif
 
    return MAMA_STATUS_OK;
 }
@@ -378,9 +370,6 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
 timer::timer(session* pSession, double interval, timerEvents* pSink)
    : pSession_(pSession), interval_(interval),  pSink_(pSink)
 {
-   if (pSink == nullptr) {
-      pSink = dynamic_cast<timerEvents*>(this);
-   }
 }
 
 mama_status timer::destroy()

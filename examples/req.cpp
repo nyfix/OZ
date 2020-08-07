@@ -55,6 +55,8 @@ int main(int argc, char** argv)
       status = pRequest->send(msg);
    }
 
+   status = mamaMsg_destroy(msg);
+
    status = pSession->stop();
    status = pConnection->stop();
 

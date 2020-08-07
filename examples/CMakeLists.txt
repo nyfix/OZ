@@ -18,6 +18,10 @@ add_executable(req req.cpp)
 target_link_libraries(req ozimpl mama)
 install(TARGETS req DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(req2 req2.cpp)
+target_link_libraries(req2 ozimpl mama)
+install(TARGETS req2 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(rep rep.cpp)
 target_link_libraries(rep ozimpl mama)
 install(TARGETS rep DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})

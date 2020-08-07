@@ -7,8 +7,9 @@ connection | Encapsulates both the transport and payload bridge libraries.
 session | Encapsulates a callback thread, and is implemented using mamaQueue and mamaDispatcher.
 publisher | Thin wrapper over mamaPublisher
 subscriber | Thin wrapper over mamaSubscription.  Supports only basic (not market-data) subscriptions.
-timer |
-inbox |
+timer | Encapsulates a mamaTimer object.
+request | Represents a mamaInbox, along with callback functions for 
+reply | 
 
 The classes' relationships are illustrated below:<br>
 

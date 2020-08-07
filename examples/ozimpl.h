@@ -26,6 +26,8 @@ class timer
    friend class session;
 
 public:
+   timer(session* pSession, double interval, timerEvents* pSink);
+
    virtual mama_status destroy();
 
    mama_status start();
@@ -35,18 +37,17 @@ public:
    virtual void MAMACALLTYPE onTimer(void) {}
 
 protected:
-   timer(session* pSession, double interval, timerEvents* pSink);
    virtual ~timer();
 
-   static void MAMACALLTYPE timerCB(mamaTimer timer, void* closure);
-   static void MAMACALLTYPE destroyCB(mamaTimer timer, void* closure);
-
-private:
    mama_status          status_        {MAMA_STATUS_INVALID_ARG};
    session*             pSession_      {nullptr};
    double               interval_      {0};
    mamaTimer            timer_         {nullptr};
    timerEvents*         pSink_         {nullptr};
+
+private:
+   static void MAMACALLTYPE timerCB(mamaTimer timer, void* closure);
+   static void MAMACALLTYPE destroyCB(mamaTimer timer, void* closure);
 };
 
 auto timer_deleter = [](timer* ptimer)
@@ -61,6 +62,8 @@ class reply
    friend class connection;
 
 public:
+   reply(connection* pConn);
+
    virtual mama_status destroy();
 
    mama_status send(mamaMsg reply);
@@ -68,9 +71,7 @@ public:
 
    mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic);
 
-
 protected:
-   reply(connection* pConn);
    virtual ~reply();
 
    connection*                         pConn_         {nullptr};
@@ -98,28 +99,28 @@ class request
    friend class session;
 
 public:
+   request(session* pSession, string topic, requestEvents* pSink = nullptr);
    virtual mama_status destroy();
 
    mama_status send(mamaMsg msg);
-   mama_status waitReply(mamaMsg& reply, double seconds);
+   mama_status waitReply(double seconds);
 
    std::string getTopic(void) { return topic_; }
 
 protected:
-   request(session* pSession, string topic, requestEvents* pSink);
    virtual ~request();
 
-   static void MAMACALLTYPE errorCB(mama_status status, void* closure);
-   static void MAMACALLTYPE msgCB(mamaMsg msg, void* closure);
-   static void MAMACALLTYPE destroyCB(mamaInbox inbox, void* closure);
-
-private:
    session*                            pSession_      {nullptr};
    string                              topic_;
    requestEvents*                      pSink_         {nullptr};
    std::shared_ptr<publisher>          pub_;
    mamaInbox                           inbox_         {nullptr};
    wsem_t                              replied_;
+
+private:
+   static void MAMACALLTYPE errorCB(mama_status status, void* closure);
+   static void MAMACALLTYPE msgCB(mamaMsg msg, void* closure);
+   static void MAMACALLTYPE destroyCB(mamaInbox inbox, void* closure);
 };
 
 auto request_deleter = [](request* prequest)
@@ -131,6 +132,8 @@ auto request_deleter = [](request* prequest)
 ///////////////////////////////////////////////////////////////////////////////
 class publisher
 {
+   friend class connection;
+
 public:
    publisher(connection* pConnection, std::string topic);
 
@@ -145,7 +148,6 @@ public:
 protected:
    virtual ~publisher();
 
-private:
    connection*          pConn_         {nullptr};
    mamaPublisher        pub_           {nullptr};
    string               topic_;
@@ -173,6 +175,8 @@ class subscriber
    friend class session;
 
 public:
+   subscriber(session* pSession, std::string topic, subscriberEvents* pSink = nullptr);
+
    virtual mama_status destroy();
 
    mama_status subscribe();
@@ -181,20 +185,19 @@ public:
 
    session* getSession(void)  { return pSession_; }
 
+protected:
+   virtual ~subscriber();
+
    virtual void MAMACALLTYPE onCreate(void) {}
    virtual void MAMACALLTYPE onError(mama_status status, void* platformError, const char* subject) {}
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) {}
 
-protected:
-   subscriber(session* pSession, std::string topic, subscriberEvents* pSink);
-   virtual ~subscriber();
-
+private:
    static void MAMACALLTYPE createCB(mamaSubscription subscription, void* closure);
    static void MAMACALLTYPE errorCB(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure);
    static void MAMACALLTYPE msgCB(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure);
    static void MAMACALLTYPE destroyCB(mamaSubscription subscription, void* closure);
 
-private:
    mama_status          status_        {MAMA_STATUS_INVALID_ARG};
    session*             pSession_      {nullptr};
    mamaSubscription     sub_           {nullptr};
@@ -214,6 +217,8 @@ class session
 {
    friend class connection;
 public:
+   session(oz::connection* pConn) : pConn_(pConn) {}
+
    virtual mama_status destroy(void);
 
    mama_status start(void);
@@ -244,10 +249,8 @@ public:
    }
 
 protected:
-   session(oz::connection* pConn) : pConn_(pConn) {}
    virtual ~session() {}
 
-private:
    mama_status          status_        {MAMA_STATUS_INVALID_ARG};
    oz::connection*      pConn_         {nullptr};
    mamaQueue            queue_         {nullptr};
