@@ -33,8 +33,8 @@ public:
 
 int main(int argc, char** argv)
 {
-   auto pConnection = makeconnection();
-   mama_status status = pConnection->start("zmq", "omnmmsg", "oz");
+   auto pConnection = makeconnection("zmq", "omnmmsg", "oz");
+   mama_status status = pConnection->start();
 
    auto pSession = pConnection->createSession();
    status = pSession->start();

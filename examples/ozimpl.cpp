@@ -15,12 +15,8 @@ namespace oz {
 
 ///////////////////////////////////////////////////////////////////////
 // connection
-mama_status oz::connection::start(string mw, string payload, string name)
+mama_status oz::connection::start()
 {
-   mw_ = mw;
-   payload_ = payload;
-   name_ = name;
-
    CALL_MAMA_FUNC(status_ = mama_loadBridge(&bridge_, mw_.c_str()));
    CALL_MAMA_FUNC(status_ = mama_loadPayloadBridge(&payloadBridge_, payload_.c_str()));
    CALL_MAMA_FUNC(status_ = mama_open());

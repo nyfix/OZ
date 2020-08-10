@@ -36,6 +36,13 @@ public:
 
    virtual void MAMACALLTYPE onTimer(void) {}
 
+   // un-implemented
+   timer() = delete;
+   timer(const timer&) = delete;
+   timer(timer&&) = delete;
+   timer& operator=(const timer&) = delete;
+   timer& operator=(timer&&) = delete;
+
 protected:
    virtual ~timer();
 
@@ -70,6 +77,13 @@ public:
    mama_status send(mamaMsg request, mamaMsg reply);
 
    mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic);
+
+   // un-implemented
+   reply() = delete;
+   reply(const reply&) = delete;
+   reply(reply&&) = delete;
+   reply& operator=(const reply&) = delete;
+   reply& operator=(reply&&) = delete;
 
 protected:
    virtual ~reply();
@@ -106,6 +120,13 @@ public:
    mama_status waitReply(double seconds);
 
    std::string getTopic(void) { return topic_; }
+
+   // un-implemented
+   request() = delete;
+   request(const request&) = delete;
+   request(request&&) = delete;
+   request& operator=(const request&) = delete;
+   request& operator=(request&&) = delete;
 
 protected:
    virtual ~request();
@@ -144,6 +165,13 @@ public:
    mama_status sendReply(mamaMsg request, mamaMsg reply);
 
    mamaPublisher getPublisher(void)    { return pub_; }
+
+   // un-implemented
+   publisher() = delete;
+   publisher(const publisher&) = delete;
+   publisher(publisher&&) = delete;
+   publisher& operator=(const publisher&) = delete;
+   publisher& operator=(publisher&&) = delete;
 
 protected:
    virtual ~publisher();
@@ -184,6 +212,13 @@ public:
    std::string getTopic(void) { return topic_; }
 
    session* getSession(void)  { return pSession_; }
+
+   // un-implemented
+   subscriber() = delete;
+   subscriber(const subscriber&) = delete;
+   subscriber(subscriber&&) = delete;
+   subscriber& operator=(const subscriber&) = delete;
+   subscriber& operator=(subscriber&&) = delete;
 
 protected:
    virtual ~subscriber();
@@ -248,6 +283,13 @@ public:
       return pTimer;
    }
 
+   // un-implemented
+   session() = delete;
+   session(const session&) = delete;
+   session(session&&) = delete;
+   session& operator=(session&) = delete;
+   session& operator=(session&&) = delete;
+
 protected:
    virtual ~session() {}
 
@@ -269,9 +311,13 @@ auto session_deleter = [](session* pSession)
 class connection
 {
 public:
+   connection(std::string mw, std::string payload, std::string name)
+      : mw_(mw), payload_(payload), name_(name)
+   {}
+
    virtual mama_status destroy(void);
 
-   mama_status start(std::string mw, std::string payload, std::string name);
+   mama_status start();
    mama_status stop(void);
 
    mamaTransport getTransport(void)       { return transport_; }
@@ -294,6 +340,13 @@ public:
 
    std::shared_ptr<publisher> getPublisher(std::string topic);
    void removePublisher(std::string topic);
+
+   // un-implemented
+   connection() = delete;
+   connection(const connection&) = delete;
+   connection(connection&&) = delete;
+   connection& operator=(const connection&) = delete;
+   connection& operator=(connection&&) = delete;
 
 protected:
    virtual ~connection() {}

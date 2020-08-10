@@ -15,6 +15,11 @@ The classes' relationships are illustrated below:<br>
 
 ![](ozimpl.png)
 
+Classes that generate asynchronous callbacks are associated with a session object, which provides the queue/dispatcher/thread on which the callbacks are invoked.
+
+  
+
+
 All the above classes have the following characteristics:
 
 - The constructor is protected and so cannot be called from application code -- instead a (static) `create` method is provided that functions as the constructor.
