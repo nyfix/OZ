@@ -27,13 +27,13 @@ mama_status oz::connection::start()
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::connection::stop(void)
+mama_status oz::connection::stop()
 {
    CALL_MAMA_FUNC(status_ = mama_stop(bridge_));
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::connection::destroy(void)
+mama_status oz::connection::destroy()
 {
    CALL_MAMA_FUNC(status_ = mamaTransport_destroy(transport_));
    CALL_MAMA_FUNC(status_ = mama_close());
@@ -69,20 +69,20 @@ void oz::connection::removePublisher(std::string topic)
 
 ///////////////////////////////////////////////////////////////////////
 // session
-mama_status oz::session::start(void)
+mama_status oz::session::start()
 {
    CALL_MAMA_FUNC(status_ = mamaQueue_create(&queue_, pConn_->getBridge()));
    CALL_MAMA_FUNC(status_ = mamaDispatcher_create(&dispatcher_, queue_));
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::session::stop(void)
+mama_status oz::session::stop()
 {
    CALL_MAMA_FUNC(status_ = mamaDispatcher_destroy(dispatcher_));
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::session::destroy(void)
+mama_status oz::session::destroy()
 {
    CALL_MAMA_FUNC(status_ = mamaQueue_destroyTimedWait(queue_, 100));
    delete this;
@@ -165,7 +165,7 @@ publisher::publisher(connection* pConnection, std::string topic)
 {
 }
 
-mama_status publisher::destroy(void)
+mama_status publisher::destroy()
 {
    pConn_->removePublisher(topic_);
    delete this;
@@ -205,7 +205,7 @@ mama_status publisher::sendReply(mamaMsg request, mamaMsg reply)
 ///////////////////////////////////////////////////////////////////////
 // signal handling
 void ignoreSigHandler(int sig) {}
-void hangout(void)
+void hangout()
 {
    signal(SIGINT, ignoreSigHandler);
    pause();
@@ -294,7 +294,7 @@ reply::reply(connection* pConnection)
 {
 }
 
-mama_status reply::destroy(void)
+mama_status reply::destroy()
 {
    delete this;
    return MAMA_STATUS_OK;

@@ -6,6 +6,26 @@
 
 #include <mama/mama.h>
 
+// call a function that returns mama_status -- log an error and return if not MAMA_STATUS_OK
+#define CALL_MAMA_FUNC(x)                                                                  \
+   do {                                                                                    \
+      mama_status s = (x);                                                                 \
+      if (s != MAMA_STATUS_OK) {                                                           \
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
+         return s;                                                                         \
+      }                                                                                    \
+   } while(0)
+
+#define TRY_MAMA_FUNC(x)                                                                  \
+   do {                                                                                    \
+      mama_status s = (x);                                                                 \
+      if (s != MAMA_STATUS_OK) {                                                           \
+         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
+         throw s;                                                                         \
+      }                                                                                    \
+   } while(0)
+
+
 namespace oz {
 
 class connection;
@@ -18,7 +38,7 @@ class timer;
 class timerEvents
 {
 public:
-   virtual void MAMACALLTYPE onTimer(void) {}
+   virtual void MAMACALLTYPE onTimer() {}
 };
 
 class timer
@@ -32,9 +52,9 @@ public:
 
    mama_status start();
 
-   session* getSession(void)  { return pSession_; }
+   session* getSession()  { return pSession_; }
 
-   virtual void MAMACALLTYPE onTimer(void) {}
+   virtual void MAMACALLTYPE onTimer() {}
 
    // un-implemented
    timer() = delete;
@@ -119,7 +139,7 @@ public:
    mama_status send(mamaMsg msg);
    mama_status waitReply(double seconds);
 
-   std::string getTopic(void) { return topic_; }
+   std::string getTopic() { return topic_; }
 
    // un-implemented
    request() = delete;
@@ -158,13 +178,13 @@ class publisher
 public:
    publisher(connection* pConnection, std::string topic);
 
-   virtual mama_status destroy(void);
+   virtual mama_status destroy();
 
    mama_status publish(mamaMsg msg);
    mama_status sendRequest(mamaMsg msg, mamaInbox inbox);
    mama_status sendReply(mamaMsg request, mamaMsg reply);
 
-   mamaPublisher getPublisher(void)    { return pub_; }
+   mamaPublisher getPublisher()    { return pub_; }
 
    // un-implemented
    publisher() = delete;
@@ -209,9 +229,9 @@ public:
 
    mama_status subscribe();
 
-   std::string getTopic(void) { return topic_; }
+   std::string getTopic() { return topic_; }
 
-   session* getSession(void)  { return pSession_; }
+   session* getSession()  { return pSession_; }
 
    // un-implemented
    subscriber() = delete;
@@ -223,7 +243,7 @@ public:
 protected:
    virtual ~subscriber();
 
-   virtual void MAMACALLTYPE onCreate(void) {}
+   virtual void MAMACALLTYPE onCreate() {}
    virtual void MAMACALLTYPE onError(mama_status status, void* platformError, const char* subject) {}
    virtual void MAMACALLTYPE onMsg(mamaMsg msg, void* itemClosure) {}
 
@@ -254,13 +274,13 @@ class session
 public:
    session(oz::connection* pConn) : pConn_(pConn) {}
 
-   virtual mama_status destroy(void);
+   virtual mama_status destroy();
 
-   mama_status start(void);
-   mama_status stop(void);
+   mama_status start();
+   mama_status stop();
 
-   mamaQueue getQueue(void)                { return queue_; }
-   oz::connection* getConnection(void)     { return pConn_; }
+   mamaQueue getQueue()                { return queue_; }
+   oz::connection* getConnection()     { return pConn_; }
 
    std::unique_ptr<subscriber, decltype(subscriber_deleter)> createSubscriber(std::string topic, subscriberEvents* pSink = nullptr)
    {
@@ -315,23 +335,23 @@ public:
       : mw_(mw), payload_(payload), name_(name)
    {}
 
-   virtual mama_status destroy(void);
+   virtual mama_status destroy();
 
    mama_status start();
-   mama_status stop(void);
+   mama_status stop();
 
-   mamaTransport getTransport(void)       { return transport_; }
-   mamaBridge getBridge(void)             { return bridge_; }
-   std::string getMw(void)                { return mw_; }
+   mamaTransport getTransport()       { return transport_; }
+   mamaBridge getBridge()             { return bridge_; }
+   std::string getMw()                { return mw_; }
 
-   std::unique_ptr<session, decltype(session_deleter)> createSession(void)
+   std::unique_ptr<session, decltype(session_deleter)> createSession()
    {
       unique_ptr<session, decltype(session_deleter)> pSession(nullptr, session_deleter);
       pSession.reset(new session(this));
       return pSession;
    }
 
-   std::unique_ptr<reply, decltype(reply_deleter)> createReply(void)
+   std::unique_ptr<reply, decltype(reply_deleter)> createReply()
    {
       unique_ptr<reply, decltype(reply_deleter)> pReply(nullptr, reply_deleter);
       pReply.reset(new reply(this));
@@ -379,7 +399,7 @@ std::unique_ptr<connection, decltype(connection_deleter)> makeconnection(Ts&&...
 }
 
 
-void hangout(void);
+void hangout();
 
 }
 
