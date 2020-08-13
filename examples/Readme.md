@@ -1,4 +1,23 @@
-# OZ classes
+# OZ Examples
+
+## Example programs
+
+These are stripped-down versions of the examples included with OpenMAMA -- while they don't support options in the same way as the OpenMAMA examples, their relative brevity (around 10% of the size of the OpenMAMA examples), and their use of modern C++ constructs, should make the examples easier to use and understand.
+
+The examples use the classes described below and implemented in the `ozimpl.h`/`ozimpl.cpp`files.
+
+Program | Description
+----- | -------------
+pub.cpp | Publisher example.
+sub.cpp | Subscriber example.  Demonstrates using an "events" class to process asynchronous callbacks.
+req.cpp | Request/reply example, which also demonstrates manual lifetime management of objects.
+rep.cpp | Sample progam to reply to requests, using `reply` class to wrap the original request.
+req2.cpp | Request/reply example demonstrating how to wait for a synchronous reply, and how to multiply inherit from both `request` and `requestEvents` classes.
+timer.cpp | Timer sample demonstrating manual lifetime management.
+timer2.cpp | Similar to timer.cpp, but using automatic lifetime management (RAII).
+
+
+## OZ API
 The `oz` namespace defines several classes designed to provide a simple, easy-to-use introduction to OpenMAMA and OZ.
 
 Class | Description
@@ -12,7 +31,7 @@ timer | Encapsulates a mamaTimer object.
 timerEvents | Declares callback functions for timer events.
 request | Represents a mamaInbox, along with callback functions for 
 requestEvents | Declares callback functions for request events, i.e. replies directed to the request's underlying `mamaInbox`.
-reply | 
+reply | The reply class simplifies sending responses to inbox requests.
 
 The classes' relationships are illustrated below:<br>
 
@@ -26,14 +45,18 @@ The destructor for event sources is declared `protected` in order to prevent it 
 
 
 ## Compiler support
-The `oz` classes target C++11 -- this allows the code to be cleaner and more readable, compared to the older C++98 standard used by OpenMAMA's native C++ support.
+The `oz` classes target C++11 -- this allows the code to be cleaner and more readable, compared to the older C++98 standard used by OpenMAMA's native C++ support.  (We currently don't use features specific to C++14 and above in order to work with as wide a range of compilers as possible).
 
-## Smart pointers
+## Smart pointers/RAII
 In keeping with the recommendations in [EMC++](https://www.aristeia.com/EMC++.html) and the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines), the factory functions in OZ return `unique_ptr`'s.  These have no space or speed penalties relative to raw pointers, and can be easily converted to `shared_ptr`'s if desired.
 
 In addition, each class has a custom deleter defined that respects the OZ convention of destroying objects by calling their `destroy` methods, rather than their destructors.
 
-If an application prefers to manage object lifetimes itself, it can call the `unique_ptr::release` method to acquire a raw pointer, which it is then responsible for.  (See the `req.cpp` program for an example of this).
+Since the smart pointer `deleter`'s are invoked in reverse order of their creation, this ensures a clean tear-down of the MAMA objects.
+
+If an application prefers to manage object lifetimes itself, it can call the `unique_ptr::release` method to acquire a raw pointer, which it is then responsible for.  (See the `req.cpp` program for an example of this).  
+
+Note that if you choose to manage object lifetimes manually, you should make sure to do so as documented in the [Developer Guide](http://www.openmama.org/sites/default/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>).
 
 
 ## Messages
@@ -41,9 +64,16 @@ Conspicuous perhaps by its absence is a wrapper class for `mamaMsg`.  The main r
 
 This may come at some point, but is currently not a priority.
 
+## Publishers
+The connection classes maintains a collection of publishers, keyed by topic.  This is a potential performance optimization, since publishers can be shared among all threads that need to publish messages.
+
+Where this really comes into play is when publising replies to inboxes -- since a single topic (publisher) is used for all inbox replies, there is no need to create a publisher for each inbox.
+
+The publishers are reference-counted and deleted when no longer used.
+
 
 ## Macros
-OZ defines two macros that can be helpful, `CALL_MAMA_FUNC` and `TRY_MAMA_FUNC`.  
+The OZ header defines two macros that can be helpful, `CALL_MAMA_FUNC` and `TRY_MAMA_FUNC`.  
 
 `CALL_MAMA_FUNC` calls a MAMA function -- if the called function returns anything other than `MAMA_STATUS_OK`, it logs a message before returning the mama_status.
 
@@ -59,11 +89,11 @@ When using `TRY_MAMA_FUNC`, any errors will be displayed similar to:
 
 ## Naming Conventions
 
-OZ uses camelCase for pretty much everything, except macros which use ALL_CAPS_WITH_UNDERSCORES.
+The OZ classes use camelCase for pretty much everything, except macros which use ALL_CAPS_WITH_UNDERSCORES.
 
 A 'p' prefix is used for raw pointers -- e.g., `subscriber* pSubscriber`.  That is the only time type information is encoded in a name.
 
-Member variables are named with a trailing underscore, e.g., `conn_`.
+Class member variables are named with a trailing underscore, e.g., `conn_`.
 
 
 
