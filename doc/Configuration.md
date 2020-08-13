@@ -11,7 +11,8 @@ type|tcp|OZ currently supports only tcp.  Any other value is silently ignored.
 publish_address|lo|Specifies the interface the transport should use to publish messages.  Applies to both naming and data sockets.
 socket_monitor|1|Specifies whether to enable monitoring of socket connects/disconnects.  When active, socket activity will be logged to `stderr`.  For more information, see [Monitoring Socket Events](Socket-Monitor.md).
 is_naming|1|Specifies that the transport is a "naming" transport.  For more information, see [Naming Service/Peer Discovery](Naming-Service.md).
-
+heartbeat_interval|10|Specifies the heartbeat interval for client (connecting) sockets, both naming and data.  The code calls `zmq_setsockopt(..., ZMQ_HEARTBEAT_IVL` with this value (* 1000).  
+reconnect_interval|10|Specifies the reconnect interval for client (connecting) sockets, both naming and data.  The code calls `zmq_setsockopt(..., ZMQ_RECONNECT_IVL` with this value (* 1000).  
 
 ### Naming Sockets
 The following settings apply only to "naming" transports (i.e., transports that use an nsd/proxy connection to discover peers).
@@ -32,11 +33,6 @@ naming.beacon_interval|1|Specifies how often to publish "beacon" (announcement) 
 ### Data Sockets
 
 The following settings apply to "data" sockets, in both naming and non-naming modes.
-
-Parameter | Default Value | Description
--------- | -------- | ---------- 
-retry_connects|1|Whether to retry connects on the data sockets.<br>This is implemented in the transport by calling  `zmq_setsockopt(..., ZMQ_RECONNECT_IVL)` with the value of `retry_interval`.
-retry_interval|10| 
 
 <br>
 The following settings apply to data sockets, but only in non-naming mode.

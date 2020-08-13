@@ -57,7 +57,7 @@ const char* zmqBridge_generateSerial(unsigned long long* id)
    return strdup(temp);
 }
 
-const char* get_zmqEventName(int event)
+const char* get_zmqEventName(uint64_t event)
 {
    switch(event) {
       case ZMQ_EVENT_CONNECTED                  : return "CONNECTED";
@@ -80,7 +80,7 @@ const char* get_zmqEventName(int event)
 }
 
 // Note: this code must be synchronized w/get_zmqEventMask
-int get_zmqEventLogLevel(int event)
+int get_zmqEventLogLevel(uint64_t event)
 {
    switch(event) {
       case ZMQ_EVENT_CONNECTED                  : return MAMA_LOG_LEVEL_NORMAL;
@@ -90,7 +90,7 @@ int get_zmqEventLogLevel(int event)
       case ZMQ_EVENT_BIND_FAILED                : return MAMA_LOG_LEVEL_ERROR;
       case ZMQ_EVENT_ACCEPTED                   : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_ACCEPT_FAILED              : return MAMA_LOG_LEVEL_ERROR;
-      case ZMQ_EVENT_CLOSED                     : return MAMA_LOG_LEVEL_FINE;
+      case ZMQ_EVENT_CLOSED                     : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_CLOSE_FAILED               : return MAMA_LOG_LEVEL_ERROR;
       case ZMQ_EVENT_DISCONNECTED               : return MAMA_LOG_LEVEL_NORMAL;
       case ZMQ_EVENT_MONITOR_STOPPED            : return MAMA_LOG_LEVEL_FINE;
@@ -106,9 +106,9 @@ int get_zmqEventLogLevel(int event)
 // Returns a bit-mask of events that are logged at specified log level.
 // Ensures that we don't ask for more events than we care about
 // Note: this code must be synchronized w/get_zmqEventLogLevel
-int get_zmqEventMask(int logLevel)
+uint64_t get_zmqEventMask(int logLevel)
 {
-   int eventMask = 0;
+   uint64_t eventMask = 0;
 
    switch(logLevel) {
 
