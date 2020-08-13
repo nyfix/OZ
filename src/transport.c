@@ -127,6 +127,8 @@ mama_status zmqBridgeMamaTransport_create(transportBridge* result, const char* n
       zmqBridgeMamaTransportImpl_parseNonNamingParams(impl);
    }
 
+   mamaTransport_disableRefresh(impl->mTransport, (uint8_t) impl->mDisableRefresh);
+
    // create wildcard endpoints
    impl->mWcEndpoints = list_create(sizeof(zmqSubscription*));
    if (impl->mWcEndpoints == INVALID_LIST) {
@@ -358,7 +360,7 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
       for (int i = 0; (i < ZMQ_MAX_NAMING_URIS) && (impl->mNamingAddress[i] != NULL); ++i) {
          CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_connectSocket(&impl->mZmqNamingSub, impl->mNamingAddress[i],
             impl->mReconnectInterval, impl->mHeartbeatInterval));
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting naming subscriber to: %s", impl->mNamingAddress[i]);
+         MAMA_LOG(log_level_naming, "Connecting naming subscriber to: %s", impl->mNamingAddress[i]);
       }
    }
    else {
@@ -632,7 +634,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       if (pOrigMsg == NULL) {
          if (pMsg->mType == 'c') {
             // found peer via beacon message
-            MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%ld topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
+            MAMA_LOG(log_level_beacon, "Received endpoint msg: type=%c prog=%s host=%s uuid=%s pid=%ld topic=%s pub=%s", pMsg->mType, pMsg->mProgName, pMsg->mHost, pMsg->mUuid, pMsg->mPid, pMsg->mTopic, pMsg->mEndPointAddr);
          }
 
          // we've never seen this peer before, so connect (sub => pub)
@@ -647,12 +649,12 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
          memcpy(pOrigMsg, pMsg, sizeof(zmqNamingMsg));
          wtable_insert(impl->mPeers, pOrigMsg->mUuid, pOrigMsg);
 
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Connecting to publisher at endpoint:%s", pMsg->mEndPointAddr);
+         MAMA_LOG(log_level_naming, "Connecting to publisher at endpoint:%s", pMsg->mEndPointAddr);
       }
 
       // is this our msg? if so, we know we're connected to proxy
       if ((wInterlocked_read(&impl->mNamingConnected) != 1) && (strcmp(pMsg->mUuid, impl->mUuid) == 0)) {
-         MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Got own endpoint msg -- signaling");
+         MAMA_LOG(log_level_naming, "Got own endpoint msg -- signaling");
          wInterlocked_set(1, &impl->mNamingConnected);
       }
    }
@@ -664,7 +666,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       // TODO: do we want to wait until we receive our own disconnect msg before we shut down?
       // is this our msg?
       if (strcmp(pMsg->mUuid, impl->mUuid) == 0) {
-         MAMA_LOG(MAMA_LOG_LEVEL_FINE, "Got own endpoint msg -- ignoring");
+         MAMA_LOG(log_level_naming, "Got own endpoint msg -- ignoring");
          // NOTE: dont disconnect from self
          return MAMA_STATUS_OK;
       }
@@ -754,7 +756,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchInboxMsg(zmqTransportBridge* impl
    zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, inboxName);
    if (inbox == NULL) {
       wlock_unlock(impl->mInboxesLock);
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "discarding uninteresting message for subject %s", subject);
+      MAMA_LOG(log_level_inbox, "discarding uninteresting message for subject %s", subject);
       return MAMA_STATUS_NOT_FOUND;
    }
 
@@ -885,7 +887,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_inboxCallback(mamaQueue queue, voi
    zmqInboxImpl* inbox = wtable_lookup(impl->mInboxes, tmsg->mEndpointIdentifier);
    wlock_unlock(impl->mInboxesLock);
    if (inbox == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_FINER, "discarding uninteresting message for inbox %s", tmsg->mEndpointIdentifier);
+      MAMA_LOG(log_level_inbox, "discarding uninteresting message for inbox %s", tmsg->mEndpointIdentifier);
       goto exit;
    }
 
@@ -1088,7 +1090,7 @@ mama_status zmqBridgeMamaTransportImpl_getInboxSubject(zmqTransportBridge* impl,
 
 mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
-   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", inbox->mParent, inbox->mReplyHandle);
+   MAMA_LOG(log_level_inbox, "mamaInbox=%p,replyAddr=%s", inbox->mParent, inbox->mReplyHandle);
 
    wlock_lock(impl->mInboxesLock);
    mama_status status = wtable_insert(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX], inbox) >= 0 ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;
@@ -1103,7 +1105,7 @@ mama_status zmqBridgeMamaTransportImpl_registerInbox(zmqTransportBridge* impl, z
 
 mama_status zmqBridgeMamaTransportImpl_unregisterInbox(zmqTransportBridge* impl, zmqInboxImpl* inbox)
 {
-   MAMA_LOG(MAMA_LOG_INBOX_MSGS, "mamaInbox=%p,replyAddr=%s", inbox->mParent, inbox->mReplyHandle);
+   MAMA_LOG(log_level_inbox, "mamaInbox=%p,replyAddr=%s", inbox->mParent, inbox->mReplyHandle);
 
    wlock_lock(impl->mInboxesLock);
    mama_status status = wtable_remove(impl->mInboxes, &inbox->mReplyHandle[ZMQ_REPLYHANDLE_INBOXNAME_INDEX]) == inbox ? MAMA_STATUS_OK : MAMA_STATUS_NOT_FOUND;

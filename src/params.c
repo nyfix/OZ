@@ -12,6 +12,10 @@
 
 #define PARAM_NAME_MAX_LENGTH 1024
 
+extern int log_level_beacon;
+extern int log_level_naming;
+extern int log_level_inbox;
+
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(char* defaultVal, char* paramName, const char* format, va_list arguments)
 {
    const char* property = NULL;
@@ -129,6 +133,12 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    impl->mSocketMonitor = getInt(name, "socket_monitor", 1, 0);
    impl->mIsNaming = getInt(name, "is_naming", 1, 0);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
+   impl->mDisableRefresh = getInt(name, "disable_refresh", 1, 0);
+
+   log_level_beacon = getInt(name, "log_level_beacon", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+   log_level_naming = getInt(name, "log_level_naming", MAMA_LOG_LEVEL_NORMAL, MAMA_LOG_LEVEL_OFF);
+   log_level_inbox = getInt(name, "log_level_inbox", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+
 }
 
 
@@ -141,7 +151,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseNamingParams(zmqTransportBrid
    impl->mNamingWaitForConnect = getInt(name, "naming.wait_for_connect", 1, 0);
    impl->mNamingConnectInterval = getFloat(name, "naming.connect_interval", .1, .1) * 1000000.0;    // micros
    impl->mNamingConnectRetries = getInt(name, "naming.connect_retries", 100, 10);
-   impl->mBeaconInterval = getFloat(name, "naming.beacon_interval", 1, .1) * 1000.0;    // millis;
+   impl->mBeaconInterval = getFloat(name, "naming.beacon_interval", 1, 0) * 1000.0;    // millis;
 
    // The naming server address can be specified in any of the following formats:
    // 1. naming.subscribe_address[_n]/naming.subscribe_port[_n]

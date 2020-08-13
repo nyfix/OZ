@@ -10,8 +10,8 @@ export WOMBAT_PATH=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)/../config
 
 # use zmq transport w/nsd
 export MAMA_MW=zmq
-export MAMA_TPORT_PUB=nsd
-export MAMA_TPORT_SUB=nsd
+export MAMA_TPORT_PUB=oz
+export MAMA_TPORT_SUB=oz
 export MAMA_NSD_ADDR=127.0.0.1
 export MAMA_NSD_PORT=5756
 
