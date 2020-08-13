@@ -6,8 +6,6 @@ using namespace std;
 
 #include <mama/mama.h>
 
-#include "../src/util.h"
-
 #include "ozimpl.h"
 using namespace oz;
 
@@ -20,14 +18,14 @@ void doneSigHandler(int sig)
 
 int main(int argc, char** argv)
 {
-   auto pConnection = makeconnection("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   TRY_MAMA_FUNC(conn->start());
 
-   auto pPublisher = pConnection->getPublisher("topic");
+   auto pub = conn->getPublisher("topic");
 
    mamaMsg msg;
-   status = mamaMsg_create(&msg);
-   status = mamaMsg_updateString(msg, "name", 0, "value");
+   TRY_MAMA_FUNC(mamaMsg_create(&msg));
+   TRY_MAMA_FUNC(mamaMsg_updateString(msg, "name", 0, "value"));
 
    signal(SIGINT, doneSigHandler);
 
@@ -35,17 +33,15 @@ int main(int argc, char** argv)
    while(notDone) {
       sleep(1);
       ++i;
-      status = mamaMsg_updateU32(msg, "num", 0, i);
+      TRY_MAMA_FUNC(mamaMsg_updateU32(msg, "num", 0, i));
 
       const char* msgStr = mamaMsg_toString(msg);
       printf("msg=%s\n", msgStr);
 
-      status = pPublisher->publish(msg);
+      TRY_MAMA_FUNC(pub->publish(msg));
    }
 
-   status = mamaMsg_destroy(msg);
-
-   status = pConnection->stop();
+   TRY_MAMA_FUNC(mamaMsg_destroy(msg));
 
    return 0;
 }

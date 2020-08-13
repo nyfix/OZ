@@ -11,7 +11,7 @@
    do {                                                                                    \
       mama_status s = (x);                                                                 \
       if (s != MAMA_STATUS_OK) {                                                           \
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
+         mama_log(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
          return s;                                                                         \
       }                                                                                    \
    } while(0)
@@ -20,7 +20,7 @@
    do {                                                                                    \
       mama_status s = (x);                                                                 \
       if (s != MAMA_STATUS_OK) {                                                           \
-         MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
+         mama_log(MAMA_LOG_LEVEL_ERROR, "Error %d(%s)", s, mamaStatus_stringForStatus(s)); \
          throw s;                                                                         \
       }                                                                                    \
    } while(0)
@@ -77,9 +77,9 @@ private:
    static void MAMACALLTYPE destroyCB(mamaTimer timer, void* closure);
 };
 
-auto timer_deleter = [](timer* ptimer)
+auto timerDeleter = [](timer* pTimer)
 {
-   ptimer->destroy();
+   pTimer->destroy();
 };
 
 
@@ -112,7 +112,7 @@ protected:
    std::shared_ptr<publisher>          pub_;
 };
 
-auto reply_deleter = [](reply* pReply)
+auto replyDeleter = [](reply* pReply)
 {
    pReply->destroy();
 };
@@ -164,9 +164,9 @@ private:
    static void MAMACALLTYPE destroyCB(mamaInbox inbox, void* closure);
 };
 
-auto request_deleter = [](request* prequest)
+auto requestDeleter = [](request* pRequest)
 {
-   prequest->destroy();
+   pRequest->destroy();
 };
 
 
@@ -201,7 +201,7 @@ protected:
    string               topic_;
 };
 
-auto publisher_deleter = [](publisher* pPublisher)
+auto publisherDeleter = [](publisher* pPublisher)
 {
    pPublisher->destroy();
 };
@@ -227,7 +227,7 @@ public:
 
    virtual mama_status destroy();
 
-   mama_status subscribe();
+   mama_status start();
 
    std::string getTopic() { return topic_; }
 
@@ -260,9 +260,9 @@ private:
    string               topic_;
 };
 
-auto subscriber_deleter = [](subscriber* psubscriber)
+auto subscriberDeleter = [](subscriber* pSubscriber)
 {
-   psubscriber->destroy();
+   pSubscriber->destroy();
 };
 
 
@@ -277,28 +277,27 @@ public:
    virtual mama_status destroy();
 
    mama_status start();
-   mama_status stop();
 
    mamaQueue getQueue()                { return queue_; }
    oz::connection* getConnection()     { return pConn_; }
 
-   std::unique_ptr<subscriber, decltype(subscriber_deleter)> createSubscriber(std::string topic, subscriberEvents* pSink = nullptr)
+   std::unique_ptr<subscriber, decltype(subscriberDeleter)> createSubscriber(std::string topic, subscriberEvents* pSink = nullptr)
    {
-      unique_ptr<subscriber, decltype(subscriber_deleter)> pSubscriber(nullptr, subscriber_deleter);
+      unique_ptr<subscriber, decltype(subscriberDeleter)> pSubscriber(nullptr, subscriberDeleter);
       pSubscriber.reset(new subscriber(this, topic, pSink));
       return pSubscriber;
    }
 
-   std::unique_ptr<request, decltype(request_deleter)> createRequest(std::string topic, requestEvents* pSink = nullptr)
+   std::unique_ptr<request, decltype(requestDeleter)> createRequest(std::string topic, requestEvents* pSink = nullptr)
    {
-      unique_ptr<request, decltype(request_deleter)> pRequest(nullptr, request_deleter);
+      unique_ptr<request, decltype(requestDeleter)> pRequest(nullptr, requestDeleter);
       pRequest.reset(new request(this, topic, pSink));
       return pRequest;
    }
 
-   std::unique_ptr<timer, decltype(timer_deleter)> createTimer(double interval, timerEvents* pSink = nullptr)
+   std::unique_ptr<timer, decltype(timerDeleter)> createTimer(double interval, timerEvents* pSink = nullptr)
    {
-      unique_ptr<timer, decltype(timer_deleter)> pTimer(nullptr, timer_deleter);
+      unique_ptr<timer, decltype(timerDeleter)> pTimer(nullptr, timerDeleter);
       pTimer.reset(new timer(this, interval, pSink));
       return pTimer;
    }
@@ -319,7 +318,7 @@ protected:
    mamaDispatcher       dispatcher_    {nullptr};
 };
 
-auto session_deleter = [](session* pSession)
+auto sessionDeleter = [](session* pSession)
 {
    pSession->destroy();
 };
@@ -338,22 +337,21 @@ public:
    virtual mama_status destroy();
 
    mama_status start();
-   mama_status stop();
 
    mamaTransport getTransport()       { return transport_; }
    mamaBridge getBridge()             { return bridge_; }
    std::string getMw()                { return mw_; }
 
-   std::unique_ptr<session, decltype(session_deleter)> createSession()
+   std::unique_ptr<session, decltype(sessionDeleter)> createSession()
    {
-      unique_ptr<session, decltype(session_deleter)> pSession(nullptr, session_deleter);
+      unique_ptr<session, decltype(sessionDeleter)> pSession(nullptr, sessionDeleter);
       pSession.reset(new session(this));
       return pSession;
    }
 
-   std::unique_ptr<reply, decltype(reply_deleter)> createReply()
+   std::unique_ptr<reply, decltype(replyDeleter)> createReply()
    {
-      unique_ptr<reply, decltype(reply_deleter)> pReply(nullptr, reply_deleter);
+      unique_ptr<reply, decltype(replyDeleter)> pReply(nullptr, replyDeleter);
       pReply.reset(new reply(this));
       return pReply;
    }
@@ -385,15 +383,15 @@ private:
    std::unordered_map<std::string, std::weak_ptr<publisher>>   pubs_;
 };
 
-auto connection_deleter = [](connection* pconnection)
+auto connectionDeleter = [](connection* pConnection)
 {
-   pconnection->destroy();
+   pConnection->destroy();
 };
 
 template<typename... Ts>
-std::unique_ptr<connection, decltype(connection_deleter)> makeconnection(Ts&&... args)
+std::unique_ptr<connection, decltype(connectionDeleter)> createConnection(Ts&&... args)
 {
-  std::unique_ptr<connection, decltype(connection_deleter)> pconnection(nullptr, connection_deleter);
+  std::unique_ptr<connection, decltype(connectionDeleter)> pconnection(nullptr, connectionDeleter);
   pconnection.reset(new connection(std::forward<Ts>(args)...));
   return pconnection;
 }

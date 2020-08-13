@@ -6,8 +6,6 @@ using namespace std;
 
 #include <mama/mama.h>
 
-#include "../src/util.h"
-
 #include "ozimpl.h"
 using namespace oz;
 
@@ -17,7 +15,7 @@ void doneSigHandler(int sig)
    notDone = false;
 }
 
-class myRequestEvents : public requestEvents
+class myReqEvents : public requestEvents
 {
 public:
    virtual void MAMACALLTYPE onReply(request* pRequest, mamaMsg msg) override
@@ -33,32 +31,29 @@ public:
 
 int main(int argc, char** argv)
 {
-   auto pConnection = makeconnection("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   TRY_MAMA_FUNC(conn->start());
 
-   auto pSession = pConnection->createSession();
-   status = pSession->start();
+   auto sess = conn->createSession();
+   TRY_MAMA_FUNC(sess->start());
 
    mamaMsg msg;
-   status = mamaMsg_create(&msg);
-   status = mamaMsg_updateString(msg, "name", 0, "value");
+   TRY_MAMA_FUNC(mamaMsg_create(&msg));
+   TRY_MAMA_FUNC(mamaMsg_updateString(msg, "name", 0, "value"));
 
    signal(SIGINT, doneSigHandler);
 
-   myRequestEvents requestEvents;
+   myReqEvents reqEvents;
    int i = 0;
-   while(notDone && (status == MAMA_STATUS_OK)) {
+   while(notDone) {
       sleep(1);
       ++i;
-      status = mamaMsg_updateU32(msg, "num", 0, i);
-      request* pRequest = pSession->createRequest("topic", &requestEvents).release();
-      status = pRequest->send(msg);
+      TRY_MAMA_FUNC(mamaMsg_updateU32(msg, "num", 0, i));
+      request* pRequest = sess->createRequest("topic", &reqEvents).release();
+      TRY_MAMA_FUNC(pRequest->send(msg));
    }
 
-   status = mamaMsg_destroy(msg);
-
-   status = pSession->stop();
-   status = pConnection->stop();
+   TRY_MAMA_FUNC(mamaMsg_destroy(msg));
 
    return 0;
 }

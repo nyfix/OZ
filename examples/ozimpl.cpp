@@ -7,8 +7,6 @@ using namespace std;
 #include <wombat/wSemaphore.h>
 #include <mama/mama.h>
 
-#include "../src/util.h"
-
 #include "ozimpl.h"
 
 namespace oz {
@@ -27,14 +25,9 @@ mama_status oz::connection::start()
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::connection::stop()
-{
-   CALL_MAMA_FUNC(status_ = mama_stop(bridge_));
-   return MAMA_STATUS_OK;
-}
-
 mama_status oz::connection::destroy()
 {
+   CALL_MAMA_FUNC(status_ = mama_stop(bridge_));
    CALL_MAMA_FUNC(status_ = mamaTransport_destroy(transport_));
    CALL_MAMA_FUNC(status_ = mama_close());
    delete this;
@@ -53,7 +46,7 @@ shared_ptr<publisher> oz::connection::getPublisher(std::string topic)
       return temp->second.lock();
    }
 
-   auto pub = shared_ptr<publisher>(new publisher(this, topic), publisher_deleter);
+   auto pub = shared_ptr<publisher>(new publisher(this, topic), publisherDeleter);
    if (pub) {
       pubs_[topic] = pub;
    }
@@ -76,14 +69,9 @@ mama_status oz::session::start()
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::session::stop()
-{
-   CALL_MAMA_FUNC(status_ = mamaDispatcher_destroy(dispatcher_));
-   return MAMA_STATUS_OK;
-}
-
 mama_status oz::session::destroy()
 {
+   CALL_MAMA_FUNC(status_ = mamaDispatcher_destroy(dispatcher_));
    CALL_MAMA_FUNC(status_ = mamaQueue_destroyTimedWait(queue_, 100));
    delete this;
    return MAMA_STATUS_OK;
@@ -106,7 +94,7 @@ mama_status subscriber::destroy()
 
 subscriber::~subscriber() {}
 
-mama_status subscriber::subscribe()
+mama_status subscriber::start()
 {
    mamaMsgCallbacks cb;
    memset(&cb, 0, sizeof(cb));
@@ -199,16 +187,6 @@ mama_status publisher::sendReply(mamaMsg request, mamaMsg reply)
    }
 
    return mamaPublisher_sendReplyToInbox(pub_, request, reply);
-}
-
-
-///////////////////////////////////////////////////////////////////////
-// signal handling
-void ignoreSigHandler(int sig) {}
-void hangout()
-{
-   signal(SIGINT, ignoreSigHandler);
-   pause();
 }
 
 
@@ -306,24 +284,24 @@ mama_status reply::send(mamaMsg msg)
 {
    std::string replyTopic;
    CALL_MAMA_FUNC(getReplyTopic(msg, replyTopic));
-   auto pPublisher = pConn_->getPublisher(replyTopic);
-   if (pPublisher == nullptr) {
+   auto publisher = pConn_->getPublisher(replyTopic);
+   if (publisher == nullptr) {
       return MAMA_STATUS_PLATFORM;
    }
 
-   return pPublisher->sendReply(msg, msg);
+   return publisher->sendReply(msg, msg);
 }
 
 mama_status reply::send(mamaMsg request, mamaMsg reply)
 {
    std::string replyTopic;
    CALL_MAMA_FUNC(getReplyTopic(request, replyTopic));
-   auto pPublisher = pConn_->getPublisher(replyTopic);
-   if (pPublisher == nullptr) {
+   auto publisher = pConn_->getPublisher(replyTopic);
+   if (publisher == nullptr) {
       return MAMA_STATUS_PLATFORM;
    }
 
-   return pPublisher->sendReply(request, reply);
+   return publisher->sendReply(request, reply);
 }
 
 mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
@@ -332,30 +310,10 @@ mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
       return MAMA_STATUS_INVALID_ARG;
    }
 
-   #if 0
-   if (pConn_->getMw() == "zmq") {
-      // this is a fugly hack, but there is no way to get reply address using public API
-      typedef struct mamaMsgReplyImpl_
-      {
-          void* mBridgeImpl;
-          void* replyHandle;
-      } mamaMsgReplyImpl;
-      mamaMsgReply replyHandle;
-      CALL_MAMA_FUNC(mamaMsg_getReplyHandle(msg, &replyHandle));
-      mamaMsgReplyImpl* pMamaReplyImpl = reinterpret_cast<mamaMsgReplyImpl*>(replyHandle);
-      // another fugly hack -- we need a topic to create the publisher for OZ, but there is no
-      // way to do that using public API
-      #define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   43
-      replyTopic = std::string((char*) pMamaReplyImpl->replyHandle).substr(0,ZMQ_REPLYHANDLE_INBOXNAME_INDEX);
-      CALL_MAMA_FUNC(mamaMsg_destroyReplyHandle(replyHandle));
-   }
-   else {
-      // TODO: AFAIK none of the other transports care about topic for replies?
-      replyTopic = "_INBOX";
-   }
-   #else
+   // the topic used to publish inbox replies is irrelevant -- all
+   // the bridge implementations ignore the specified topic and instead
+   // use information encoded in the reply handle to route the reply
    replyTopic = "_INBOX";
-   #endif
 
    return MAMA_STATUS_OK;
 }
@@ -397,6 +355,16 @@ void MAMACALLTYPE timer::destroyCB(mamaTimer timer, void* closure)
    if (pThis) {
       delete pThis;
    }
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// signal handling
+void ignoreSigHandler(int sig) {}
+void hangout()
+{
+   signal(SIGINT, ignoreSigHandler);
+   pause();
 }
 
 

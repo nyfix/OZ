@@ -6,8 +6,6 @@ using namespace std;
 
 #include <mama/mama.h>
 
-#include "../src/util.h"
-
 #include "ozimpl.h"
 using namespace oz;
 
@@ -23,20 +21,17 @@ class myTimerEvents : public timerEvents
 
 int main(int argc, char** argv)
 {
-   auto pConnection = makeconnection("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   TRY_MAMA_FUNC(conn->start());
 
-   auto pSession = pConnection->createSession();
-   status = pSession->start();
+   auto sess = conn->createSession();
+   TRY_MAMA_FUNC(sess->start());
 
    myTimerEvents timerEvents;
-   auto pTimer = pSession->createTimer(0.5, &timerEvents);
-   status = pTimer->start();
+   auto timer = sess->createTimer(0.5, &timerEvents);
+   TRY_MAMA_FUNC(timer->start());
 
    sleep(5);
-
-   status = pSession->stop();
-   status = pConnection->stop();
 
    return 0;
 }

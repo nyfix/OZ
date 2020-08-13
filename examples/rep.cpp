@@ -6,25 +6,23 @@ using namespace std;
 
 #include <mama/mama.h>
 
-#include "../src/util.h"
-
 #include "ozimpl.h"
 using namespace oz;
 
-class mySubscriberEvents : public subscriberEvents
+class mySubEvents : public subscriberEvents
 {
 public:
    virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, mamaMsg msg, void* itemClosure) override
    {
-      static auto pReply = pSubscriber->getSession()->getConnection()->createReply();
+      static auto reply = pSubscriber->getSession()->getConnection()->createReply();
 
       if (mamaMsg_isFromInbox(msg)) {
          mamaMsg temp;
-         mama_status status = mamaMsg_getTempCopy(msg, &temp);
+         TRY_MAMA_FUNC(mamaMsg_getTempCopy(msg, &temp));
          mama_u32_t i;
-         status = mamaMsg_getU32(temp, "num", 0, &i);
-         status = mamaMsg_updateU32(temp, "reply", 0, i);
-         status = pReply->send(temp);
+         TRY_MAMA_FUNC( mamaMsg_getU32(temp, "num", 0, &i));
+         TRY_MAMA_FUNC(mamaMsg_updateU32(temp, "reply", 0, i));
+         TRY_MAMA_FUNC(reply->send(temp));
 
          const char* msgStr = mamaMsg_toString(temp);
          fprintf(stderr, "REQUEST:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
@@ -39,20 +37,17 @@ public:
 
 int main(int argc, char** argv)
 {
-   auto pConnection = makeconnection("zmq", "omnmmsg", "oz");
-   mama_status status = pConnection->start();
+   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   TRY_MAMA_FUNC(conn->start());
 
-   auto pSession = pConnection->createSession();
-   status = pSession->start();
+   auto sess = conn->createSession();
+   TRY_MAMA_FUNC(sess->start());
 
-   mySubscriberEvents subscriberEvents;
-   auto pSubscriber = pSession->createSubscriber("topic", &subscriberEvents);
-   status = pSubscriber->subscribe();
+   mySubEvents subscriberEvents;
+   auto sub = sess->createSubscriber("topic", &subscriberEvents);
+   TRY_MAMA_FUNC(sub->start());
 
    hangout();
-
-   status = pSession->stop();
-   status = pConnection->stop();
 
    return 0;
 }
