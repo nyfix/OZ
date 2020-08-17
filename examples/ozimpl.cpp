@@ -1,5 +1,7 @@
 // minimal wrapper for OpenMAMA API
 
+#include <string.h>
+
 #include <sys/errno.h>
 #include <string>
 using namespace std;
@@ -80,8 +82,8 @@ mama_status oz::session::destroy()
 
 ///////////////////////////////////////////////////////////////////////
 // subscriber
-subscriber::subscriber(session* pSession, string topic, subscriberEvents* pSink)
-   : pSession_(pSession), topic_(topic),  pSink_(pSink)
+subscriber::subscriber(session* pSession, string topic, subscriberEvents* pSink, wcType wcType)
+   : pSession_(pSession), topic_(topic),  pSink_(pSink), wcType_(wcType)
 {
 }
 
@@ -96,18 +98,34 @@ subscriber::~subscriber() {}
 
 mama_status subscriber::start()
 {
-   mamaMsgCallbacks cb;
-   memset(&cb, 0, sizeof(cb));
-   cb.onCreate       = createCB;
-   cb.onError        = errorCB;
-   cb.onMsg          = msgCB;
-   cb.onQuality      = nullptr;
-   cb.onGap          = nullptr;
-   cb.onRecapRequest = nullptr;
-   cb.onDestroy      = destroyCB;
+   if (wcType_ == wcType::unspecified) {
+      // try to guess
+      const char* regexPos = strpbrk(topic_.c_str(), "[^/]+.*");  // find wildcard regex?
+      if (regexPos != nullptr) {
+         wcType_ = wcType::POSIX;
+      }
+   }
 
    CALL_MAMA_FUNC(status_ = mamaSubscription_allocate(&sub_));
-   CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, topic_.c_str(), this));
+   if (wcType_ == wcType::POSIX) {
+      mamaWildCardMsgCallbacks cb;
+      memset(&cb, 0, sizeof(cb));
+      cb.onCreate  = createCB;
+      cb.onError   = errorCB;
+      cb.onMsg     = wcCB;
+      cb.onDestroy = destroyCB;
+      CALL_MAMA_FUNC(status_ = mamaSubscription_createBasicWildCard(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, nullptr, topic_.c_str(), this));
+   }
+   else {
+      mamaMsgCallbacks cb;
+      memset(&cb, 0, sizeof(cb));
+      cb.onCreate       = createCB;
+      cb.onError        = errorCB;
+      cb.onMsg          = msgCB;
+      cb.onDestroy      = destroyCB;
+      CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, topic_.c_str(), this));
+   }
+
    return MAMA_STATUS_OK;
 }
 
@@ -132,7 +150,16 @@ void MAMACALLTYPE subscriber::msgCB(mamaSubscription subscription, mamaMsg msg, 
    subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
    if ((pThis) && (pThis->pSink_)) {
       // TODO: find a better way ...
-      pThis->pSink_->onMsg(pThis, msg, itemClosure);
+      pThis->pSink_->onMsg(pThis, pThis->topic_.c_str(), msg, itemClosure);
+   }
+}
+
+void MAMACALLTYPE subscriber::wcCB(mamaSubscription subscription, mamaMsg msg, const char* topic, void* closure, void* itemClosure)
+{
+   subscriber* pThis = dynamic_cast<subscriber*>(static_cast<subscriber*>(closure));
+   if ((pThis) && (pThis->pSink_)) {
+      // TODO: find a better way ...
+      pThis->pSink_->onMsg(pThis, topic, msg, itemClosure);
    }
 }
 
@@ -144,6 +171,28 @@ void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* clo
       delete pThis;
    }
 }
+
+// https://stackoverflow.com/a/33504575/3394490
+bool subscriber::is_valid_regex_string(const std::string& rgx_str)
+{
+   #if 0
+    bool bResult = true;
+    try
+    {
+        std::regex tmp(rgx_str, std::regex_constants::basic);
+    }
+    catch (const std::regex_error& )
+    {
+        bResult = false;
+    }
+    return bResult;
+   #else
+   // TODO: fix this -- nyfix-specific
+   auto regexPos = rgx_str.find("[^/]+");
+   return regexPos == string::npos ? false : true;
+   #endif
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -304,7 +353,7 @@ mama_status reply::send(mamaMsg request, mamaMsg reply)
    return publisher->sendReply(request, reply);
 }
 
-mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic)
+mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic) const
 {
    if (!mamaMsg_isFromInbox(msg)) {
       return MAMA_STATUS_INVALID_ARG;

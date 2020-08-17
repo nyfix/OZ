@@ -52,7 +52,7 @@ public:
 
    mama_status start();
 
-   session* getSession()  { return pSession_; }
+   session* getSession() const  { return pSession_; }
 
    virtual void MAMACALLTYPE onTimer() {}
 
@@ -96,7 +96,7 @@ public:
    mama_status send(mamaMsg reply);
    mama_status send(mamaMsg request, mamaMsg reply);
 
-   mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic);
+   mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic) const;
 
    // un-implemented
    reply() = delete;
@@ -139,7 +139,7 @@ public:
    mama_status send(mamaMsg msg);
    mama_status waitReply(double seconds);
 
-   std::string getTopic() { return topic_; }
+   std::string getTopic() const { return topic_; }
 
    // un-implemented
    request() = delete;
@@ -184,7 +184,7 @@ public:
    mama_status sendRequest(mamaMsg msg, mamaInbox inbox);
    mama_status sendReply(mamaMsg request, mamaMsg reply);
 
-   mamaPublisher getPublisher()    { return pub_; }
+   mamaPublisher getPublisher() const   { return pub_; }
 
    // un-implemented
    publisher() = delete;
@@ -215,23 +215,25 @@ class subscriberEvents
 public:
    virtual void MAMACALLTYPE onCreate(subscriber* pSubscriber) {}
    virtual void MAMACALLTYPE onError(subscriber* pSubscriber, mama_status status, void* platformError, const char* subject) {}
-   virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, mamaMsg msg, void* itemClosure) {}
+   virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, const char* topic, mamaMsg msg, void* itemClosure) {}
 };
+
+enum class wcType { unspecified, POSIX, none };
 
 class subscriber
 {
    friend class session;
 
 public:
-   subscriber(session* pSession, std::string topic, subscriberEvents* pSink = nullptr);
+   subscriber(session* pSession, std::string topic, subscriberEvents* pSink = nullptr, wcType wcType = wcType::unspecified);
 
    virtual mama_status destroy();
 
    mama_status start();
 
-   std::string getTopic() { return topic_; }
+   std::string getTopic() const { return topic_; }
 
-   session* getSession()  { return pSession_; }
+   session* getSession()  const { return pSession_; }
 
    // un-implemented
    subscriber() = delete;
@@ -251,13 +253,17 @@ private:
    static void MAMACALLTYPE createCB(mamaSubscription subscription, void* closure);
    static void MAMACALLTYPE errorCB(mamaSubscription subscription, mama_status status, void* platformError, const char* subject, void* closure);
    static void MAMACALLTYPE msgCB(mamaSubscription subscription, mamaMsg msg, void* closure, void* itemClosure);
+   static void MAMACALLTYPE wcCB(mamaSubscription subscription, mamaMsg msg, const char* topic, void* closure, void* itemClosure);
    static void MAMACALLTYPE destroyCB(mamaSubscription subscription, void* closure);
+
+   bool is_valid_regex_string(const std::string& rgx_str);
 
    mama_status          status_        {MAMA_STATUS_INVALID_ARG};
    session*             pSession_      {nullptr};
    mamaSubscription     sub_           {nullptr};
    subscriberEvents*    pSink_         {nullptr};
    string               topic_;
+   wcType               wcType_        {wcType::unspecified};
 };
 
 auto subscriberDeleter = [](subscriber* pSubscriber)
@@ -278,8 +284,8 @@ public:
 
    mama_status start();
 
-   mamaQueue getQueue()                { return queue_; }
-   oz::connection* getConnection()     { return pConn_; }
+   mamaQueue getQueue() const               { return queue_; }
+   oz::connection* getConnection() const    { return pConn_; }
 
    std::unique_ptr<subscriber, decltype(subscriberDeleter)> createSubscriber(std::string topic, subscriberEvents* pSink = nullptr)
    {
@@ -338,9 +344,9 @@ public:
 
    mama_status start();
 
-   mamaTransport getTransport()       { return transport_; }
-   mamaBridge getBridge()             { return bridge_; }
-   std::string getMw()                { return mw_; }
+   mamaTransport getTransport() const      { return transport_; }
+   mamaBridge getBridge() const            { return bridge_; }
+   std::string getMw() const               { return mw_; }
 
    std::unique_ptr<session, decltype(sessionDeleter)> createSession()
    {

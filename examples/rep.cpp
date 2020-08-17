@@ -12,7 +12,7 @@ using namespace oz;
 class mySubEvents : public subscriberEvents
 {
 public:
-   virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, mamaMsg msg, void* itemClosure) override
+   virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, const char* topic, mamaMsg msg, void* itemClosure) override
    {
       static auto reply = pSubscriber->getSession()->getConnection()->createReply();
 
@@ -25,7 +25,7 @@ public:
          TRY_MAMA_FUNC(reply->send(temp));
 
          const char* msgStr = mamaMsg_toString(temp);
-         fprintf(stderr, "REQUEST:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
+         fprintf(stderr, "REQUEST:topic=%s,msg=%s\n", topic, msgStr);
       }
       else {
          const char* msgStr = mamaMsg_toString(msg);

@@ -10,6 +10,7 @@ Program | Description
 ----- | -------------
 pub.cpp | Publisher example.
 sub.cpp | Subscriber example.  Demonstrates using an "events" class to process asynchronous callbacks.
+wc.cpp | Sample subscriber using "wildcard" (POSIX regex) topics.
 req.cpp | Request/reply example, which also demonstrates manual lifetime management of objects.
 rep.cpp | Sample progam to reply to requests, using `reply` class to wrap the original request.
 req2.cpp | Request/reply example demonstrating how to wait for a synchronous reply, and how to multiply inherit from both `request` and `requestEvents` classes.
