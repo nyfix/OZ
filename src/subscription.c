@@ -113,15 +113,9 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
    if (prefix[0] == '^') {
       ++prefix;                                  // skip beginning anchor
    }
-   char* regexPos = strstr(prefix, "[^/]+");     // find wildcard regex?
+   char* regexPos = strpbrk(prefix, "[^/]+.*");  // find wildcard regex?
    if (regexPos != NULL) {
       *regexPos = '\0';                          // overwrite with null
-   }
-   else {
-      int l = strlen(prefix);
-      if (strcmp(&prefix[l-3], "/.*") == 0) {   // find trailing "super" wildcard?
-         prefix[l-2] = '\0';                    // overwrite with null
-      }
    }
    MAMA_LOG(MAMA_LOG_LEVEL_FINE, "\t%s\t%s", source, prefix);
 
