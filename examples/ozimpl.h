@@ -287,24 +287,27 @@ public:
    mamaQueue getQueue() const               { return queue_; }
    oz::connection* getConnection() const    { return pConn_; }
 
-   std::unique_ptr<subscriber, decltype(subscriberDeleter)> createSubscriber(std::string topic, subscriberEvents* pSink = nullptr)
+   template<typename... Ts>
+   std::unique_ptr<subscriber, decltype(subscriberDeleter)> createSubscriber(Ts&&... args)
    {
       unique_ptr<subscriber, decltype(subscriberDeleter)> pSubscriber(nullptr, subscriberDeleter);
-      pSubscriber.reset(new subscriber(this, topic, pSink));
+      pSubscriber.reset(new subscriber(this, std::forward<Ts>(args)...));
       return pSubscriber;
    }
 
-   std::unique_ptr<request, decltype(requestDeleter)> createRequest(std::string topic, requestEvents* pSink = nullptr)
+   template<typename... Ts>
+   std::unique_ptr<request, decltype(requestDeleter)> createRequest(Ts&&... args)
    {
       unique_ptr<request, decltype(requestDeleter)> pRequest(nullptr, requestDeleter);
-      pRequest.reset(new request(this, topic, pSink));
+      pRequest.reset(new request(this, std::forward<Ts>(args)...));
       return pRequest;
    }
 
-   std::unique_ptr<timer, decltype(timerDeleter)> createTimer(double interval, timerEvents* pSink = nullptr)
+   template<typename... Ts>
+   std::unique_ptr<timer, decltype(timerDeleter)> createTimer(Ts&&... args)
    {
       unique_ptr<timer, decltype(timerDeleter)> pTimer(nullptr, timerDeleter);
-      pTimer.reset(new timer(this, interval, pSink));
+      pTimer.reset(new timer(this, std::forward<Ts>(args)...));
       return pTimer;
    }
 
