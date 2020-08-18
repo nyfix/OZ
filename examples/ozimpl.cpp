@@ -478,8 +478,7 @@ mama_status ws2posix(const string& wsTopic, string& regex)
          regex.append("$");                  // anchor at end
    }
 
-
-   mama_log(MAMA_LOG_LEVEL_NORMAL, "wsTopic=%s, regex=%s", inTopic.c_str(), regex.c_str());
+   mama_log(MAMA_LOG_LEVEL_FINER, "wsTopic=%s, regex=%s", inTopic.c_str(), regex.c_str());
 
    return status;
 }
