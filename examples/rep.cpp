@@ -44,7 +44,7 @@ int main(int argc, char** argv)
    TRY_MAMA_FUNC(sess->start());
 
    mySubEvents subscriberEvents;
-   auto sub = sess->createSubscriber("topic", &subscriberEvents);
+   auto sub = sess->createSubscriber("prefix/suffix", &subscriberEvents);
    TRY_MAMA_FUNC(sub->start());
 
    hangout();

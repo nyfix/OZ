@@ -49,7 +49,7 @@ int main(int argc, char** argv)
       sleep(1);
       ++i;
       TRY_MAMA_FUNC(mamaMsg_updateU32(msg, "num", 0, i));
-      request* pRequest = sess->createRequest("topic", &reqEvents).release();
+      request* pRequest = sess->createRequest("prefix/suffix", &reqEvents).release();
       TRY_MAMA_FUNC(pRequest->send(msg));
    }
 

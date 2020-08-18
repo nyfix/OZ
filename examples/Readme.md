@@ -11,6 +11,7 @@ Program | Description
 pub.cpp | Publisher example.
 sub.cpp | Subscriber example.  Demonstrates using an "events" class to process asynchronous callbacks.
 wc.cpp | Sample subscriber using "wildcard" (POSIX regex) topics.
+wc2.cpp | Similar to wc.cpp, but using WS-Topic style (hierarchical) topics.
 req.cpp | Request/reply example, which also demonstrates manual lifetime management of objects.
 rep.cpp | Sample progam to reply to requests, using `reply` class to wrap the original request.
 req2.cpp | Request/reply example demonstrating how to wait for a synchronous reply, and how to multiply inherit from both `request` and `requestEvents` classes.
@@ -30,7 +31,7 @@ subscriber | Thin wrapper over mamaSubscription.  Supports only basic (not marke
 subscriberEvents | Declares callback functions for subscription events.
 timer | Encapsulates a mamaTimer object.
 timerEvents | Declares callback functions for timer events.
-request | Represents a mamaInbox, along with callback functions for 
+request | Represents a mamaInbox, along with callback functions for
 requestEvents | Declares callback functions for request events, i.e. replies directed to the request's underlying `mamaInbox`.
 reply | The reply class simplifies sending responses to inbox requests.
 
@@ -55,7 +56,7 @@ In addition, each class has a custom deleter defined that respects the OZ conven
 
 Since the smart pointer `deleter`'s are invoked in reverse order of their creation, this ensures a clean tear-down of the MAMA objects.
 
-If an application prefers to manage object lifetimes itself, it can call the `unique_ptr::release` method to acquire a raw pointer, which it is then responsible for.  (See the `req.cpp` program for an example of this).  
+If an application prefers to manage object lifetimes itself, it can call the `unique_ptr::release` method to acquire a raw pointer, which it is then responsible for.  (See the `req.cpp` program for an example of this).
 
 Note that if you choose to manage object lifetimes manually, you should make sure to do so as documented in the [Developer Guide](http://www.openmama.org/sites/default/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>).
 
@@ -74,7 +75,7 @@ The publishers are reference-counted and deleted when no longer used.
 
 
 ## Macros
-The OZ header defines two macros that can be helpful, `CALL_MAMA_FUNC` and `TRY_MAMA_FUNC`.  
+The OZ header defines two macros that can be helpful, `CALL_MAMA_FUNC` and `TRY_MAMA_FUNC`.
 
 `CALL_MAMA_FUNC` calls a MAMA function -- if the called function returns anything other than `MAMA_STATUS_OK`, it logs a message before returning the mama_status.
 
@@ -85,7 +86,11 @@ The OZ library code uses `CALL_MAMA_FUNC` exclusively, while the sample programs
 When using `TRY_MAMA_FUNC`, any errors will be displayed similar to:
 
 ```
-8/12 10:28:54.776905|mama_loadBridgeWithPathInternal|31394-7f79dabdb7c0|ERR(0,0) mama_loadmamaPayload(): Could not open middleware bridge library [mamaxxximpl] [libmamaxxximpl.so: cannot open shared object file: No such file or directory]|mama.c(2662)8/12 10:28:54.776988|start|31394-7f79dabdb7c0|ERR(0,0) Error 26(NO_BRIDGE_IMPL)|ozimpl.cpp(18)8/12 10:28:54.777001|main|31394-7f79dabdb7c0|ERR(0,0) Error 26(NO_BRIDGE_IMPL)|pub.cpp(22)terminate called after throwing an instance of 'mama_status'Aborted (core dumped)
+8/12 10:28:54.776905|mama_loadBridgeWithPathInternal|31394-7f79dabdb7c0|ERR(0,0) mama_loadmamaPayload(): Could not open middleware bridge library [mamaxxximpl] [libmamaxxximpl.so: cannot open shared object file: No such file or directory]|mama.c(2662)
+8/12 10:28:54.776988|start|31394-7f79dabdb7c0|ERR(0,0) Error 26(NO_BRIDGE_IMPL)|ozimpl.cpp(18)
+8/12 10:28:54.777001|main|31394-7f79dabdb7c0|ERR(0,0) Error 26(NO_BRIDGE_IMPL)|pub.cpp(22)
+terminate called after throwing an instance of 'mama_status'
+Aborted (core dumped)
 ```
 
 ## Naming Conventions

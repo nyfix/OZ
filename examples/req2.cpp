@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 
    int i = 1;
    TRY_MAMA_FUNC(mamaMsg_updateU32(msg, "num", 0, i));
-   auto req = new myRequest(sess.get(), "topic");
+   auto req = new myRequest(sess.get(), "prefix/suffix");
    TRY_MAMA_FUNC(req->send(msg));
 
    mama_status status = req->waitReply(5);

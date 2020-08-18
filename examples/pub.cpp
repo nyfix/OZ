@@ -21,7 +21,7 @@ int main(int argc, char** argv)
    auto conn = createConnection("zmq", "omnmmsg", "oz");
    TRY_MAMA_FUNC(conn->start());
 
-   auto pub = conn->getPublisher("topic");
+   auto pub = conn->getPublisher("prefix/suffix");
 
    mamaMsg msg;
    TRY_MAMA_FUNC(mamaMsg_create(&msg));
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
       TRY_MAMA_FUNC(mamaMsg_updateU32(msg, "num", 0, i));
 
       const char* msgStr = mamaMsg_toString(msg);
-      printf("msg=%s\n", msgStr);
+      printf("topic=%s,msg=%s\n", pub->getTopic().c_str(), msgStr);
 
       TRY_MAMA_FUNC(pub->publish(msg));
    }

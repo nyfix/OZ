@@ -18,6 +18,10 @@ add_executable(wc wc.cpp)
 target_link_libraries(wc ozimpl mama)
 install(TARGETS wc DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(wc2 wc2.cpp)
+target_link_libraries(wc2 ozimpl mama)
+install(TARGETS wc2 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(req req.cpp)
 target_link_libraries(req ozimpl mama)
 install(TARGETS req DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})

@@ -100,30 +100,44 @@ mama_status subscriber::start()
 {
    if (wcType_ == wcType::unspecified) {
       // try to guess
-      const char* regexPos = strpbrk(topic_.c_str(), "[^/]+.*");  // find wildcard regex?
+      const char* regexPos = strpbrk(topic_.c_str(), ".^$*+\[]");  // find wildcard regex?
       if (regexPos != nullptr) {
          wcType_ = wcType::POSIX;
       }
    }
 
    CALL_MAMA_FUNC(status_ = mamaSubscription_allocate(&sub_));
-   if (wcType_ == wcType::POSIX) {
-      mamaWildCardMsgCallbacks cb;
-      memset(&cb, 0, sizeof(cb));
-      cb.onCreate  = createCB;
-      cb.onError   = errorCB;
-      cb.onMsg     = wcCB;
-      cb.onDestroy = destroyCB;
-      CALL_MAMA_FUNC(status_ = mamaSubscription_createBasicWildCard(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, nullptr, topic_.c_str(), this));
-   }
-   else {
-      mamaMsgCallbacks cb;
-      memset(&cb, 0, sizeof(cb));
-      cb.onCreate       = createCB;
-      cb.onError        = errorCB;
-      cb.onMsg          = msgCB;
-      cb.onDestroy      = destroyCB;
-      CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, topic_.c_str(), this));
+
+   origTopic_ = topic_;
+   switch (wcType_) {
+      case wcType::WS :
+         CALL_MAMA_FUNC(ws2posix(origTopic_, topic_));
+
+      case wcType::POSIX :
+      {
+         mamaWildCardMsgCallbacks cb;
+         memset(&cb, 0, sizeof(cb));
+         cb.onCreate  = createCB;
+         cb.onError   = errorCB;
+         cb.onMsg     = wcCB;
+         cb.onDestroy = destroyCB;
+         CALL_MAMA_FUNC(status_ = mamaSubscription_createBasicWildCard(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, nullptr, topic_.c_str(), this));
+         break;
+      }
+
+      case wcType::unspecified :
+      case wcType::none :
+      {
+         mamaMsgCallbacks cb;
+         memset(&cb, 0, sizeof(cb));
+         cb.onCreate       = createCB;
+         cb.onError        = errorCB;
+         cb.onMsg          = msgCB;
+         cb.onDestroy      = destroyCB;
+         CALL_MAMA_FUNC(status_ = mamaSubscription_createBasic(sub_, pSession_->getConnection()->getTransport(), pSession_->getQueue(), &cb, topic_.c_str(), this));
+         break;
+      }
+
    }
 
    return MAMA_STATUS_OK;
@@ -414,6 +428,60 @@ void hangout()
 {
    signal(SIGINT, ignoreSigHandler);
    pause();
+}
+
+
+// converts hierarchical topic (as per WS-Topic) to extended regular expression
+mama_status ws2posix(const string& wsTopic, string& regex)
+{
+   mama_status status = MAMA_STATUS_INVALID_ARG;
+   string inTopic = wsTopic;
+   size_t q = 0;
+   size_t p = inTopic.find("*");
+   if (p != string::npos) {
+      status = MAMA_STATUS_OK;
+      if (p == 0) {
+         regex = "^[^_][^/]*";               // anchor at beginning, omit subjects with beginning underscore
+         q = regex.size();
+         regex.append(inTopic.substr(1));
+      }
+      else {
+         regex = "^";
+         regex.append(inTopic);
+      }
+   }
+   else {
+      regex.append(inTopic);
+   }
+
+   p = regex.find("*", q);
+   while (p != string::npos) {
+      regex.replace(p, 1, "[^/]+");
+      p = regex.find("*", p);
+   }
+
+   p = regex.rfind("/.");
+   if (p == regex.length() -2) {
+      if (p == 0) {
+         regex = "^[^_].*";                  // anchor at beginning, omit subjects with beginning underscore
+      }
+      else {
+         regex.replace(regex.length() -2, 2, ".*");
+         if (regex[0] != '^') {
+            regex.insert(0, 1, '^');         // anchor at beginning
+         }
+      }
+      status = MAMA_STATUS_OK;
+   }
+   else {
+      if (status == MAMA_STATUS_OK)
+         regex.append("$");                  // anchor at end
+   }
+
+
+   mama_log(MAMA_LOG_LEVEL_NORMAL, "wsTopic=%s, regex=%s", inTopic.c_str(), regex.c_str());
+
+   return status;
 }
 
 

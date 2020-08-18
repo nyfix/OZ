@@ -28,7 +28,7 @@ int main(int argc, char** argv)
    TRY_MAMA_FUNC(sess->start());
 
    mySubEvents subEvents;
-   auto sub = sess->createSubscriber("prefix/suffix", &subEvents);
+   auto sub = sess->createSubscriber("prefix/*", &subEvents, wcType::WS);
    TRY_MAMA_FUNC(sub->start());
 
    hangout();

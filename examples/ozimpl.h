@@ -184,7 +184,9 @@ public:
    mama_status sendRequest(mamaMsg msg, mamaInbox inbox);
    mama_status sendReply(mamaMsg request, mamaMsg reply);
 
-   mamaPublisher getPublisher() const   { return pub_; }
+   mamaPublisher getPublisher() const     { return pub_; }
+
+   std::string getTopic() const           { return topic_; }
 
    // un-implemented
    publisher() = delete;
@@ -218,7 +220,7 @@ public:
    virtual void MAMACALLTYPE onMsg(subscriber* pSubscriber, const char* topic, mamaMsg msg, void* itemClosure) {}
 };
 
-enum class wcType { unspecified, POSIX, none };
+enum class wcType { unspecified = -1, none, POSIX, WS };
 
 class subscriber
 {
@@ -231,9 +233,10 @@ public:
 
    mama_status start();
 
-   std::string getTopic() const { return topic_; }
+   std::string getTopic() const           { return topic_; }
+   std::string getOrigTopic() const       { return origTopic_; }
 
-   session* getSession()  const { return pSession_; }
+   session* getSession()  const           { return pSession_; }
 
    // un-implemented
    subscriber() = delete;
@@ -263,6 +266,7 @@ private:
    mamaSubscription     sub_           {nullptr};
    subscriberEvents*    pSink_         {nullptr};
    string               topic_;
+   string               origTopic_;
    wcType               wcType_        {wcType::unspecified};
 };
 
@@ -407,6 +411,8 @@ std::unique_ptr<connection, decltype(connectionDeleter)> createConnection(Ts&&..
 
 
 void hangout();
+
+mama_status ws2posix(const string& wsTopic, string& regex);
 
 }
 
