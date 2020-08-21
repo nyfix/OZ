@@ -117,7 +117,7 @@ mama_status zmqBridgeMamaSubscription_createWildCard(subscriptionBridge* subscri
    if (regexPos != NULL) {
       *regexPos = '\0';                          // overwrite with null
    }
-   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "\t%s\t%s", source, prefix);
+   MAMA_LOG(MAMA_LOG_LEVEL_FINE, "source=%s,prefix=%s", source, prefix);
 
    // create regex to match against
    impl->mCompRegex = calloc(1, sizeof(regex_t));

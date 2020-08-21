@@ -21,6 +21,11 @@ class mySubEvents : public subscriberEvents
 
 int main(int argc, char** argv)
 {
+   string topic = "^prefix/[^/]+$";
+   if (argc > 1) {
+      topic = argv[1];
+   }
+
    auto conn = createConnection("zmq", "omnmmsg", "oz");
    TRY_MAMA_FUNC(conn->start());
 
@@ -28,7 +33,7 @@ int main(int argc, char** argv)
    TRY_MAMA_FUNC(sess->start());
 
    mySubEvents subEvents;
-   auto sub = sess->createSubscriber("^prefix/[^/]+$", &subEvents);
+   auto sub = sess->createSubscriber(topic, &subEvents);
    TRY_MAMA_FUNC(sub->start());
 
    hangout();

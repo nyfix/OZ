@@ -39,6 +39,11 @@ private:
 
 int main(int argc, char** argv)
 {
+   string topic = "prefix/suffix";
+   if (argc > 1) {
+      topic = argv[1];
+   }
+
    auto conn = createConnection("zmq", "omnmmsg", "oz");
    TRY_MAMA_FUNC(conn->start());
 
@@ -53,7 +58,7 @@ int main(int argc, char** argv)
 
    int i = 1;
    TRY_MAMA_FUNC(mamaMsg_updateU32(msg, "num", 0, i));
-   auto req = new myRequest(sess.get(), "prefix/suffix");
+   auto req = new myRequest(sess.get(), topic);
    TRY_MAMA_FUNC(req->send(msg));
 
    mama_status status = req->waitReply(5);

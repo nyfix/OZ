@@ -18,10 +18,15 @@ void doneSigHandler(int sig)
 
 int main(int argc, char** argv)
 {
+   string topic = "prefix/suffix";
+   if (argc > 1) {
+      topic = argv[1];
+   }
+
    auto conn = createConnection("zmq", "omnmmsg", "oz");
    TRY_MAMA_FUNC(conn->start());
 
-   auto pub = conn->getPublisher("prefix/suffix");
+   auto pub = conn->getPublisher(topic);
 
    mamaMsg msg;
    TRY_MAMA_FUNC(mamaMsg_create(&msg));

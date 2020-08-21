@@ -37,6 +37,11 @@ public:
 
 int main(int argc, char** argv)
 {
+   string topic = "prefix/suffix";
+   if (argc > 1) {
+      topic = argv[1];
+   }
+
    auto conn = createConnection("zmq", "omnmmsg", "oz");
    TRY_MAMA_FUNC(conn->start());
 
@@ -44,7 +49,7 @@ int main(int argc, char** argv)
    TRY_MAMA_FUNC(sess->start());
 
    mySubEvents subscriberEvents;
-   auto sub = sess->createSubscriber("prefix/suffix", &subscriberEvents);
+   auto sub = sess->createSubscriber(topic, &subscriberEvents);
    TRY_MAMA_FUNC(sub->start());
 
    hangout();
