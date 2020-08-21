@@ -19,6 +19,7 @@ class mySubEvents : public subscriberEvents
 };
 
 
+
 int main(int argc, char** argv)
 {
    string topic = "prefix/suffix";

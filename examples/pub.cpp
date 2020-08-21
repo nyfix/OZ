@@ -16,6 +16,7 @@ void doneSigHandler(int sig)
 }
 
 
+
 int main(int argc, char** argv)
 {
    string topic = "prefix/suffix";

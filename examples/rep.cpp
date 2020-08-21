@@ -29,10 +29,11 @@ public:
       }
       else {
          const char* msgStr = mamaMsg_toString(msg);
-         fprintf(stderr, "MSG:topic=%s,msg=%s\n", pSubscriber->getTopic().c_str(), msgStr);
+         fprintf(stderr, "MSG:topic=%s,msg=%s\n", topic, msgStr);
       }
    }
 };
+
 
 
 int main(int argc, char** argv)

@@ -1,8 +1,8 @@
 // minimal wrapper for OpenMAMA API
 
 #include <string.h>
-
 #include <sys/errno.h>
+
 #include <string>
 using namespace std;
 
@@ -111,8 +111,8 @@ mama_status subscriber::start()
    origTopic_ = topic_;
    switch (wcType_) {
       case wcType::WS :
+         // convert WS to posix, then fall thru
          CALL_MAMA_FUNC(ws2posix(origTopic_, topic_));
-
       case wcType::POSIX :
       {
          mamaWildCardMsgCallbacks cb;
@@ -185,28 +185,6 @@ void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* clo
       delete pThis;
    }
 }
-
-// https://stackoverflow.com/a/33504575/3394490
-bool subscriber::is_valid_regex_string(const std::string& rgx_str)
-{
-   #if 0
-    bool bResult = true;
-    try
-    {
-        std::regex tmp(rgx_str, std::regex_constants::basic);
-    }
-    catch (const std::regex_error& )
-    {
-        bResult = false;
-    }
-    return bResult;
-   #else
-   // TODO: fix this -- nyfix-specific
-   auto regexPos = rgx_str.find("[^/]+");
-   return regexPos == string::npos ? false : true;
-   #endif
-}
-
 
 
 ///////////////////////////////////////////////////////////////////////

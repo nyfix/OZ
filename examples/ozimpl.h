@@ -259,8 +259,6 @@ private:
    static void MAMACALLTYPE wcCB(mamaSubscription subscription, mamaMsg msg, const char* topic, void* closure, void* itemClosure);
    static void MAMACALLTYPE destroyCB(mamaSubscription subscription, void* closure);
 
-   bool is_valid_regex_string(const std::string& rgx_str);
-
    mama_status          status_        {MAMA_STATUS_INVALID_ARG};
    session*             pSession_      {nullptr};
    mamaSubscription     sub_           {nullptr};

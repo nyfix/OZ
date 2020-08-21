@@ -18,6 +18,8 @@ req2.cpp | Request/reply example demonstrating how to wait for a synchronous rep
 timer.cpp | Timer sample demonstrating manual lifetime management.
 timer2.cpp | Similar to timer.cpp, but using automatic lifetime management (RAII).
 
+All the examples take a single command-line parameter, the topic used to publish/subscribe -- in each case a reasonable default is provided.
+
 
 ## OZ API
 The `oz` namespace defines several classes designed to provide a simple, easy-to-use introduction to OpenMAMA and OZ.
@@ -31,7 +33,7 @@ subscriber | Thin wrapper over mamaSubscription.  Supports only basic (not marke
 subscriberEvents | Declares callback functions for subscription events.
 timer | Encapsulates a mamaTimer object.
 timerEvents | Declares callback functions for timer events.
-request | Represents a mamaInbox, along with callback functions for
+request | Represents a mamaInbox, with associated requestEvents class for handling replies.
 requestEvents | Declares callback functions for request events, i.e. replies directed to the request's underlying `mamaInbox`.
 reply | The reply class simplifies sending responses to inbox requests.
 
@@ -45,20 +47,19 @@ Classes that generate asynchronous callbacks are associated with a session objec
 
 The destructor for event sources is declared `protected` in order to prevent it being called from application code -- instead these classes define a `destroy` method that calls the appropriate MAMA function to tear down the event source.  The MAMA code enqueues the destroy on the object's queue -- when the object is eventually destroyed MAMA calls an `onDestroy` callback, which OZ then uses to do the final `delete this`.
 
-
+``
 ## Compiler support
 The `oz` classes target C++11 -- this allows the code to be cleaner and more readable, compared to the older C++98 standard used by OpenMAMA's native C++ support.  (We currently don't use features specific to C++14 and above in order to work with as wide a range of compilers as possible).
 
 ## Smart pointers/RAII
-In keeping with the recommendations in [EMC++](https://www.aristeia.com/EMC++.html) and the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines), the factory functions in OZ return `unique_ptr`'s.  These have no space or speed penalties relative to raw pointers, and can be easily converted to `shared_ptr`'s if desired.
+In keeping with the recommendations in [EMC++](https://www.oreilly.com/library/view/effective-modern-c/9781491908419/) and the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines), the factory functions in OZ return `unique_ptr`'s in most cases.  These have no space or speed penalties relative to raw pointers, and can be easily converted to `shared_ptr`'s if desired.   (The exception is the `oz::connection::getPublisher` method, which returns a `shared_ptr` to a publisher from the connection's collection).
+
 
 In addition, each class has a custom deleter defined that respects the OZ convention of destroying objects by calling their `destroy` methods, rather than their destructors.
 
 Since the smart pointer `deleter`'s are invoked in reverse order of their creation, this ensures a clean tear-down of the MAMA objects.
 
-If an application prefers to manage object lifetimes itself, it can call the `unique_ptr::release` method to acquire a raw pointer, which it is then responsible for.  (See the `req.cpp` program for an example of this).
-
-Note that if you choose to manage object lifetimes manually, you should make sure to do so as documented in the [Developer Guide](http://www.openmama.org/sites/default/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>).
+If an application prefers to manage object lifetimes itself, it can call the `unique_ptr::release` method to acquire a raw pointer, which it is then responsible for.  (See the `req.cpp` program for an example of this). Note that if you choose to manage object lifetimes manually, you should make sure to do so as documented in the [Developer Guide](http://www.openmama.org/sites/default/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>).
 
 
 ## Messages
