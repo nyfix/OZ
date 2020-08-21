@@ -355,17 +355,19 @@ public:
    mamaBridge getBridge() const            { return bridge_; }
    std::string getMw() const               { return mw_; }
 
-   std::unique_ptr<session, decltype(sessionDeleter)> createSession()
+   template<typename... Ts>
+   std::unique_ptr<session, decltype(sessionDeleter)> createSession(Ts&&... args)
    {
       unique_ptr<session, decltype(sessionDeleter)> pSession(nullptr, sessionDeleter);
-      pSession.reset(new session(this));
+      pSession.reset(new session(this, std::forward<Ts>(args)...));
       return pSession;
    }
 
-   std::unique_ptr<reply, decltype(replyDeleter)> createReply()
+   template<typename... Ts>
+   std::unique_ptr<reply, decltype(replyDeleter)> createReply(Ts&&... args)
    {
       unique_ptr<reply, decltype(replyDeleter)> pReply(nullptr, replyDeleter);
-      pReply.reset(new reply(this));
+      pReply.reset(new reply(this, std::forward<Ts>(args)...));
       return pReply;
    }
 
