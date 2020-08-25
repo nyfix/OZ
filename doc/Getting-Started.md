@@ -106,8 +106,11 @@ cd test
 source qpid-pubsub.sh
 ./ut.sh
 ```
+
 ## Where to go from here
-If the unit tests look good, you might want to proceed to [run the OpenMAMA examples programs](Running-Examples.md).
+If the unit tests look good, you might want to proceed to [run the OpenMAMA examples programs](Running-Examples.md).  We've supplied scripts to make this process a bit easier, but it can nevertheless be a bit fiddly, and assumes at least some familiarity with OpenMAMA.
+
+We've also created a kinder, gentler (read, simpler) set of samples using modern C++ that can be found [here](../examples/Readme.md).  This may be a better choice if you are not already familiar with OpenMAMA.
 
 If you're interested in performance (and who isn't), you can also check out the [OpenMAMA performance tests](Performance.md
 ).
