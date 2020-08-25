@@ -1,0 +1,26 @@
+
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:mamaInternal_loadProperties
+   fun:*
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   fun:_dlerror_run
+   fun:dlopen@@GLIBC_2.2.5
+   fun:openSharedLib
+   fun:mama_loadBridgeWithPathInternal
+   fun:mama_loadBridgeWithPath
+   fun:mama_loadBridge
+   fun:_ZN2oz10connection5startEv
+   fun:main
+}
+

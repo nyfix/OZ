@@ -37,12 +37,12 @@ OZ brings together two world-class software projects: [OpenMAMA](https://openmam
 OZ aims to combine the ease of building applications written to the OpenMAMA API with the commercial-quality performance and robustness of the ZeroMQ messaging library.
 
 ## What do I need to run it?
-Currently, OZ runs on Linux (CentOS 7) and OSX.  (We hope to provide support for Microsoft Windows soon).
+Currently, OZ runs on Linux (CentOS 6 and above).  We hope to provide support for other distributions and other platforms soon.
 
 OZ runs over standard TCP/IP networks. 
 
 ## How do I get started?
-See the [Getting Started](doc/Getting-Started.md) documentation.
+The [Getting Started](doc/Getting-Started.md) document explains how to build OZ, and its dependencies, from source and how to run the OpenMAMA unit tests.
 
 And/or check out the rest of the docs in the [doc](doc/README.md) directory.
 

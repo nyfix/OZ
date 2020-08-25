@@ -9,15 +9,15 @@ ZeroMQ's automatic reconnection works reasonably well for processes that bind to
 
 The basic problem with "vanilla" reconnects in ZeroMQ is that once a connection is disconnected, ZeroMQ will try ***forever*** to reconnect to that endpoint.  With processes configured to listen at well-known ports, that's not a problem -- it's a feature.  But with ephemeral ports that approach doesn't work so well.  Since OZ is designed to use ephemeral ports pretty much everywhere, that presented a problem:
 
-- The most common problem scenario is when a process terminates.  If the process terminates gracefully, it is likely that its peers will receive an OZ "disconnect" message (see [Naming Service](Naming-Service.md), which will disconnect the ZeroMQ socket and remove the endpoint from OZ's internal table of connected peers.  (Note that OZ doesn't rely on the disconnect message for correct operation -- it just makes things cleaner).
+- The most common problem scenario is when a process terminates.  If the process terminates gracefully, it is likely that its peers will receive an OZ "disconnect" message (see [Naming Service](Naming-Service.md)), which will disconnect the ZeroMQ socket and remove the endpoint from OZ's internal table of connected peers.  (Note that OZ doesn't rely on the disconnect message for correct operation -- it just makes things cleaner).
 
-- However, if the process crashes it is likely that the disconnect message will not be sent.  This [PR](https://github.com/zeromq/libzmq/pull/3831) solves that problem for the case where the reconnect immediately returns ECONNREFUSED -- i.e., where there is no process listening at the original port.
+- However, if the process crashes it is likely that the disconnect message will not be sent.  This [patch](https://github.com/zeromq/libzmq/pull/3831) solved that problem for the case where the reconnect immediately returns ECONNREFUSED -- i.e., where there is no process listening at the original port.
 
-Being ~~paranoid~~ risk-averse, we've also submitted a [PR](https://github.com/zeromq/libzmq/pull/3960) that closes a couple of additional loopholes related to connecting to non-ZeroMQ processes:
+Being ~~paranoid~~ risk-averse, we've also submitted [another patch](https://github.com/zeromq/libzmq/pull/3960) that closes a couple of additional loopholes related to connecting to non-ZeroMQ processes:
 
 - Adds an option to stop reconnecting if a peer fails the ZTMP handshake.
-  - Failure of the handshake was not being detected/reported properly in all cases, so the PR also includes a fix for that.
-- Previously, a peer that accepted a connection and then immediately closed it would be be retried, potenially forever.  With this patch, a peer that immediately closes the connection is treated like a failed handshake.
+  - Failure of the handshake was not being detected/reported properly in all cases, so the patch also includes a fix for that.
+- Previously, a peer that accepted a connection and then immediately closed it would be be retried, potentially forever.  With this patch, a peer that immediately closes the connection is treated like a failed handshake.
 
 ## Heartbeats
 In some cases, network outages present themselves as simply a lack of data.  To detect those problems, OZ enables heartbeats on the ZeroMQ client (connecting) sockets. The `heartbeat_interval ` can be specified in `mama.properties` (default is 10 seconds).

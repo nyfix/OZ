@@ -37,9 +37,7 @@ const char* zmqBridge_generateUuid()
       return NULL;
    }
    #else
-   if (wUuid_generate(tempUuid) == -1) {
-      return NULL;
-   }
+   wUuid_generate(tempUuid);
    #endif
 
    char uuidStringBuffer[UUID_STRING_SIZE+ 1];
@@ -142,21 +140,12 @@ uint64_t get_zmqEventMask(int logLevel)
 }
 
 
-// default log levels for "naming" messages
-#ifndef MAMA_LOG_LEVEL_BEACON
-#define MAMA_LOG_LEVEL_BEACON MAMA_LOG_LEVEL_FINEST
-#endif
-
-#ifndef MAMA_LOG_LEVEL_NAMING
-#define MAMA_LOG_LEVEL_NAMING MAMA_LOG_LEVEL_NORMAL
-#endif
-
 MamaLogLevel getNamingLogLevel(const char mType)
 {
    if (mType == 'c')
-      return MAMA_LOG_LEVEL_BEACON;
+      return log_level_beacon;
    else
-      return MAMA_LOG_LEVEL_NAMING;
+      return log_level_naming;
 }
 
 

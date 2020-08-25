@@ -30,11 +30,9 @@
 
 // MAMA includes
 #include <mama/mama.h>
-#include <mama/io.h>
 #include <timers.h>
 
 // local includes
-#include "io.h"
 #include "zmqbridgefunctions.h"
 #include <mama/integration/mama.h>
 #include "util.h"
@@ -76,6 +74,8 @@ mama_status zmqBridge_init(mamaBridge bridgeImpl)
 {
    MAMA_SET_BRIDGE_COMPILE_TIME_VERSION(ZMQ_BRIDGE_NAME);
 
+   mamaBridgeImpl_setReadOnlyProperty (bridgeImpl, MAMA_PROP_EXTENDS_BASE_BRIDGE, "true");
+
    return MAMA_STATUS_OK;
 }
 
@@ -115,9 +115,6 @@ zmqBridge_open(mamaBridge bridgeImpl)
       return MAMA_STATUS_PLATFORM;
    }
 
-   /* Start the io thread */
-   zmqBridgeMamaIoImpl_start();
-
    return MAMA_STATUS_OK;
 }
 
@@ -148,9 +145,6 @@ zmqBridge_close(mamaBridge bridgeImpl)
    /* Destroy once queue has been emptied */
    mama_getDefaultEventQueue(bridgeImpl, &defaultEventQueue);
    mamaQueue_destroyTimedWait(defaultEventQueue, ZMQ_SHUTDOWN_TIMEOUT);
-
-   /* Stop and destroy the io thread */
-   zmqBridgeMamaIoImpl_stop();
 
    return status;
 }

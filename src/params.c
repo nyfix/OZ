@@ -12,6 +12,10 @@
 
 #define PARAM_NAME_MAX_LENGTH 1024
 
+extern int log_level_beacon;
+extern int log_level_naming;
+extern int log_level_inbox;
+
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(char* defaultVal, char* paramName, const char* format, va_list arguments)
 {
    const char* property = NULL;
@@ -125,13 +129,16 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    const char* name = impl->mName;
 
    impl->mReconnectInterval = getFloat(name, "reconnect_interval", 10, 0) * 1000.0;    // millis
-   if (impl->mReconnectInterval <= 0) {
-      impl->mReconnectInterval = -1;
-   }
    impl->mHeartbeatInterval = getFloat(name, "heartbeat_interval", 10, 0) * 1000.0;    // millis
    impl->mSocketMonitor = getInt(name, "socket_monitor", 1, 0);
    impl->mIsNaming = getInt(name, "is_naming", 1, 0);
    impl->mPublishAddress = getStr(name, "publish_address", "lo");
+   impl->mDisableRefresh = getInt(name, "disable_refresh", 1, 0);
+
+   log_level_beacon = getInt(name, "log_level_beacon", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+   log_level_naming = getInt(name, "log_level_naming", MAMA_LOG_LEVEL_NORMAL, MAMA_LOG_LEVEL_OFF);
+   log_level_inbox = getInt(name, "log_level_inbox", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+
 }
 
 

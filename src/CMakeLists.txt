@@ -9,7 +9,13 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 link_directories(${MAMA_ROOT}/lib)
-link_directories(${ZMQ_ROOT}/lib64)
+if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
+  link_directories(${ZMQ_ROOT}/lib)
+  link_directories("/usr/local/Cellar/ossp-uuid/1.6.2_2/lib")
+  link_directories("/usr/local/lib")
+else()
+  link_directories(${ZMQ_ROOT}/lib64)
+endif()
 link_directories(${EVENT_ROOT}/lib)
 
 # while libzmq exposes a C api, it is coded in C++ and requires C++ stdlib and that libstdc++ MUST be at least as recent as the
@@ -31,11 +37,9 @@ else()
 endif()
 
 add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
-            MODULE bridge.c
+            SHARED bridge.c
                    inbox.c
                    inbox.h
-                   io.c
-                   io.h
                    msg.c
                    msg.h
                    publisher.c
@@ -77,7 +81,7 @@ if(WIN32)
             CONFIGURATIONS Debug
             DESTINATION bin/dynamic-debug)
 
-elseif(UNIX)
+else()
     target_link_libraries(mamazmqimpl${MAMA_LIB_SUFFIX}
                           wombatcommon
                           mama
