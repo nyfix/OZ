@@ -5,6 +5,11 @@ source ${SCRIPT_DIR}/setenv.sh
 BRANCH="$@"
 [[ -z "${BRANCH}" ]] && BRANCH="-b nyfix"
 
+# assuming apr is installed via brew on mac
+if [[ ${OSTYPE} == *darwin* ]]; then
+   OPENMAMA_APR_ROOT="-DDEFAULT_APR_ROOT=/usr/local/Cellar/apr/1.7.0/libexec/"
+fi
+
 # stop on error
 set -e
 
@@ -42,7 +47,7 @@ rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWITH_UNITTEST=ON \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
-   -DWITH_UNITTEST=Off -DDEFAULT_APR_ROOT=/usr/local/Cellar/apr/1.7.0/libexec/ \
+   -DWITH_UNITTEST=On ${OPENMAMA_APR_ROOT} \
    ..
 make; make install
 popd
