@@ -45,7 +45,7 @@ git clone --single-branch ${BRANCH} https://github.com/nyfix/OpenMAMA.git
 pushd OpenMAMA
 rm -rf build || true
 mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWITH_UNITTEST=ON \
+cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
    -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
    -DWITH_UNITTEST=On ${OPENMAMA_APR_ROOT} \
    ..

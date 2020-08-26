@@ -1,7 +1,7 @@
 # Welcome to OZ!
 
 ## What is OZ?
-OZ is a commercial-quality, high-performance implementation of ["message-oriented middleware"](https://en.wikipedia.org/wiki/Message-oriented_middleware) that is ready for use by applications in many areas, including but not limited to financial market data applications.
+OZ is a production-quality, high-performance implementation of ["message-oriented middleware"](https://en.wikipedia.org/wiki/Message-oriented_middleware) that is ready for use by applications in many areas, including but not limited to financial market data applications.
 
 OZ was designed to support many of the most popular features of typical MOM's:
 
@@ -17,7 +17,7 @@ OZ was designed to support many of the most popular features of typical MOM's:
 OZ is the middleware layer that powers the [NYFIX Marketplace](https://www.itiviti.com/nyfix) -- the world's largest [FIX](https://en.wikipedia.org/wiki/Financial_Information_eXchange) network, which processes on the order of 50 million messages per day with unmatched reliability and outstanding performance.
 
 ## What's so special about OZ?
-OZ is the only commercial-quality, high-performance middleware solution that is also open-source.
+OZ is the only production-quality, high-performance middleware solution that is also open-source.
 
 While there have been plenty of open-source middleware solutions (like [JMS](https://en.wikipedia.org/wiki/Java_Message_Service) and [AMQP](https://en.wikipedia.org/wiki/Apache_ActiveMQ)), none of them have really been suitable for the demands of real-time, low-latency, high-throughput messaging.
 

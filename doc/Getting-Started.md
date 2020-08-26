@@ -118,6 +118,7 @@ For comparison purposes, you may want to run the unit tests with OpenMAMA's buil
 ```
 cd test
 source qpid-pubsub.sh
+source qpidmsg.sh
 ./ut.sh
 ```
 
