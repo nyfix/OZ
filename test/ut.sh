@@ -7,14 +7,7 @@ source ${SCRIPT_DIR}/setenv.sh
 [[ -z ${MAMA_PAYLOAD} ]] && source ${SCRIPT_DIR}/omnmmsg.sh
 
 # start nsd if necessary
-if [[ ${MAMA_TPORT_PUB} = "nsd" ]]; then
-   pidof "${INSTALL_BASE}/bin/nsd"
-   if [[ $? -ne 0 ]]; then
-      "${SCRIPT_DIR}/nsd.sh" &
-      sleep 2
-      KILLNSD=1
-   fi
-fi
+KILLNSD=${SCRIPT_DIR}/start-nsd.sh
 
 # run OpenMama unit tests
 `which UnitTestCommonC`          -m ${MAMA_MW} -p ${MAMA_PAYLOAD} -i ${MAMA_PAYLOAD_ID}
@@ -22,4 +15,5 @@ fi
 `which UnitTestMamaPayloadC`     -m ${MAMA_MW} -p ${MAMA_PAYLOAD} -i ${MAMA_PAYLOAD_ID}
 `which UnitTestMamaMsgC`         -m ${MAMA_MW} -p ${MAMA_PAYLOAD} -i ${MAMA_PAYLOAD_ID}
 
+${SCRIPT_DIR}/stop-nsd.sh
 [[ ${KILLNSD} -eq 1 ]] && killall "${INSTALL_BASE}/bin/nsd"

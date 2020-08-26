@@ -4,6 +4,20 @@ This document will help you get started using OZ, the OpenMAMA/ZeroMQ middleware
 
 The approach we've taken is to provide a scripted "cookbook" which eliminates the extensive "yak shaving" that is all too common when trying to get started with a new open-source project.
 
+## The short version
+Do you feel lucky today?  Well, do you?
+
+Seriously, in many cases you should be able to simply run the following and it will "just work":
+
+```
+git clone https://github.com/nyfix/OZ.git
+cd OZ/test
+./build-all.sh
+./ut.sh
+```
+
+If that doesn't work, or if you're just naturally curious, keep reading for the details.
+
 ## Installing dependencies
 
 In addition to a minimal install, the following additional packages are required:
@@ -108,12 +122,13 @@ source qpid-pubsub.sh
 ```
 
 ## Where to go from here
-If the unit tests look good, you might want to proceed to [run the OpenMAMA examples programs](Running-Examples.md).  We've supplied scripts to make this process a bit easier, but it can nevertheless be a bit fiddly, and assumes at least some familiarity with OpenMAMA.
+If you're already familiar with OpenMAMA, you might want to proceed to [run the OpenMAMA example programs](Running-Examples.md).  We've supplied scripts to make this process a bit easier, but it can nevertheless be a bit fiddly, and assumes at least some familiarity with OpenMAMA.
 
 We've also created a kinder, gentler (read, simpler) set of samples using modern C++ that can be found [here](../examples/Readme.md).  This may be a better choice if you are not already familiar with OpenMAMA.
 
-If you're interested in performance (and who isn't), you can also check out the [OpenMAMA performance tests](Performance.md
-).
+If you're interested in performance (and who isn't), you can also check out the [OpenMAMA performance tests](Performance.md).
+
+
 #### See also
 [OpenMAMA Build Instructions](https://openmama.github.io/openmama_build_instructions.html)
 
