@@ -7,7 +7,8 @@ source ${SCRIPT_DIR}/setenv.sh
 [[ -z ${MAMA_PAYLOAD} ]] && source ${SCRIPT_DIR}/omnmmsg.sh
 
 # start nsd if necessary
-KILLNSD=${SCRIPT_DIR}/start-nsd.sh
+${SCRIPT_DIR}/start-nsd.sh
+KILLNSD=$?
 
 # run OpenMama unit tests
 `which UnitTestCommonC`          -m ${MAMA_MW} -p ${MAMA_PAYLOAD} -i ${MAMA_PAYLOAD_ID}
@@ -15,5 +16,4 @@ KILLNSD=${SCRIPT_DIR}/start-nsd.sh
 `which UnitTestMamaPayloadC`     -m ${MAMA_MW} -p ${MAMA_PAYLOAD} -i ${MAMA_PAYLOAD_ID}
 `which UnitTestMamaMsgC`         -m ${MAMA_MW} -p ${MAMA_PAYLOAD} -i ${MAMA_PAYLOAD_ID}
 
-${SCRIPT_DIR}/stop-nsd.sh
-[[ ${KILLNSD} -eq 1 ]] && killall "${INSTALL_BASE}/bin/nsd"
+[[ ${KILLNSD} -eq 1 ]] && ${SCRIPT_DIR}/stop-nsd.sh
