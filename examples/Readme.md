@@ -19,7 +19,7 @@ timer.cpp | Timer sample demonstrating manual lifetime management.
 timer2.cpp | Similar to timer.cpp, but using automatic lifetime management (RAII).
 
 ## Running the examples
-The example programs all default to using OZ as the transport bridge, omnm as the payload library, and "oz" as the name used for `mama.properties`.  In short, everything should "just work", with one important caveat: you need to make sure that the `nsd` process is running to handle [dynamic discovery](Naming-Service.md).
+The example programs all default to using OZ as the transport bridge, omnm as the payload library, and "oz" as the name used for `mama.properties`.  In short, everything should "just work", with one important caveat: you need to make sure that the `nsd` process is running to handle [dynamic discovery](../doc/Naming-Service.md).
 
 ```
 cd test
