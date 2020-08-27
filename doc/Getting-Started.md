@@ -80,6 +80,23 @@ This makes it possible to build and install the packages in a non-default locati
 
 > Note that both `BUILD_ROOT` and `INSTALL_BASE` will be deleted and re-created by the script -- DO NOT set these to a directory with files that you care about.
 
+## Environment variables
+We've established a convention for environment variables that are required with OpenMAMA -- this initially came about because of a requirement to set these values without specifying on them on the command line, and it has proven to be convenient enough to stick with it.
+
+Variable | Default | Use
+------- | -----| ------
+MAMA_MW | zmq| Specifies the middleware transport to load.
+MAMA_NSD_ADDR| 127.0.0.1 | Specifies the address of the nsd process.
+MAMA_NSD_PORT| 5756 | Specifies the port at which the nsd listens.  Defaults to 5756
+MAMA_PAYLOAD | omnmmsg| Specifies the payload library to load.
+MAMA_TPORT_PUB | oz | Specifies the transport name for "publishers".  
+MAMA_TPORT_SUB | oz | Specifies the transport name for "subscribers".
+
+The convention of using different transport names for "publishers" and "subscribers" is a hold-over from the [OpenMAMA examples](https://openmama.github.io/openmama_quick_start_guide_running_openmama_apps.html), and is completely arbitrary -- a "subscriber" can still publish messages, and a "publisher" can still subscribe.  
+
+With OZ these differences are meaningless in any case, at least in [naming mode](Naming-Service.md), since transports use the naming service to get addressing information. 
+
+
 ## Running OpenMAMA unit tests
 The first line of defense for any OpenMAMA bridge implementation is the built-in unit tests.  OZ includes a script that can be used to run relevant unit tests automatically:
 

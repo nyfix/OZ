@@ -22,12 +22,10 @@ class mySubEvents : public subscriberEvents
 
 int main(int argc, char** argv)
 {
-   string topic = "^prefix/[^/]+$";
-   if (argc > 1) {
-      topic = argv[1];
-   }
+   cmdLine cli(argc, argv);
+   string topic = cli.getTopic("^prefix/[^/]+$");
 
-   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   auto conn = createConnection(cli.getMw(), cli.getPayload(), cli.getTportSub());
    TRY_MAMA_FUNC(conn->start());
 
    auto sess = conn->createSession();

@@ -31,12 +31,10 @@ public:
 
 int main(int argc, char** argv)
 {
-   string topic = "prefix/suffix";
-   if (argc > 1) {
-      topic = argv[1];
-   }
+   cmdLine cli(argc, argv);
+   string topic = cli.getTopic("prefix/suffix");
 
-   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   auto conn = createConnection(cli.getMw(), cli.getPayload(), cli.getTportPub());
    TRY_MAMA_FUNC(conn->start());
 
    auto sess = conn->createSession();

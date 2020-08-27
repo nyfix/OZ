@@ -414,5 +414,24 @@ void hangout();
 
 mama_status ws2posix(const string& wsTopic, string& regex);
 
+class cmdLine
+{
+public:
+   cmdLine(int argc, char** argv)
+      : argc_(argc), argv_(argv)
+   {}
+
+   std::string getMw();
+   std::string getPayload();
+   std::string getTopic(std::string defaultValue);
+   std::string getTport();
+   std::string getTportPub();
+   std::string getTportSub();
+
+private:
+   int      argc_;
+   char**   argv_;
+};
+
 }
 

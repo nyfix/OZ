@@ -18,8 +18,61 @@ req2.cpp | Request/reply example demonstrating how to wait for a synchronous rep
 timer.cpp | Timer sample demonstrating manual lifetime management.
 timer2.cpp | Similar to timer.cpp, but using automatic lifetime management (RAII).
 
-All the examples take a single command-line parameter, the topic used to publish/subscribe -- in each case a reasonable default is provided.
+## Running the examples
+The example programs all default to using OZ as the transport bridge, omnm as the payload library, and "oz" as the name used for `mama.properties`.  In short, everything should "just work", with one important caveat: you need to make sure that the `nsd` process is running to handle [dynamic discovery](Naming-Service.md).
 
+```
+cd test
+./start-nsd.sh
+```
+
+If the nsd is not running, you will get an error like this:
+
+```
+8/27 15:46:41.854016|zmqBridgeMamaTransportImpl_init|23449-7feb58e8d7c0|INFO(0,0) Bound publish socket to:tcp://127.0.0.1:36906 |transport.c(357)
+8/27 15:46:51.761901|zmqBridgeMamaTransportImpl_start|23449-7feb58e8d7c0|CRIT(0,0) Failed connecting to naming service after 100 retries|transport.c(407)
+8/27 15:46:51.761925|zmqBridgeMamaTransport_create|23449-7feb58e8d7c0|ERR(0,0) Error 9(STATUS_TIMEOUT)|transport.c(188)
+8/27 15:46:51.761933|start|23449-7feb58e8d7c0|ERR(0,0) Error 9(STATUS_TIMEOUT)|ozimpl.cpp(25)
+8/27 15:46:51.761939|main|23449-7feb58e8d7c0|ERR(0,0) Error 9(STATUS_TIMEOUT)|pub.cpp(26)
+terminate called after throwing an instance of 'mama_status'
+Aborted (core dumped)
+```
+
+To stop the nsd:
+
+```
+./stop-nsd.sh
+```
+
+With the `nsd` process running, you can execute any of the examples from the command line directly:
+
+```
+$ ./pub
+...
+8/27 15:49:09.763739|zmqBridgeMamaTransportImpl_init|23831-7f4c912807c0|INFO(0,0) Bound publish socket to:tcp://127.0.0.1:31057 |transport.c(357)
+topic=prefix/suffix,msg={name=value,num=1}
+topic=prefix/suffix,msg={name=value,num=2}
+topic=prefix/suffix,msg={name=value,num=3}
+...
+```
+
+Each of the example programs can also take parameters on the command line (or from environment variables in some cases):
+
+```
+{program} {-m middleware} {-p payload} {-tport name} {topic} 
+```
+
+Param | Env Var | Default | Description
+----- | ------- | ------- | ----
+-m | MAMA_MW | zmq | Middleware transport to load.
+-p | MAMA_PAYLOAD | omnmmsg | Payload library to load.
+-tport | MAMA_TPORT_PUB or MAMA_TPORT_SUB | oz | Transport name for `mama.properties`
+|||n/a|Topic to publish or subscribe to.
+
+### Running the examples with Qpid
+The examples run with Qpid middleware and/or payload libraries.  
+
+> The Qpid middleware bridge does NOT clean-up properly, and will often core at shutdown.  
 
 ## OZ API
 The `oz` namespace defines several classes designed to provide a simple, easy-to-use introduction to OpenMAMA and OZ.

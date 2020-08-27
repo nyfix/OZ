@@ -409,6 +409,7 @@ void hangout()
 }
 
 
+///////////////////////////////////////////////////////////////////////
 // converts hierarchical topic (as per WS-Topic) to extended regular expression
 mama_status ws2posix(const string& wsTopic, string& regex)
 {
@@ -456,11 +457,124 @@ mama_status ws2posix(const string& wsTopic, string& regex)
          regex.append("$");                  // anchor at end
    }
 
-   mama_log(MAMA_LOG_LEVEL_FINER, "wsTopic=%s, regex=%s", inTopic.c_str(), regex.c_str());
+   mama_log(MAMA_LOG_LEVEL_NORMAL, "wsTopic=%s, regex=%s", inTopic.c_str(), regex.c_str());
 
    return status;
 }
 
 
+///////////////////////////////////////////////////////////////////////
+// command-line parsing -- tedious but necessary
+string cmdLine::getMw()
+{
+   string mw = "zmq";
+
+   // first look on cmd line
+   for (int i = 1; i < argc_; i++) {
+      if (strncasecmp("-m", argv_[i], strlen(argv_[i])) == 0) {
+         mw = argv_[++i];
+      }
+   }
+
+   // if that didnt work, try env
+   if (mw.empty()) {
+      char* temp = getenv("MAMA_MW");
+      if (temp) {
+         mw = temp;
+      }
+   }
+
+   return mw;
+}
+
+string cmdLine::getPayload()
+{
+   string payload = "omnmmsg";
+
+   // first look on cmd line
+   for (int i = 1; i < argc_; i++) {
+      if (strncasecmp("-p", argv_[i], strlen(argv_[i])) == 0) {
+         payload = argv_[++i];
+      }
+   }
+
+   // if that didnt work, try env
+   if (payload.empty()) {
+      char* temp = getenv("MAMA_PAYLOAD");
+      if (temp) {
+         payload = temp;
+      }
+   }
+
+   return payload;
+}
+
+string cmdLine::getTport()
+{
+   string tport = "oz";
+
+   // first look on cmd line
+   for (int i = 1; i < argc_; i++) {
+      if (strncasecmp("-tport", argv_[i], strlen(argv_[i])) == 0) {
+         tport = argv_[++i];
+      }
+   }
+
+   return tport;
+}
+
+string cmdLine::getTportSub()
+{
+   // was it specified on cmd line?
+   string tport = getTport();
+
+   // if that didnt work, try env
+   if (tport.empty()) {
+      char* temp = getenv("MAMA_TPORT_SUB");
+      if (temp) {
+         tport = temp;
+      }
+   }
+
+   return tport;
+}
+
+
+string cmdLine::getTportPub()
+{
+   // was it specified on cmd line?
+   string tport = getTport();
+
+   // if that didnt work, try env
+   if (tport.empty()) {
+      char* temp = getenv("MAMA_TPORT_PUB");
+      if (temp) {
+         tport = temp;
+      }
+   }
+
+   return tport;
+}
+
+string cmdLine::getTopic(string defaultValue)
+{
+   string topic = defaultValue;
+
+   if (argc_ < 2) {
+      // no param
+   }
+   else if (argc_ == 2) {
+      // only one argument, so it must be topic
+      topic = argv_[1];
+   }
+   else {
+      // if the next-to-last param doesn't start with a "-", take the last param
+      if (argv_[argc_-2][0] != '-') {
+         topic = argv_[argc_-1];
+      }
+   }
+
+   return topic;
+}
 
 }

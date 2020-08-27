@@ -21,7 +21,9 @@ class myTimerEvents : public timerEvents
 
 int main(int argc, char** argv)
 {
-   auto conn = createConnection("zmq", "omnmmsg", "oz");
+   cmdLine cli(argc, argv);
+
+   auto conn = createConnection(cli.getMw(), cli.getPayload(), cli.getTportSub());
    TRY_MAMA_FUNC(conn->start());
 
    auto sess = conn->createSession();
