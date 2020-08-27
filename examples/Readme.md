@@ -86,7 +86,7 @@ Class | Description
 connection | Encapsulates both the transport and payload bridge libraries.
 session | Encapsulates a callback thread, and is implemented using mamaQueue and mamaDispatcher.
 publisher | Thin wrapper over mamaPublisher
-subscriber | Thin wrapper over mamaSubscription.  Supports only basic (not market-data) subscriptions.
+subscriber | Thin wrapper over mamaSubscription. Supports two flavors (regex and hierarchical) of wildcard subscriptions. 
 subscriberEvents | Declares callback functions for subscription events.
 timer | Encapsulates a mamaTimer object.
 timerEvents | Declares callback functions for timer events.
