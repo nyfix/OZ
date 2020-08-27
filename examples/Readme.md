@@ -41,13 +41,17 @@ Aborted (core dumped)
 To stop the nsd:
 
 ```
+cd test
 ./stop-nsd.sh
 ```
 
 With the `nsd` process running, you can execute any of the examples from the command line directly:
 
 ```
-$ ./pub
+cd examples
+source ../test/setenv.sh
+source ../test/oz-nsd.sh
+./pub
 ...
 8/27 15:49:09.763739|zmqBridgeMamaTransportImpl_init|23831-7f4c912807c0|INFO(0,0) Bound publish socket to:tcp://127.0.0.1:31057 |transport.c(357)
 topic=prefix/suffix,msg={name=value,num=1}
@@ -70,7 +74,7 @@ Param | Env Var | Default | Description
 |||n/a|Topic to publish or subscribe to.
 
 ### Running the examples with Qpid
-The examples run with Qpid middleware and/or payload libraries.  
+The examples also run with Qpid middleware and/or payload libraries.  
 
 > The Qpid middleware bridge does NOT clean-up properly, and will often core at shutdown.  
 
@@ -100,7 +104,6 @@ Classes that generate asynchronous callbacks are associated with a session objec
 
 The destructor for event sources is declared `protected` in order to prevent it being called from application code -- instead these classes define a `destroy` method that calls the appropriate MAMA function to tear down the event source.  The MAMA code enqueues the destroy on the object's queue -- when the object is eventually destroyed MAMA calls an `onDestroy` callback, which OZ then uses to do the final `delete this`.
 
-``
 ## Compiler support
 The `oz` classes target C++11 -- this allows the code to be cleaner and more readable, compared to the older C++98 standard used by OpenMAMA's native C++ support.  (We currently don't use features specific to C++14 and above in order to work with as wide a range of compilers as possible).
 
