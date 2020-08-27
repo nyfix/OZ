@@ -4,7 +4,7 @@
 
 These are stripped-down versions of the examples included with OpenMAMA -- while they don't support options in the same way as the OpenMAMA examples, their relative brevity (around 10% of the size of the OpenMAMA examples), and their use of modern C++ constructs, should make the examples easier to use and understand.
 
-The examples use the classes described below and implemented in the `ozimpl.h`/`ozimpl.cpp`files.
+The examples use the classes described [below](#OZ-API) and implemented in the `ozimpl.h`/`ozimpl.cpp`files.
 
 Program | Description
 ----- | -------------
