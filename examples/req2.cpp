@@ -1,4 +1,4 @@
-// minimal requester example
+// minimal requester example - send a single request and wait for synchronous reply with timeout
 
 #include <string>
 #include <iostream>

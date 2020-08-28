@@ -1,4 +1,4 @@
-// minimal subscriber example
+// minimal reply example -- listens for and responds to requests
 
 #include <string>
 #include <cstdio>

@@ -1,4 +1,4 @@
-// minimal subscriber example
+// minimal timer example using RAII
 
 #include <string>
 #include <cstdio>

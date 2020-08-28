@@ -1,4 +1,4 @@
-// minimal requester example
+// minimal requester example - continuously send requests and receive replies asynchronously
 
 #include <string>
 #include <iostream>

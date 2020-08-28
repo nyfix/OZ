@@ -18,7 +18,11 @@ handle SIGINT stop pass
 # non-dispatching queue
 #b queue.c:295
 
-b mamaSubscription_createBasicWildCard
-b zmqBridgeMamaSubscription_createWildCard
-b oz::subscriber::start
-b oz::subscriber::is_valid_regex_string
+#b mamaSubscription_createBasicWildCard
+#b zmqBridgeMamaSubscription_createWildCard
+#b oz::subscriber::start
+
+b oz::cmdLine::getMw
+b oz::cmdLine::getPayload
+b oz::cmdLine::getTport
+set args -tport pub -m qpid -p qpidmsg

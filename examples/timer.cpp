@@ -1,4 +1,4 @@
-// minimal subscriber example
+// minimal timer example using manual memory management
 
 #include <string>
 #include <cstdio>

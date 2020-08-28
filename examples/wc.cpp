@@ -1,4 +1,4 @@
-// minimal subscriber example
+// minimal subscriber example using regex wildcards
 
 #include <string>
 #include <cstdio>

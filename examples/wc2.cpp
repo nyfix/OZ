@@ -1,4 +1,4 @@
-// minimal subscriber example
+// minimal subscriber example using hierarchical wildcards
 
 #include <string>
 #include <cstdio>

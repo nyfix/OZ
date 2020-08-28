@@ -83,7 +83,7 @@ The `oz` namespace defines several classes designed to provide a simple, easy-to
 
 Class | Description
 ----- | -------------
-connection | Encapsulates both the transport and payload bridge libraries.
+connection | Represents an attachment to the middleware, as a network-addressable entity.  Encapsulates both the transport and payload bridge libraries.
 session | Encapsulates a callback thread, and is implemented using mamaQueue and mamaDispatcher.
 publisher | Thin wrapper over mamaPublisher
 subscriber | Thin wrapper over mamaSubscription. Supports two flavors (regex and hierarchical) of wildcard subscriptions. 
