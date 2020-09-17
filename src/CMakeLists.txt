@@ -1,6 +1,5 @@
 include_directories(.)
 include_directories(${MAMA_ROOT}/include)
-include_directories(${EVENT_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)
 
 # Default to installing directly to MAMA directory
@@ -16,7 +15,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 else()
   link_directories(${ZMQ_ROOT}/lib64)
 endif()
-link_directories(${EVENT_ROOT}/lib)
 
 # while libzmq exposes a C api, it is coded in C++ and requires C++ stdlib and that libstdc++ MUST be at least as recent as the
 # version used to build libzmq, which may not be the "system" libstdc++ so we explicitly add its location
