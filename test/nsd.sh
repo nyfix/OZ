@@ -9,4 +9,4 @@ source ${SCRIPT_DIR}/setenv.sh
 # uncomment following to run w/process pinned to a CPU
 #PREFIX="taskset -c 3"
 
-${PREFIX} "${INSTALL_BASE}/bin/nsd" -i ${MAMA_NSD_ADDR} -p ${MAMA_NSD_PORT}
+${PREFIX} $(which nsd) -i ${MAMA_NSD_ADDR} -p ${MAMA_NSD_PORT}
