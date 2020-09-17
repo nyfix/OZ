@@ -4,7 +4,8 @@
 
 These are stripped-down versions of the examples included with OpenMAMA -- while they don't support options in the same way as the OpenMAMA examples, their relative brevity (around 10% of the size of the OpenMAMA examples), and their use of modern C++ constructs, should make the examples easier to use and understand.
 
-The examples use the classes described [below](#OZ-API) and implemented in the `ozimpl.h`/`ozimpl.cpp`files.
+> The examples use the classes described [below](#OZ-API) and implemented in the `ozimpl.h`/`ozimpl.cpp`files to greatly simplify the OpenMAMA API and significantly flatten its learning-curve. 
+
 
 Program | Description
 ----- | -------------
@@ -79,7 +80,7 @@ The examples also run with Qpid middleware and/or payload libraries.
 > The Qpid middleware bridge does NOT clean-up properly, and will often core at shutdown.  
 
 ## OZ API
-The `oz` namespace defines several classes designed to provide a simple, easy-to-use introduction to OpenMAMA and OZ.
+The `oz` namespace defines several classes designed to provide a simple, easy-to-use introduction to OpenMAMA and OZ.  These classes greatly simplify the OpenMAMA API and significantly flatten its learning-curve. 
 
 Class | Description
 ----- | -------------
@@ -107,7 +108,9 @@ The destructor for event sources is declared `protected` in order to prevent it 
 ## Compiler support
 The `oz` classes target C++11 -- this allows the code to be cleaner and more readable, compared to the older C++98 standard used by OpenMAMA's native C++ support.  (We currently don't use features specific to C++14 and above in order to work with as wide a range of compilers as possible).
 
-## Smart pointers/RAII
+## Memory management/Smart pointers/RAII
+To simplify memory management, all the `oz` objects *must* be allocated on the heap  -- it is not possible to allocate them on the stack.  (Constructors are all `protected` -- the factory function(s) are the only way to create objects).
+
 In keeping with the recommendations in [EMC++](https://www.oreilly.com/library/view/effective-modern-c/9781491908419/) and the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines), the factory functions in OZ return `unique_ptr`'s in most cases.  These have no space or speed penalties relative to raw pointers, and can be easily converted to `shared_ptr`'s if desired.   (The exception is the `oz::connection::getPublisher` method, which returns a `shared_ptr` to a publisher from the connection's collection).
 
 
