@@ -4,6 +4,7 @@ include_directories(${MAMA_ROOT}/include)
 link_directories(${MAMA_ROOT}/lib)
 
 add_library(ozimpl SHARED ozimpl.cpp)
+target_link_libraries(ozimpl mama wombatcommon)
 install(TARGETS ozimpl  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(pub pub.cpp)
