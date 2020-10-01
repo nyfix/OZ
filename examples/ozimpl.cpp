@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <sys/errno.h>
+#include <signal.h>
 
 #include <string>
 using namespace std;
