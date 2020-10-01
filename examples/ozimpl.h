@@ -1,4 +1,6 @@
 // minimal wrapper for OpenMAMA API
+#include <signal.h>
+
 
 #include <string>
 #include <unordered_map>
