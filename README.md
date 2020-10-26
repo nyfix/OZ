@@ -42,7 +42,7 @@ Currently, OZ runs on Linux (CentOS 6 and above).  We hope to provide support fo
 OZ runs over standard TCP/IP networks. 
 
 ## How do I get started?
-The [Getting Started](doc/Getting-Started.md) document explains how to build OZ, and its dependencies, from source and how to run the OpenMAMA unit tests.
+The [Getting Started](doc/Getting-Started.md) document explains how to build OZ, and its dependencies, from source and how to run the OpenMAMA unit tests.  Once you've done that, OZ includes [example code](../examples/Readme.md) that you can use to get familiar with OZ.
 
 And/or check out the rest of the docs in the [doc](doc/README.md) directory.
 
