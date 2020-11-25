@@ -113,6 +113,7 @@ mama_status subscriber::start()
       case wcType::WS :
          // convert WS to posix, then fall thru
          CALL_MAMA_FUNC(ws2posix(origTopic_, topic_));
+         // FALLTHRU
       case wcType::POSIX :
       {
          mamaWildCardMsgCallbacks cb;
