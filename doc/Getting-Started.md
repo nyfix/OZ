@@ -105,6 +105,8 @@ cd test
 ./ut.sh
 ```
 
+> Note: The OpenMAMA unit tests don't run (yet) on Ubuntu, because of issues with Google Test framework.  Try [the OZ examples](../examples/Readme.md) instead.
+
 Since OZ is intended to typically be run in "naming" mode, the `ut.sh` script will check if naming mode is configured -- if so, it will check that the `nsd` process is running, and will start (and stop) it automatically if needed.
 
 The output from the unit tests can be a bit verbose -- to skinny it down you can execute the script like so:
