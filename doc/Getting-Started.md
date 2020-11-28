@@ -37,7 +37,7 @@ libuuid-devel | OpenMAMA, OZ
 libevent-devel | OpenMAMA, OZ
 uuidd | OZ
 
-The [`install-deps.sh`](../test/install-deps.sh] script (located in the `test` directory), can be used to install the above.  (Note that installs must be done as root). 
+The [`install-deps.sh`](../test/install-deps.sh) script (located in the `test` directory), can be used to install the above.  (Note that installs must be done as root). 
 
 You can also simply use the `install-deps.sh` script as a guide to installing packages manually.
 
