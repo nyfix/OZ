@@ -37,26 +37,16 @@ libuuid-devel | OpenMAMA, OZ
 libevent-devel | OpenMAMA, OZ
 uuidd | OZ
 
-The `install-deps.sh` script, located in the `test` directory, can be used to install the above.  (Note that installs must be done as root). 
+The [`install-deps.sh`](../test/install-deps.sh] script (located in the `test` directory), can be used to install the above.  (Note that installs must be done as root). 
 
-### Mac support
-
-```
-brew install gnutls
-```
- 
+You can also simply use the `install-deps.sh` script as a guide to installing packages manually.
 
 ## Re: uuid's
-OZ uses uuid's to uniquely identify nodes in the network.  To ensure that uuid's are unique, the code calls `uuid_generate_time_safe`, which requires that the uuidd daemon be running.  To start the daemon if it's not already running (following must be run as root):
+OZ uses uuid's to uniquely identify nodes in the network.  To ensure that uuid's are unique, the code calls `uuid_generate_time_safe`, which requires that the uuidd daemon be running.  The daemon should start automatically, but to start the daemon manually (following must be run as root):
 
-### RH/CentOS 7
+### RH/CentOS 
 ```
 systemctl start uuidd
-```
-
-### RH/CentOS 6
-```
-service uuidd start
 ```
 
 If the uuidd daemon is not running, you will get an error similar to the following when attempting to run any OZ binaries:
@@ -67,7 +57,7 @@ If the uuidd daemon is not running, you will get an error similar to the followi
 
 ## Building from source
 
-Once the OS dependencies are installed, the next step is to build the components from source.  The `build-all.sh` script in the `test` directory handles that for you.
+Once the OS dependencies are installed, the next step is to build the components from source.  The [`build-all.sh`](../test/build-all.sh) script (in the `test` directory) handles that for you.
 
 The script first sources the `setenv.sh` script, which defines the following environment variables:
 
@@ -104,8 +94,6 @@ The first line of defense for any OpenMAMA bridge implementation is the built-in
 cd test
 ./ut.sh
 ```
-
-> Note: The OpenMAMA unit tests don't run (yet) on Ubuntu, because of issues with Google Test framework.  Try [the OZ examples](../examples/Readme.md) instead.
 
 Since OZ is intended to typically be run in "naming" mode, the `ut.sh` script will check if naming mode is configured -- if so, it will check that the `nsd` process is running, and will start (and stop) it automatically if needed.
 

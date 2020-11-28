@@ -5,12 +5,8 @@ source ${SCRIPT_DIR}/setenv.sh
 BRANCH="$@"
 [[ -z "${BRANCH}" ]] && BRANCH="-b nyfix"
 
-# Google test not packaged on ubuntu
-MAMA_GTEST=On
-[[ $(lsb_release -i) =~ "Ubuntu" ]]  && MAMA_GTEST=Off
-
 # assuming apr is installed via brew on mac
-if [[ ${OSTYPE} == *darwin* ]]; then
+if [[ ${OS} =~ "darwin" ]]; then
    OPENMAMA_APR_ROOT="-DDEFAULT_APR_ROOT=/usr/local/Cellar/apr/1.7.0/libexec/"
 fi
 
@@ -43,6 +39,17 @@ cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TY
 make; make install
 popd
 
+# Google test
+if [[ ${OS} =~ "Ubuntu" ]]; then
+   # we need to build Google Test on Ubuntu (!?)
+   rm -rf gtest || true
+   mkdir gtest
+   pushd gtest
+   cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} /usr/src/googletest/
+   make && make install
+   popd
+fi
+
 # OpenMAMA
 rm -rf OpenMAMA || true
 git clone --single-branch ${BRANCH} https://github.com/nyfix/OpenMAMA.git
@@ -50,8 +57,8 @@ pushd OpenMAMA
 rm -rf build || true
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_BASE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
-   -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
-   -DWITH_UNITTEST=${MAMA_GTEST} ${OPENMAMA_APR_ROOT} \
+   -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++11" -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}" \
+   -DWITH_UNITTEST=On -DINSTALL_RUNTIME_DEPENDENCIES=Off ${OPENMAMA_APR_ROOT} \
    ..
 make; make install
 popd
