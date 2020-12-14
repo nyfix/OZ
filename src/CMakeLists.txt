@@ -1,3 +1,5 @@
+include(GNUInstallDirs)
+
 include_directories(.)
 include_directories(${MAMA_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)
@@ -13,7 +15,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
   link_directories("/usr/local/Cellar/ossp-uuid/1.6.2_2/lib")
   link_directories("/usr/local/lib")
 else()
-  link_directories(${ZMQ_ROOT}/lib64)
+  link_directories(${ZMQ_ROOT}/${CMAKE_INSTALL_LIBDIR})
 endif()
 
 # while libzmq exposes a C api, it is coded in C++ and requires C++ stdlib and that libstdc++ MUST be at least as recent as the

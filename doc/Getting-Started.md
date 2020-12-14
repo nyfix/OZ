@@ -88,16 +88,26 @@ With OZ these differences are meaningless in any case, at least in [naming mode]
 
 
 ## Running OpenMAMA unit tests
-The first line of defense for any OpenMAMA bridge implementation is the built-in unit tests.  OZ includes a script that can be used to run relevant unit tests automatically:
+The first line of defense for any OpenMAMA bridge implementation is the built-in unit tests.  OZ includes a script that can be used to run relevant unit tests automatically, which should produce something like this:
 
 ```
 cd test
 ./ut.sh
+... 
+[ RUN      ] MsgVectorPriceTestsC.GetVectorPriceNullMsg
+[       OK ] MsgVectorPriceTestsC.GetVectorPriceNullMsg (0 ms)
+[----------] 9 tests from MsgVectorPriceTestsC (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 478 tests from 72 test suites ran. (60 ms total)
+[  PASSED  ] 478 tests.
+
+  YOU HAVE 49 DISABLED TESTS
 ```
 
 Since OZ is intended to typically be run in "naming" mode, the `ut.sh` script will check if naming mode is configured -- if so, it will check that the `nsd` process is running, and will start (and stop) it automatically if needed.
 
-The output from the unit tests can be a bit verbose -- to skinny it down you can execute the script like so:
+The output from the unit tests can be very verbose -- to skinny it down you can execute the script like so:
 
 ```
 ./ut.sh 2>/dev/null | egrep "==========|PASSED|FAILED"
