@@ -277,7 +277,7 @@ typedef struct zmqControlMsg {
 // e.g., "_INBOX.3669840e-d043-11ea-adc2-fcaa146e6b01.000000000000000A"
 #define ZMQ_REPLYHANDLE_PREFIX            "_INBOX"
 #define ZMQ_INBOX_SUBJECT_SIZE            6+1+UUID_STRING_SIZE                // _INBOX.<UUID>
-#define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   ZMQ_INBOX_SUBJECT_SIZE              // offset of inboxName in the string
+#define ZMQ_REPLYHANDLE_INBOXNAME_INDEX   ZMQ_INBOX_SUBJECT_SIZE+1            // offset of inboxName in the string
 #define ZMQ_REPLYHANDLE_INBOXNAME_SIZE    16                                  // long long in hex format
 #define ZMQ_REPLYHANDLE_SIZE              ZMQ_INBOX_SUBJECT_SIZE+1+ZMQ_REPLYHANDLE_INBOXNAME_SIZE
 
