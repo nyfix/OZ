@@ -1146,7 +1146,7 @@ mama_status zmqBridgeMamaTransportImpl_createSocket(void* zmqContext, zmqSocket*
    // do this here, rather than when closing the socket
    // (see https://github.com/zeromq/libzmq/issues/3252)
    int linger = 0;
-   if (strcmp(name, "namingPub") == 0) {
+   if (name && (strcmp(name, "namingPub") == 0)) {
       // need to linger briefly to publish disconnect msg.
       linger = 100;
    }
@@ -1230,7 +1230,7 @@ mama_status zmqBridgeMamaTransportImpl_bindSocket(zmqSocket* socket, const char*
    if (endpointName != NULL) {
       char temp[ZMQ_MAX_ENDPOINT_LENGTH +1];
       size_t tempSize = sizeof(temp);
-      int rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
+      rc = zmq_getsockopt(socket->mSocket, ZMQ_LAST_ENDPOINT, temp, &tempSize);
       if (0 != rc) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_getsockopt(%p) failed trying to get last endpoint %d(%s)", socket->mSocket, errno, zmq_strerror(errno));
          status = MAMA_STATUS_PLATFORM;
@@ -1672,7 +1672,7 @@ uint64_t zmqBridgeMamaTransportImpl_monitorEvent_v2(void *socket, const char* so
     memcpy (&value_count, zmq_msg_data (&msg), sizeof (value_count));
     zmq_msg_close (&msg);
 
-    uint64_t value;
+    uint64_t value = 0;
     for (uint64_t i = 0; i < value_count; ++i) {
         //  Subsequent frames in message contain event values
         zmq_msg_init (&msg);

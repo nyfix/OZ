@@ -18,8 +18,8 @@ void doneSigHandler(int sig)
 class myRequest : public request, requestEvents
 {
 public:
-   myRequest(session* pSession, string topic)
-      : request(pSession, topic)
+   myRequest(session* pSession, const string& topic)
+      : request(pSession, topic), reply_(nullptr)
    {
       pSink_ = this;
    }

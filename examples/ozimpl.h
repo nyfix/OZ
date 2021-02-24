@@ -91,14 +91,14 @@ class reply
    friend class connection;
 
 public:
-   reply(connection* pConn);
+   explicit reply(connection* pConn);
 
    virtual mama_status destroy();
 
    mama_status send(mamaMsg reply);
    mama_status send(mamaMsg request, mamaMsg reply);
 
-   mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic) const;
+   static mama_status getReplyTopic(mamaMsg msg, std::string& replyTopic);
 
    // un-implemented
    reply() = delete;
@@ -135,7 +135,7 @@ class request
    friend class session;
 
 public:
-   request(session* pSession, string topic, requestEvents* pSink = nullptr);
+   request(session* pSession, const std::string& topic, requestEvents* pSink = nullptr);
    virtual mama_status destroy();
 
    mama_status send(mamaMsg msg);
@@ -154,7 +154,7 @@ protected:
    virtual ~request();
 
    session*                            pSession_      {nullptr};
-   string                              topic_;
+   std::string                         topic_;
    requestEvents*                      pSink_         {nullptr};
    std::shared_ptr<publisher>          pub_;
    mamaInbox                           inbox_         {nullptr};
@@ -178,7 +178,7 @@ class publisher
    friend class connection;
 
 public:
-   publisher(connection* pConnection, std::string topic);
+   publisher(connection* pConnection, const std::string& topic);
 
    virtual mama_status destroy();
 
@@ -202,7 +202,7 @@ protected:
 
    connection*          pConn_         {nullptr};
    mamaPublisher        pub_           {nullptr};
-   string               topic_;
+   std::string          topic_;
 };
 
 auto publisherDeleter = [](publisher* pPublisher)
@@ -229,7 +229,7 @@ class subscriber
    friend class session;
 
 public:
-   subscriber(session* pSession, std::string topic, subscriberEvents* pSink = nullptr, wcType wcType = wcType::unspecified);
+   subscriber(session* pSession, const std::string& topic, subscriberEvents* pSink = nullptr, wcType wcType = wcType::unspecified);
 
    virtual mama_status destroy();
 
@@ -265,8 +265,8 @@ private:
    session*             pSession_      {nullptr};
    mamaSubscription     sub_           {nullptr};
    subscriberEvents*    pSink_         {nullptr};
-   string               topic_;
-   string               origTopic_;
+   std::string          topic_;
+   std::string          origTopic_;
    wcType               wcType_        {wcType::unspecified};
 };
 
@@ -282,7 +282,7 @@ class session
 {
    friend class connection;
 public:
-   session(oz::connection* pConn) : pConn_(pConn) {}
+   explicit session(oz::connection* pConn) : pConn_(pConn) {}
 
    virtual mama_status destroy();
 
@@ -343,7 +343,7 @@ auto sessionDeleter = [](session* pSession)
 class connection
 {
 public:
-   connection(std::string mw, std::string payload, std::string name)
+   connection(const std::string& mw, const std::string& payload, const std::string& name)
       : mw_(mw), payload_(payload), name_(name)
    {}
 
@@ -387,9 +387,9 @@ protected:
 
 private:
    mama_status          status_           {MAMA_STATUS_INVALID_ARG};
-   string               mw_;
-   string               payload_;
-   string               name_;
+   std::string          mw_;
+   std::string          payload_;
+   std::string          name_;
    mamaBridge           bridge_           {nullptr};
    mamaQueue            queue_            {nullptr};
    mamaTransport        transport_        {nullptr};
@@ -414,7 +414,7 @@ std::unique_ptr<connection, decltype(connectionDeleter)> createConnection(Ts&&..
 
 void hangout();
 
-mama_status ws2posix(const string& wsTopic, string& regex);
+mama_status ws2posix(const std::string& wsTopic, std::string& regex);
 
 class cmdLine
 {
@@ -425,7 +425,7 @@ public:
 
    std::string getMw();
    std::string getPayload();
-   std::string getTopic(std::string defaultValue);
+   std::string getTopic(const std::string& defaultValue) const;
    std::string getTport();
    std::string getTportPub();
    std::string getTportSub();

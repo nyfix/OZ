@@ -41,7 +41,7 @@ void MAMACALLTYPE oz::connection::onStop(mama_status status, mamaBridge bridge, 
    connection* pThis = static_cast<connection*>(closure);
 }
 
-shared_ptr<publisher> oz::connection::getPublisher(std::string topic)
+shared_ptr<publisher> oz::connection::getPublisher(string topic)
 {
    auto temp = pubs_.find(topic);
    if (temp != pubs_.end()) {
@@ -56,7 +56,7 @@ shared_ptr<publisher> oz::connection::getPublisher(std::string topic)
    return pub;
 }
 
-void oz::connection::removePublisher(std::string topic)
+void oz::connection::removePublisher(string topic)
 {
    pubs_.erase(topic);
 }
@@ -82,7 +82,7 @@ mama_status oz::session::destroy()
 
 ///////////////////////////////////////////////////////////////////////
 // subscriber
-subscriber::subscriber(session* pSession, string topic, subscriberEvents* pSink, wcType wcType)
+subscriber::subscriber(session* pSession, const string& topic, subscriberEvents* pSink, wcType wcType)
    : pSession_(pSession), topic_(topic),  pSink_(pSink), wcType_(wcType)
 {
 }
@@ -190,7 +190,7 @@ void MAMACALLTYPE subscriber::destroyCB(mamaSubscription subscription, void* clo
 
 ///////////////////////////////////////////////////////////////////////
 // publisher
-publisher::publisher(connection* pConnection, std::string topic)
+publisher::publisher(connection* pConnection, const string& topic)
    : pConn_(pConnection), topic_(topic)
 {
 }
@@ -234,7 +234,7 @@ mama_status publisher::sendReply(mamaMsg request, mamaMsg reply)
 
 ///////////////////////////////////////////////////////////////////////
 // request
-request::request(session* pSession, string topic, requestEvents* pSink)
+request::request(session* pSession, const string& topic, requestEvents* pSink)
    : pSession_(pSession), topic_(topic), pSink_(pSink)
 {
 }
@@ -324,7 +324,7 @@ reply::~reply() {}
 
 mama_status reply::send(mamaMsg msg)
 {
-   std::string replyTopic;
+   string replyTopic;
    CALL_MAMA_FUNC(getReplyTopic(msg, replyTopic));
    auto publisher = pConn_->getPublisher(replyTopic);
    if (publisher == nullptr) {
@@ -336,7 +336,7 @@ mama_status reply::send(mamaMsg msg)
 
 mama_status reply::send(mamaMsg request, mamaMsg reply)
 {
-   std::string replyTopic;
+   string replyTopic;
    CALL_MAMA_FUNC(getReplyTopic(request, replyTopic));
    auto publisher = pConn_->getPublisher(replyTopic);
    if (publisher == nullptr) {
@@ -346,7 +346,7 @@ mama_status reply::send(mamaMsg request, mamaMsg reply)
    return publisher->sendReply(request, reply);
 }
 
-mama_status reply::getReplyTopic(mamaMsg msg, std::string& replyTopic) const
+mama_status reply::getReplyTopic(mamaMsg msg, string& replyTopic)
 {
    if (!mamaMsg_isFromInbox(msg)) {
       return MAMA_STATUS_INVALID_ARG;
@@ -548,7 +548,7 @@ string cmdLine::getTportPub()
    return tport;
 }
 
-string cmdLine::getTopic(string defaultValue)
+string cmdLine::getTopic(const string& defaultValue) const
 {
    string topic = defaultValue;
 

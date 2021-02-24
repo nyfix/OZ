@@ -346,7 +346,7 @@ mama_status zmqBridgeMamaSubscriptionImpl_generateSubjectKey(const char*  root,
    char        subject[MAX_SUBJECT_LENGTH +1];
    char*       subjectPos     = subject;
    size_t      bytesRemaining = MAX_SUBJECT_LENGTH;
-   size_t      written        = 0;
+   size_t      written;
 
    if (NULL != root) {
       MAMA_LOG(MAMA_LOG_LEVEL_FINEST, "zmqBridgeMamaSubscriptionImpl_generateSubjectKey(): R.");

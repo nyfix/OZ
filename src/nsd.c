@@ -39,7 +39,7 @@ int main (int argc, char** argv)
    int port = 0;
    for (int i = 1; i < argc; i++) {
       if (strcasecmp("-i", argv[i]) == 0) {
-         interface = strdup(argv[++i]);
+         interface = argv[++i];
       }
       if (strcasecmp("-p", argv[i]) == 0) {
          port = atoi(argv[++i]);
