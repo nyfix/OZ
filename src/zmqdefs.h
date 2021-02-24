@@ -201,12 +201,12 @@ typedef struct zmqTransportBridge_ {
    unsigned long long      mInboxUid;             // unique ID of inbox
 
    // misc stats
-   long int                mNormalMessages;        // msgs received over dataSubscriber socket
-   long int                mNamingMessages;        // msgs received over namingSubscriber socket
-   long int                mControlMessages;       // msgs received over controlSubscriber socket
-   long int                mSubMessages;           // subscription (as opposed to inbox) messages
-   long int                mInboxMessages;         // inbox (as opposed to subscription) messages
-   long int                mPolls;                 // msgs read after calling zmq_poll
+   long long               mNormalMessages;        // msgs received over dataSubscriber socket
+   long long               mNamingMessages;        // msgs received over namingSubscriber socket
+   long long               mControlMessages;       // msgs received over controlSubscriber socket
+   long long               mSubMessages;           // subscription (as opposed to inbox) messages
+   long long               mInboxMessages;         // inbox (as opposed to subscription) messages
+   long long               mPolls;                 // msgs read after calling zmq_poll
 
 } zmqTransportBridge;
 
