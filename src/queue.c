@@ -124,7 +124,7 @@ mama_status zmqBridgeMamaQueue_create_usingNative(queueBridge* queue,
    /* Populate the queueBridge pointer with the implementation for return */
    *queue = (queueBridge) impl;
 
-   return MAMA_STATUS_OK;
+   return MAMA_STATUS_OK;     // cppcheck-suppress memleak
 }
 
 mama_status zmqBridgeMamaQueue_destroy(queueBridge queue)

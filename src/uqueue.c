@@ -52,7 +52,7 @@ typedef struct
     uQueueItem*  mChunks;
 } uQueueImpl;
 
-static void
+static wombatQueueStatus
 uQueueImpl_allocChunk ( uQueueImpl* impl, unsigned int items);
 
 wombatQueueStatus
@@ -305,8 +305,10 @@ uQueue_timedDispatch (uQueue queue, uint64_t timeout)
 {
    return uQueue_dispatchInt (queue, 1, timeout);
 }
+
+
 /* Static/Private functions */
-static void
+static wombatQueueStatus
 uQueueImpl_allocChunk ( uQueueImpl* impl, unsigned int items)
 {
    size_t sizeToAlloc =  items * sizeof(uQueueItem);
@@ -317,10 +319,14 @@ uQueueImpl_allocChunk ( uQueueImpl* impl, unsigned int items)
    if (size + items > impl->mMaxSize)
    {
       /* impl->mFirstFree.mNext is already NULL */
-      return;
+      return WOMBAT_QUEUE_FULL;
    }
 
    result = (uQueueItem*)calloc( 1, sizeToAlloc);
+   if (result == NULL) {
+      return WOMBAT_QUEUE_NOMEM;
+   }
+
    result->mChunkNext = impl->mChunks;
    impl->mChunks   = result;
    impl->mFirstFree.mNext = result;
@@ -334,4 +340,6 @@ uQueueImpl_allocChunk ( uQueueImpl* impl, unsigned int items)
          result[i+1].mPrev = &result[i];
       }
    }
+
+   return WOMBAT_QUEUE_OK;
 }
