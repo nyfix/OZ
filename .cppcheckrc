@@ -1,0 +1,17 @@
+# settings for cppcheck
+--enable=all --inconclusive
+--error-exitcode=19
+--std=c++14
+--library=gnu.cfg
+--library=posix.cfg
+
+--suppress=unusedFunction
+--suppress=unmatchedSuppression
+--suppress=missingIncludeSystem
+--suppress=initializerList
+--suppress=cstyleCast
+--suppress=funcArgNamesDifferent
+--suppress=useInitializationList
+--suppress=postfixOperator
+--suppress=usleepCalled
+--suppress=allocaCalled
