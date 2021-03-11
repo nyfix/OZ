@@ -1,7 +1,7 @@
 # Performance
 
 ## Performance Testing
-OpenMAMA includes rudimentary performance-testing programs, as documented at <https://openmama.github.io/openmama_performance_testing.html>.
+OpenMAMA includes rudimentary performance-testing programs, as documented at <https://openmama.finos.org/openmama_performance_testing.html>.
 
 ### Testing with qpid
 
@@ -13,7 +13,7 @@ source qpid-pubsub.sh
 ```
 source qpid-pubsub.sh
 ./consumer.sh -s AAAA
-                 TIME     RATE  TRANS LOW  TRANS AVG TRANS HIGH     GAPS  MC GAPS MISSING FIDS 
+                 TIME     RATE  TRANS LOW  TRANS AVG TRANS HIGH     GAPS  MC GAPS MISSING FIDS
 2020/04/21 - 12:05:33    32567         33         44       2431        0        0            0
 2020/04/21 - 12:05:34    30156         33         90       9343        0        0            0
 2020/04/21 - 12:05:35    30153         33         53       2535        0        0            0
@@ -45,7 +45,7 @@ source omnmnsg.sh
 source oz-nsd.sh
 source omnmnsg.sh
 ./consumer.sh -s AAAA
-                 TIME     RATE  TRANS LOW  TRANS AVG TRANS HIGH     GAPS  MC GAPS MISSING FIDS 
+                 TIME     RATE  TRANS LOW  TRANS AVG TRANS HIGH     GAPS  MC GAPS MISSING FIDS
 2020/04/21 - 12:06:19   847552     708087     780015     838537        0        0            0
 2020/04/21 - 12:06:20   666727     751804     845333     938246        0        0            0
 2020/04/21 - 12:06:21   573908     938249    1104023    1413273        0        0            0
@@ -64,7 +64,7 @@ The OpenMAMA producer/consumer test measures message *rates* -- the producer sen
 
 In this test, the qpid transport can acheive a rate of approximately 31,000 messages per second, while OZ with ZeroMQ manages around 650,000 messages per second, or about 20x the rate with qpid.
 
-> Note that these results are **without** pinning either process to a CPU, which confers an advantage on OZ -- ZeroMQ is better able to take advantage of multiple cores, while qpid is essentially single-threaded on both the producer and consumer. 
+> Note that these results are **without** pinning either process to a CPU, which confers an advantage on OZ -- ZeroMQ is better able to take advantage of multiple cores, while qpid is essentially single-threaded on both the producer and consumer.
 
 The above results were obtained with:
 
@@ -75,5 +75,5 @@ The above results were obtained with:
 The tests were run with qpid in point-to-point ("p2p") mode -- i.e., without a broker.  Performance with a brokered configuration, which is typical for qpid, would likely be less.
 
 #### See also
-[Qpid Bridge](https://openmama.github.io/openmama_qpid_bridge.html)
+[Qpid Bridge](https://openmama.finos.org/openmama_qpid_bridge.html)
 

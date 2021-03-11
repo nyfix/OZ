@@ -37,14 +37,14 @@ libuuid-devel | OpenMAMA, OZ
 libevent-devel | OpenMAMA, OZ
 uuidd | OZ
 
-The [`install-deps.sh`](../test/install-deps.sh) script (located in the `test` directory), can be used to install the above.  (Note that installs must be done as root). 
+The [`install-deps.sh`](../test/install-deps.sh) script (located in the `test` directory), can be used to install the above.  (Note that installs must be done as root).
 
 You can also simply use the `install-deps.sh` script as a guide to installing packages manually.
 
 ## Re: uuid's
 OZ uses uuid's to uniquely identify nodes in the network.  To ensure that uuid's are unique, the code calls `uuid_generate_time_safe`, which requires that the uuidd daemon be running.  The daemon should start automatically, but to start the daemon manually (following must be run as root):
 
-### RH/CentOS 
+### RH/CentOS
 ```
 systemctl start uuidd
 ```
@@ -79,12 +79,12 @@ MAMA_MW | zmq| Specifies the middleware transport to load.
 MAMA_NSD_ADDR| 127.0.0.1 | Specifies the address of the nsd process.
 MAMA_NSD_PORT| 5756 | Specifies the port at which the nsd listens.  Defaults to 5756
 MAMA_PAYLOAD | omnmmsg| Specifies the payload library to load.
-MAMA_TPORT_PUB | oz | Specifies the transport name for "publishers".  
+MAMA_TPORT_PUB | oz | Specifies the transport name for "publishers".
 MAMA_TPORT_SUB | oz | Specifies the transport name for "subscribers".
 
-The convention of using different transport names for "publishers" and "subscribers" is a hold-over from the [OpenMAMA examples](https://openmama.github.io/openmama_quick_start_guide_running_openmama_apps.html), and is completely arbitrary -- a "subscriber" can still publish messages, and a "publisher" can still subscribe.  
+The convention of using different transport names for "publishers" and "subscribers" is a hold-over from the [OpenMAMA examples](https://openmama.github.io/openmama_quick_start_guide_running_openmama_apps.html), and is completely arbitrary -- a "subscriber" can still publish messages, and a "publisher" can still subscribe.
 
-With OZ these differences are meaningless in any case, at least in [naming mode](Naming-Service.md), since transports use the naming service to get addressing information. 
+With OZ these differences are meaningless in any case, at least in [naming mode](Naming-Service.md), since transports use the naming service to get addressing information.
 
 
 ## Running OpenMAMA unit tests
@@ -93,7 +93,7 @@ The first line of defense for any OpenMAMA bridge implementation is the built-in
 ```
 cd test
 ./ut.sh
-... 
+...
 [ RUN      ] MsgVectorPriceTestsC.GetVectorPriceNullMsg
 [       OK ] MsgVectorPriceTestsC.GetVectorPriceNullMsg (0 ms)
 [----------] 9 tests from MsgVectorPriceTestsC (0 ms total)
@@ -148,10 +148,10 @@ If you're interested in performance (and who isn't), you can also check out the 
 
 
 #### See also
-[OpenMAMA Build Instructions](https://openmama.github.io/openmama_build_instructions.html)
+[OpenMAMA Build Instructions](https://openmama.finos.org/openmama_build_instructions.html)
 
-[OpenMAMA Unit Testing](https://openmama.github.io/openmama_unit_testing.html)
+[OpenMAMA Unit Testing](https://openmama.finos.org/openmama_unit_testing.html)
 
-[OpenMAMA Qpid Bridge](https://openmama.github.io/openmama_qpid_bridge.html)
+[OpenMAMA Qpid Bridge](https://openmama.finos.org/openmama_qpid_bridge.html)
 
 [ZeroMQ installation](https://github.com/zeromq/libzmq/blob/master/INSTALL)

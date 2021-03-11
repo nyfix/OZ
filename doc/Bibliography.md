@@ -3,15 +3,15 @@
 ## OpenMAMA
 
 Description &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp;| Location
------------------------------------- | -------------  
-OpenMAMA.org website (hosted by Linux Foundation) | <http://www.openmama.org/>
+------------------------------------ | -------------
+OpenMAMA.org website (hosted by Linux Foundation) | <https://openmama.finos.org/>
 Presentations (hosted on SlideShare) | <https://www.slideshare.net/OpenMAMA>
-API Guide | <https://openmama.github.io/reference/mama/c/>
-Technical Documentation | <https://openmama.github.io/index.html>
-Developer Guide | <http://www.openmama.org/sites/default/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>
-Build Instructions | <https://openmama.github.io/openmama_build_instructions.html>
-Repository |<https://github.com/OpenMAMA/OpenMAMA>
-Bridge Architecture | <https://openmama.github.io/openmama_bridge.html>
+API Guide | <https://openmama.finos.org/reference/mama/c>
+Technical Documentation | <https://openmama.finos.org/index.html>
+Developer Guide | <https://openmama.finos.org/assets/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>
+Build Instructions | <https://openmama.finos.org/openmama_build_instructions.html>
+Repository |<https://github.com/finos/OpenMAMA>
+Bridge Architecture | <https://openmama.finos.org/openmama_bridge.html>
 Original 0mQ bridge|<https://github.com/cascadium/OpenMAMA-zmq>
 Omnium payload bridge|<https://github.com/cascadium/OpenMAMA-omnm>
 Frank Quinn's blog|<http://fquinner.github.io/>
@@ -20,7 +20,7 @@ Developer mailing list|<https://lists.openmama.org/g/Openmama-dev/topics>
 
 ## ZeroMQ
 Description | Location
------------------------------------- | -------------  
+------------------------------------ | -------------
 ZeroMQ website|<http://zeromq.org/>
 Internal Architecture | <http://zeromq.org/whitepapers:architecture>
 Guide | <http://zguide.zeromq.org/page:all>

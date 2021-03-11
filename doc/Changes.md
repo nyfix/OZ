@@ -10,19 +10,19 @@ Both OpenMAMA and ZeroMQ support a number of different platforms, including vari
 As of this writing, OZ is compatible with the latest versions of upstream packages (libzmq, OpenMAMA, OpenMAMA-omnm).  That won't always be the case, however -- development takes place at different times and different rates for each package.  To accomodate that, OZ is synchronized against forks of upstream packages.
 
 Package | Repo
--------- | ---------- 
+-------- | ----------
 libzmq | <https://github.com/nyfix/libzmq.git>
 OpenMAMA | <https://github.com/nyfix/OpenMAMA.git>
-OpenMAMA-omnm | <https://github.com/nyfix/OpenMAMA-omnm.git> 
-OZ | <https://github.com/nyfix/OZ.git> 
+OpenMAMA-omnm | <https://github.com/nyfix/OpenMAMA-omnm.git>
+OZ | <https://github.com/nyfix/OZ.git>
 
 For each of the repos above, the following convention is used to specify branches:
 
 Branch |  Description
--------- | ---------- 
+-------- | ----------
 master | Tracks upstream.
 staging | Used to submit patches against upstream, and for development builds.
-nyfix | Current production version. 
+nyfix | Current production version.
 
 # libzmq
 Since OZ makes use of CLIENT/SERVER sockets (for IPC), it must be built with "draft mode" enabled.
@@ -30,21 +30,21 @@ Since OZ makes use of CLIENT/SERVER sockets (for IPC), it must be built with "dr
 # OpenMAMA
 
 ## mama_log
-OpenMAMA applications typically use the `mama_log` function to write messages to the application log.  
+OpenMAMA applications typically use the `mama_log` function to write messages to the application log.
 
-The forked version of OpenMAMA redefines `mama_log` as a macro in order to capture additional information at the call site, including function name, file name and line number.  When used with the forked version of OpenMAMA, the `MAMA_LOG` macro resolves to this redefined `mama_log` macro.  
+The forked version of OpenMAMA redefines `mama_log` as a macro in order to capture additional information at the call site, including function name, file name and line number.  When used with the forked version of OpenMAMA, the `MAMA_LOG` macro resolves to this redefined `mama_log` macro.
 
 To build with this modification, define `NYFIX_LOG` as part of the build.
 
 # OZ
 
 ## Formatting Conventions
-Originally the formatting of OZ source code was maintained according to [standard OpenMAMA conventions](https://openmama.github.io/openmama_coding_standards.html) to make it easier to submit changes to the original project.  When it was later decided to fork the project and develop independently, there was no longer a need to maintain the arguably outdated (i.e., K&R-style) OpenMAMA conventions, and the original code has been reformatted to conform more closely to NYFIX standards.  
+Originally the formatting of OZ source code was maintained according to [standard OpenMAMA conventions](https://openmama.finos.org/openmama_coding_standards.html) to make it easier to submit changes to the original project.  When it was later decided to fork the project and develop independently, there was no longer a need to maintain the arguably outdated (i.e., K&R-style) OpenMAMA conventions, and the original code has been reformatted to conform more closely to NYFIX standards.
 
 <!-- TODO: create an .astylerc and/or .clangtidy file to reformat the code -->
 
 # Opaque Pointers (void*'s)
-OpenMAMA goes to great lengths to ensure that internal data structures are only visible to the compilation units in which they are defined, typically by defining those data structures in .c files, rather than in .h files, and using `void*`'s to hide the implementation details from other parts of the code.  
+OpenMAMA goes to great lengths to ensure that internal data structures are only visible to the compilation units in which they are defined, typically by defining those data structures in .c files, rather than in .h files, and using `void*`'s to hide the implementation details from other parts of the code.
 
 The benefit of this approach is to make it literally impossible for another compilation unit to "peek" at the internal representation of the object (i.e., by casting the opaque pointer to a concrete type), since the definition of the concrete type is unknown outside its translation unit.
 
@@ -59,7 +59,7 @@ For the most part, OZ adheres to the convention that "public" functions (functio
 > Doctor:   So don't do that.
 
 # Thread Safety
-ZeroMQ is very fussy about how to properly access sockets in a multi-threaded environment, and it is quite easy to get that wrong, with serious consequences (e.g., `SEGV`).  
+ZeroMQ is very fussy about how to properly access sockets in a multi-threaded environment, and it is quite easy to get that wrong, with serious consequences (e.g., `SEGV`).
 
 OZ is completely thread-safe internally, and makes it difficult to misuse ZeroMQ in a non-thread-safe-manner.
 

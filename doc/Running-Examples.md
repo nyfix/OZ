@@ -52,4 +52,4 @@ mamasubscriberc: Recieved msg.
 > NOTE that with the native OpenMAMA qpid transport, the publisher **MUST** be started before the subscriber -- if the subscriber is started first, it will not receive any messages.  This is a limitation of the qpid transport, and does not apply to OZ -- with OZ the publisher and subscriber can be started in any order.
 
 #### See also
-[Quick Start with OpenMAMA Example Apps](https://openmama.github.io/openmama_quick_start_guide_running_openmama_apps.html)
+[Quick Start with OpenMAMA Example Apps](https://openmama.finos.org/openmama_quick_start_guide_running_openmama_apps.html)
