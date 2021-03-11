@@ -7,7 +7,7 @@ Description &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp;| Loc
 OpenMAMA.org website (hosted by Linux Foundation) | <https://openmama.finos.org/>
 Presentations (hosted on SlideShare) | <https://www.slideshare.net/OpenMAMA>
 API Guide | <https://openmama.finos.org/reference/mama/c>
-Technical Documentation | <https://openmama.finos.org/index.html>
+Technical Documentation | <https://openmama.finos.org/documentation.html>
 Developer Guide | <https://openmama.finos.org/assets/files/OpenMAMA%20Developer%27s%20Guide%20C.pdf>
 Build Instructions | <https://openmama.finos.org/openmama_build_instructions.html>
 Repository |<https://github.com/finos/OpenMAMA>
