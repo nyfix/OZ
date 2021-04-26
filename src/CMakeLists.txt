@@ -1,5 +1,8 @@
 include(GNUInstallDirs)
 
+# need c9x mode
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+
 include_directories(.)
 include_directories(${MAMA_ROOT}/include)
 include_directories(${ZMQ_ROOT}/include)

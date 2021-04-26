@@ -1,9 +1,6 @@
 cmake_minimum_required (VERSION 2.8.7)
 project (OpenMAMA-zmq)
 
-# need c9x mode
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-
 # enable warnings
 set(WARNFLAGS "${WARNFLAGS} -Wall")
 set(WARNFLAGS "${WARNFLAGS} -Wextra")
