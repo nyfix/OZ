@@ -334,12 +334,12 @@ mama_status zmqBridgeMamaTransportImpl_init(zmqTransportBridge* impl)
 
    if (impl->mIsNaming == 1) {
       // when using naming protocol, we want to stop data socket reconnecting on certain errors
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_stopReconnectOnError(&impl->mZmqDataSub));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_stopReconnectOnError(&impl->mZmqDataSub, impl->mReconnectOptions));
       // create naming sockets
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingPub, ZMQ_PUB_TYPE, "namingPub", impl->mSocketMonitor));
       // namingPub wants to stop reconnecting on error
       // (if nsd crashes, namingPub will reconnect to address in welcome msg)
-      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_stopReconnectOnError(&impl->mZmqNamingPub));
+      CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_stopReconnectOnError(&impl->mZmqNamingPub, impl->mReconnectOptions));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_createSocket(impl->mZmqContext, &impl->mZmqNamingSub, ZMQ_SUB_TYPE, "namingSub", impl->mSocketMonitor));
       CALL_MAMA_FUNC(zmqBridgeMamaTransportImpl_subscribe(impl->mZmqNamingSub.mSocket, ZMQ_NAMING_PREFIX));
    }
@@ -1294,13 +1294,12 @@ mama_status zmqBridgeMamaTransportImpl_destroySocket(zmqSocket* socket)
 
 // sets the socket to stop trying to reconnect if it gets an error condition on
 // reconnect (e.g., ECONNREFUSED)
-mama_status zmqBridgeMamaTransportImpl_stopReconnectOnError(zmqSocket* socket)
+mama_status zmqBridgeMamaTransportImpl_stopReconnectOnError(zmqSocket* socket, int reconnectOptions)
 {
    mama_status status = MAMA_STATUS_OK;
 
    wlock_lock(socket->mLock);
-   int reconnectOption = ZMQ_RECONNECT_STOP_CONN_REFUSED | ZMQ_RECONNECT_STOP_HANDSHAKE_FAILED;
-   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_STOP, &reconnectOption, sizeof(reconnectOption));
+   int rc = zmq_setsockopt(socket->mSocket, ZMQ_RECONNECT_STOP, &reconnectOptions, sizeof(reconnectOptions));
    if (rc != 0) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_setsockopt(%p) failed %d(%s)", socket->mSocket, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;

@@ -150,6 +150,7 @@ typedef struct zmqTransportBridge_ {
    int                     mHeartbeatInterval;
    int                     mReconnectInterval;
    int                     mDisableRefresh;
+   int                     mReconnectOptions;   // value of ZMQ_RECONNECT_STOP socket option
 
    // inproc socket for inter-thread commands
    zmqSocket               mZmqControlSub;

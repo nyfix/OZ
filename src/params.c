@@ -134,6 +134,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    impl->mIsNaming = getInt(name, "is_naming", 1, 0);
    impl->mPublishAddress = getStr(name, "publish_address", "127.0.0.1");
    impl->mDisableRefresh = getInt(name, "disable_refresh", 1, 0);
+   impl->mReconnectOptions = getInt(name, "reconnect_stop", ZMQ_RECONNECT_STOP_CONN_REFUSED, 0);
 
    log_level_beacon = getInt(name, "log_level_beacon", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
    log_level_naming = getInt(name, "log_level_naming", MAMA_LOG_LEVEL_NORMAL, MAMA_LOG_LEVEL_OFF);
