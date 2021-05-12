@@ -34,7 +34,7 @@ flex | OpenMAMA
 gtest-devel | OpenMAMA, OpenMAMA-omnm
 apr-devel | OpenMAMA
 libuuid-devel | OpenMAMA, OZ
-libevent-devel | OpenMAMA, OZ
+libevent-devel | OpenMAMA
 uuidd | OZ
 
 The [`install-deps.sh`](../test/install-deps.sh) script (located in the `test` directory), can be used to install the above.  (Note that installs must be done as root).

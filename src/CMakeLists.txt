@@ -69,7 +69,6 @@ if(WIN32)
                           libwombatcommon${MAMA_LIB_SUFFIX}
                           libmamac${MAMA_LIB_SUFFIX}
                           libzmq-v120-mt-4_0_4
-                          event
                           uuid
                           Ws2_32)
 
@@ -89,8 +88,7 @@ else()
                           wombatcommon
                           mama
                           zmq
-                          uuid
-                          event)
+                          uuid)
     install(TARGETS mamazmqimpl${MAMA_LIB_SUFFIX} DESTINATION lib)
 
     # need to use c++ linker w/nsd under certain conditions (e.g., w/ubsan)
