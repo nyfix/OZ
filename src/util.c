@@ -117,7 +117,6 @@ uint64_t get_zmqEventMask(int logLevel)
 
       case MAMA_LOG_LEVEL_FINE:
          eventMask |= ZMQ_EVENT_CONNECT_RETRIED;
-         eventMask |= ZMQ_EVENT_CLOSED;
          eventMask |= ZMQ_EVENT_MONITOR_STOPPED;
 
       case MAMA_LOG_LEVEL_NORMAL:
@@ -126,6 +125,7 @@ uint64_t get_zmqEventMask(int logLevel)
          eventMask |= ZMQ_EVENT_DISCONNECTED;
          eventMask |= ZMQ_EVENT_HANDSHAKE_SUCCEEDED;
          eventMask |= ZMQ_EVENT_LISTENING;
+         eventMask |= ZMQ_EVENT_CLOSED;
 
       case MAMA_LOG_LEVEL_ERROR:
          eventMask |= ZMQ_EVENT_BIND_FAILED;
