@@ -473,7 +473,7 @@ void* zmqBridgeMamaTransportImpl_dispatchThread(void* closure)
 
    // set next beacon time
    uint64_t lastBeacon = 0;
-   uint64_t nextBeacon = -1;
+   uint64_t nextBeacon = 0;
    if (wInterlocked_read(&impl->mBeaconInterval) > 0) {
       nextBeacon = getMillis() + wInterlocked_read(&impl->mBeaconInterval);
    }
