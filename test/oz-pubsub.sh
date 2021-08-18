@@ -6,7 +6,7 @@ source ${SCRIPT_DIR}/setenv.sh
 [[ -z ${MAMA_PAYLOAD} ]] && source ${SCRIPT_DIR}/omnmmsg.sh
 
 # use mama.properties from here
-export WOMBAT_PATH=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)/../config
+[[ -z ${WOMBAT_PATH} ]] && export WOMBAT_PATH=$(cd $(dirname ${BASH_SOURCE}[0]) && pwd)/../config
 
 # use zmq transport w/o nsd
 export MAMA_MW=zmq
