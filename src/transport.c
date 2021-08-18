@@ -209,12 +209,16 @@ mama_status zmqBridgeMamaTransport_destroy(transportBridge transport)
    status = zmqBridgeMamaTransportImpl_stop(impl);
    wsem_destroy(&impl->mIsReady);
 
-   // TODO: is this good enough?
    // make sure we don't delete the transport out from under publishEndpoints, if it's running
+   // this can happen if transport is destroyed immediately after creation
    if ((impl->mIsNaming == 1) && (wInterlocked_read(&impl->mNamingConnected) == 0)) {
       // this can only be true if publishEndpoints is running in a separate thread(s)
       // if so, give the thread a chance to terminate
       usleep(impl->mNamingConnectInterval * 2);
+   }
+   int rc = wthread_join(impl->mPublishThread, NULL);
+   if (rc != 0) {
+      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to join zmqBridgeMamaTransportImpl_publishEndpoints thread");
    }
 
    wInterlocked_destroy(&impl->mNamingConnected);
@@ -712,8 +716,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       }
 
       // start thread to publish naming msg
-      wthread_t publishThread;
-      int rc = wthread_create(&publishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
+      int rc = wthread_create(&impl->mPublishThread, NULL, zmqBridgeMamaTransportImpl_publishEndpoints, impl);
       if (0 != rc) {
          MAMA_LOG(MAMA_LOG_LEVEL_SEVERE, "create of endpoint publish thread failed %d(%s)", rc, strerror(rc));
          return MAMA_STATUS_PLATFORM;
