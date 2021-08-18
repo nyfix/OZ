@@ -35,6 +35,7 @@
 // local includes
 #include "zmqbridgefunctions.h"
 #include <mama/integration/mama.h>
+#include "zmqdefs.h"
 #include "util.h"
 
 #include <zmq.h>
@@ -43,9 +44,6 @@
 /*=========================================================================
   =                Typedefs, structs, enums and globals                   =
   =========================================================================*/
-
-/* Global timer heap */
-timerHeap           gOmzmqTimerHeap;
 
 /* Default payload names and IDs to be loaded when this bridge is loaded */
 static char*        PAYLOAD_NAMES[]         =   { "omnmmsg", NULL };
@@ -91,6 +89,16 @@ zmqBridge_open(mamaBridge bridgeImpl)
       return MAMA_STATUS_NULL_ARG;
    }
 
+    /* Create the bridge impl container */
+    zmqBridgeClosure* closure = (zmqBridgeClosure*) calloc(1, sizeof(zmqBridgeClosure));
+    if (NULL == closure)
+    {
+        mama_log (MAMA_LOG_LEVEL_ERROR,
+                  "baseBridge_open(): Could not allocate bridge structure.");
+        return MAMA_STATUS_NOMEM;
+    }
+    mamaBridgeImpl_setClosure(bridgeImpl, closure);
+
    /* Create the default event queue */
    status = mamaQueue_create(&defaultEventQueue, bridgeImpl);
    if (MAMA_STATUS_OK != status) {
@@ -104,13 +112,13 @@ zmqBridge_open(mamaBridge bridgeImpl)
    mamaQueue_setQueueName(defaultEventQueue, ZMQ_DEFAULT_QUEUE_NAME);
 
    /* Create the timer heap */
-   if (0 != createTimerHeap(&gOmzmqTimerHeap)) {
+    if (0 != createTimerHeap (&closure->mTimerHeap)) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to initialize timers.");
       return MAMA_STATUS_PLATFORM;
    }
 
    /* Start the dispatch timer heap which will create a new thread */
-   if (0 != startDispatchTimerHeap(gOmzmqTimerHeap)) {
+   if (0 != startDispatchTimerHeap(closure->mTimerHeap)) {
       MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to start timer thread.");
       return MAMA_STATUS_PLATFORM;
    }
@@ -128,18 +136,21 @@ zmqBridge_close(mamaBridge bridgeImpl)
       return MAMA_STATUS_NULL_ARG;
    }
 
+   zmqBridgeClosure* closure = NULL;
+   mamaBridgeImpl_getClosure(bridgeImpl, (void**)&closure);
+   wthread_t timerThread;
    /* Remove the timer heap */
-   if (NULL != gOmzmqTimerHeap) {
-      /* The timer heap allows us to access it's thread ID for joining */
-      wthread_t timerThread = timerHeapGetTid(gOmzmqTimerHeap);
-      if (0 != destroyHeap(gOmzmqTimerHeap)) {
+   if (NULL != closure->mTimerHeap) {
+        /* The timer heap allows us to access it's thread ID for joining */
+        timerThread = timerHeapGetTid (closure->mTimerHeap);
+        if (0 != destroyHeap (closure->mTimerHeap)) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to destroy zmq timer heap.");
          status = MAMA_STATUS_PLATFORM;
       }
       /* The timer thread expects us to be responsible for terminating it */
       wthread_join(timerThread, NULL);
    }
-   gOmzmqTimerHeap = NULL;
+    mamaBridgeImpl_setClosure(bridgeImpl, NULL);
 
    /* Destroy once queue has been emptied */
    mama_getDefaultEventQueue(bridgeImpl, &defaultEventQueue);
