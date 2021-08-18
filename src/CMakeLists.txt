@@ -43,6 +43,7 @@ add_library(mamazmqimpl${MAMA_LIB_SUFFIX}
             SHARED bridge.c
                    inbox.c
                    inbox.h
+                   io.c
                    msg.c
                    msg.h
                    publisher.c
