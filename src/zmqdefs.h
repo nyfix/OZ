@@ -79,6 +79,7 @@ int log_level_inbox;
 #include <wombat/queue.h>
 #include <wombat/mempool.h>
 #include <mama/integration/types.h>
+#include <timers.h>
 
 // required for definition of ZMQ_CLIENT, ZMQ_SERVER
 #define ZMQ_BUILD_DRAFT_API
@@ -211,6 +212,14 @@ typedef struct zmqTransportBridge_ {
    long long               mPolls;                 // msgs read after calling zmq_poll
 
 } zmqTransportBridge;
+
+
+typedef struct zmqBridgeClosure_
+{
+    // Note that mClosure is first - contains implementation bridge's own closure
+    void*                 mImplClosure;
+    timerHeap             mTimerHeap;
+} zmqBridgeClosure;
 
 
 // defines a subscriber (either "normal" or wildcard)
