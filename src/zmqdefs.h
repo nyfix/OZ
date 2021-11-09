@@ -165,6 +165,7 @@ typedef struct zmqTransportBridge_ {
    int                     mNamingConnectRetries;     // max number of proxy connect attempts
    int                     mNamingConnectInterval;    // interval between proxy connect attempts (in micros, as per usleep)
    uint32_t                mBeaconInterval;           // interval between beacons (in millis, as per zmq_poll), or -1 to disable beaconing
+   wthread_t               mPublishThread;
 
    // "data" sockets for normal messaging
    zmqSocket               mZmqDataPub;
