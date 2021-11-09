@@ -28,6 +28,7 @@
 #define ZMQ_BRIDGE_FUNCTIONS__
 
 #include <mama/mama.h>
+#include <mama/io.h>
 
 #include <mama/integration/types.h>
 #include <mama/integration/bridge.h>
@@ -377,6 +378,24 @@ zmqBridgeMamaTimer_setInterval(timerBridge timer, mama_f64_t interval);
 MAMAExpDLL
 extern mama_status
 zmqBridgeMamaTimer_getInterval(timerBridge timer, mama_f64_t* interval);
+
+MAMAExpDLL
+extern mama_status
+zmqBridgeMamaIo_create(ioBridge*       result,
+                       void*           nativeQueueHandle,
+                       uint32_t        descriptor,
+                       mamaIoCb        action,
+                       mamaIoType      ioType,
+                       mamaIo          parent,
+                       void*           closure);
+
+MAMAExpDLL
+extern mama_status
+zmqBridgeMamaIo_getDescriptor(ioBridge io, uint32_t* result);
+
+MAMAExpDLL
+extern mama_status
+zmqBridgeMamaIo_destroy(ioBridge io);
 
 MAMAExpDLL
 extern mama_status
