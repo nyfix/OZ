@@ -91,15 +91,3 @@ See [Reconnects & Heartbeats](Reconnects-Heartbeats.md) for more.
 <a name="footnote2">2</a>: It is certainly possible to sub-divide the network by introducing the concept of named "domains" or "groups".   
 
 <a name="footnote3">3</a>: The number of individual connections for a mesh network is n^2/2, so for a network with 100 nodes there are 5,000 total connections.  This assumes that every node has n connections -- one for each node, including itself.
-
-## Socket Types
-
-OZ defines four distinct ZeroMQ sockets that it uses for specific purposes.  
-
-Name | Purpose
----- | -------
-namingSub | In "naming" mode, OZ connects to the naming service provider(s) using this socket.  The naming service providers are specified in `naming.subscribe_address_0`, `naming.subscribe_port_0` etc.  The default address is 127.0.0.1:5657.
-namingPub | OZ connects to the naming service using this socket, at the address that was received in the [welcome message](Wire-Formats#Naming_Messages) from the naming service provider.  OZ publishes [startup](#Startup) and [beacon](#Beaconing) messages on this socket.
-dataPub | OZ listens for incoming connections on this socket, and publishes data on this socket.
-dataSub | 
-
