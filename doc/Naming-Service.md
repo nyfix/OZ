@@ -84,6 +84,17 @@ This applies to the namingSub connection to the nsd -- since the nsd must bind t
 
 See [Reconnects & Heartbeats](Reconnects-Heartbeats.md) for more.
 
+## Socket Types
+
+OZ defines four distinct ZeroMQ sockets that it uses for specific purposes.  
+
+Name | Type | Purpose
+---- | ------- | ----
+namingSub | ZMQ_SUB | In "naming" mode, OZ connects to the naming service provider(s) using this socket, at the address specified in [`mama.properties`](Configuration.md#naming-sockets). 
+namingPub | ZMQ_PUB | OZ connects to the naming service using this socket, at the address that was received in the [welcome message](Wire-Formats.md#naming-messages) from the naming service provider.  OZ publishes [startup](#Startup) and [beacon](#Beaconing) messages on this socket.
+dataSub | ZMQ_SUB | OZ connects to peers on this socket, using the address received in [naming messages](Wire-Formats.md#naming-messages) published by the peers.  
+dataPub | ZMQ_PUB | OZ accepts incoming connections from peers, and publishes data, on this socket.
+
 <hr>
 
 <a name="footnote1">1</a>: Typically a node is a Linux process, which in turn represents a single OpenMAMA transport bridge library.

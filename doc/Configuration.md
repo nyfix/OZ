@@ -13,8 +13,12 @@ socket_monitor|1|Specifies whether to enable monitoring of socket connects/disco
 is_naming|1|Specifies that the transport is a "naming" transport.  For more information, see [Naming Service/Peer Discovery](Naming-Service.md).
 heartbeat_interval|10|Specifies the heartbeat interval for client (connecting) sockets, both naming and data.  The code calls `zmq_setsockopt(..., ZMQ_HEARTBEAT_IVL` with this value (* 1000).
 reconnect_interval|10|Specifies the reconnect interval for client (connecting) sockets, both naming and data.  The code calls `zmq_setsockopt(..., ZMQ_RECONNECT_IVL` with this value (* 1000).
-reconnect_stop|0x1|Specifies the reconnect option for client (connecting) sockets, both naming and data.  The code calls `zmq_setsockopt(..., ZMQ_RECONNECT_STOP` with this value.  Note that the values are listed in `zmq.h`, and can be `OR`ed together
-.
+reconnect_stop|0x1|Specifies the reconnect option for client (connecting) sockets, both naming and data.  The code calls `zmq_setsockopt(..., ZMQ_RECONNECT_STOP` with this value.  Note that the values are listed in `zmq.h`, and can be `OR`ed together.
+log_level_naming|4 (`MAMA_LOG_LEVEL_NORMAL`)|Specifies the Mama logging level to use for [naming messages](Wire-Formats.md#naming-messages). 
+log_level_beacon|5 (`MAMA_LOG_LEVEL_FINER`)|Specifies the Mama logging level to use for [beacon messages](Naming-Service.md#becaoning), which is a special kind of naming message.  If beaconing is enabled, there will be a *LOT* of these. 
+log_level_inbox|5 (`MAMA_LOG_LEVEL_FINER`)|Specifies the Mama logging level to use for [inbox messages](Request-Reply.md).  You would typically not want/need to see these messages, but it's possible to enable them for troubleshooting/debugging purposes.
+
+
 ### Naming Sockets
 The following settings apply only to "naming" transports (i.e., transports that use an nsd/proxy connection to discover peers).
 

@@ -15,8 +15,9 @@
 - [Monitoring Socket Events](Socket-Monitor.md)
 - [Wire Formats](Wire-Formats.md)
 - [Reconnects & Heartbeats](Reconnects-Heartbeats.md)
-## Miscellaneous
 
+## Miscellaneous
+- [Print OZ Log utility](pol.pl.md)
 - [Bibliography](Bibliography.md)
 - [Changes from upstream packages](Changes.md)
 

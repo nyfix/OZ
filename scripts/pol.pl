@@ -46,18 +46,44 @@ print "Time\tEvent\tHost\tPort\tProg\tPID\tfd\n";
 
 while (<INFILE>) {
    chomp;
-   my (@fields) = split /\|/;
-   my $timestamp = $fields[0];
-   my (@tokens) = split(' ', $fields[3]);
-   if ($fields[1] =~ "zmqBridgeMamaTransportImpl_dispatchNamingMsg" ) {
-      my $type = $fields[3];
-      if ( ($type =~ "Received endpoint msg:") || 
-           ($type =~ "Published endpoint msg:") ) {
-         my $endpoint = ((split('=', $tokens[10]))[1]);
+   my (@parts) = split /\|/;
+   my $timestamp = $parts[0];
+   my $msg; my $type; my @fields;
+   if ($#parts == 1) {
+      # old format
+      my (@tokens) = split(':', $parts[1], 3);
+      $msg = $tokens[0];
+      $type = $tokens[1];
+      (@fields) = split(' ', $tokens[2]);
+   }
+   elsif ($#parts == 4) {
+      # new format
+      $msg = $parts[1];
+      next if (! $msg =~ "zmqBridge");
+      my (@tokens) = split(' ', $parts[3], 2);
+      $type = (split(':', $tokens[1]))[0]; 
+      if ($msg eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg") {
+         (@fields) = split(' ', (split(':', $tokens[1], 2))[1]);
+      }
+      elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent") {
+         (@fields) = split(' ', $tokens[1]);
+      }
+      elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent_v2") {
+         (@fields) = split(' ', $tokens[1]);
+      }
+   }
+   else {
+      # unknown format
+      next;
+   }
+   next if $#fields eq 0;
+   if ($msg eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg" ) {
+      if ( ($type =~ "Received endpoint msg") || ($type =~ "Published endpoint msg") ) {
+         my $endpoint = ((split('=', $fields[6]))[1]);
          my ($peer, $exists) = getPeer($endpoint);
-         $peer->prog((split('=', $tokens[5]))[1]);
-         $peer->host((split('=', $tokens[6]))[1]);
-         $peer->pid((split('=', $tokens[8]))[1]);
+         $peer->prog((split('=', $fields[1]))[1]);
+         $peer->host((split('=', $fields[2]))[1]);
+         $peer->pid((split('=', $fields[4]))[1]);
          $peer->endpoint($endpoint);
          $peer->proto((split('[:/]+', $peer->endpoint))[0]);
          $peer->addr((split('[:/]+', $peer->endpoint))[1]);
@@ -67,42 +93,42 @@ while (<INFILE>) {
          }
       }
    }
-   elsif ($fields[1] eq "zmqBridgeMamaTransportImpl_monitorEvent" ) {
-      my $sockType = (split(':', $tokens[2]))[1];
+   elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent" ) {
+      my $sockType = (split(':', $fields[1]))[1];
       next if (($sockType eq "dataPub") || ($sockType eq "namingSub"));
-      my $event = (split(':', $tokens[5]))[1];
+      my $event = (split(':', $fields[4]))[1];
       if ($event =~ "LISTENING") {
-         my $endpoint = (split(':', $tokens[6], 2))[1];
+         my $endpoint = (split(':', $fields[5], 2))[1];
          my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $tokens[3]))[1];
+         my $fd = (split(':', $fields[2]))[1];
          $peer->fd($fd) if $fd != 0;
       }
       elsif ( ($event =~ "CONNECTED") || 
               ($event =~ "HANDSHAKE_SUCCEEDED") ||  
               ($event =~ "DISCONNECTED") ) {  
-         my $endpoint = (split(':', $tokens[6], 2))[1];
+         my $endpoint = (split(':', $fields[5], 2))[1];
          my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $tokens[3]))[1];
+         my $fd = (split(':', $fields[3]))[1];
          $peer->fd($fd) if $fd != 0;
          printf("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
       }
    }
-   elsif ($fields[1] eq "zmqBridgeMamaTransportImpl_monitorEvent_v2" ) {
-      my $sockType = (split(':', $tokens[1]))[1];
+   elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent_v2" ) {
+      my $sockType = (split(':', $fields[0]))[1];
       next if (($sockType eq "dataPub") || ($sockType eq "namingSub"));
-      my $event = (split(':', $tokens[2]))[1];
+      my $event = (split(':', $fields[1]))[1];
       if ($event =~ "LISTENING") {
-         my $endpoint = (split(':', $tokens[4], 2))[1];
+         my $endpoint = (split(':', $fields[3], 2))[1];
          my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $tokens[3]))[1];
+         my $fd = (split(':', $fields[2]))[1];
          $peer->fd($fd) if $fd != 0;
       }
       elsif ( ($event =~ "CONNECTED") || 
               ($event =~ "HANDSHAKE_SUCCEEDED") ||  
               ($event =~ "DISCONNECTED") ) {  
-         my $endpoint = (split(':', $tokens[5], 2))[1];
+         my $endpoint = (split(':', $fields[4], 2))[1];
          my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $tokens[3]))[1];
+         my $fd = (split(':', $fields[2]))[1];
          $peer->fd($fd) if $fd != 0;
          printf("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
       }
