@@ -138,11 +138,10 @@ zmqBridge_close(mamaBridge bridgeImpl)
 
    zmqBridgeClosure* closure = NULL;
    mamaBridgeImpl_getClosure(bridgeImpl, (void**)&closure);
-   wthread_t timerThread;
    /* Remove the timer heap */
    if (NULL != closure->mTimerHeap) {
         /* The timer heap allows us to access it's thread ID for joining */
-        timerThread = timerHeapGetTid (closure->mTimerHeap);
+        wthread_t timerThread = timerHeapGetTid (closure->mTimerHeap);
         if (0 != destroyHeap (closure->mTimerHeap)) {
          MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "Failed to destroy zmq timer heap.");
          status = MAMA_STATUS_PLATFORM;
