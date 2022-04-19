@@ -293,6 +293,10 @@ static mama_status zmqBridgeMamaQueue_enqueueEventInt(queueBridge queue,
    // dont enqueue event if queue is not dispatching
    if (wInterlocked_read(&impl->mIsDispatching) != 1) {
       MAMA_LOG(MAMA_LOG_LEVEL_WARN, "Attempt to enqueue event on non-dispatching queue");
+      // TODO - resolve race condition (?!)
+      // following causes programs to intermittently fail at startup -- there is a race condition
+      // where mIsDispatching is 0 and causes subsequent session create to fail
+      //return MAMA_STATUS_INVALID_ARG;
    }
 
    /* Call the underlying wombatQueue_enqueue method */
