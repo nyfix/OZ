@@ -42,3 +42,7 @@ install(TARGETS timer DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(timer2 timer2.cpp)
 target_link_libraries(timer2 ozimpl mama)
 install(TARGETS timer2 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(uaf uaf.cpp)
+target_link_libraries(uaf ozimpl mama)
+install(TARGETS uaf DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})

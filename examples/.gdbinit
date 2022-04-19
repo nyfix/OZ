@@ -22,7 +22,9 @@ handle SIGINT stop pass
 #b zmqBridgeMamaSubscription_createWildCard
 #b oz::subscriber::start
 
-b oz::cmdLine::getMw
-b oz::cmdLine::getPayload
-b oz::cmdLine::getTport
-set args -tport pub -m qpid -p qpidmsg
+#b oz::cmdLine::getMw
+#b oz::cmdLine::getPayload
+#b oz::cmdLine::getTport
+#set args -tport pub -m qpid -p qpidmsg
+
+b mamaQueue_stopDispatch

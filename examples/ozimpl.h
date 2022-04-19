@@ -287,6 +287,7 @@ public:
    virtual mama_status destroy();
 
    mama_status start();
+   mama_status stop();
 
    mamaQueue getQueue() const               { return queue_; }
    oz::connection* getConnection() const    { return pConn_; }

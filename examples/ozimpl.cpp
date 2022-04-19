@@ -71,10 +71,17 @@ mama_status oz::session::start()
    return MAMA_STATUS_OK;
 }
 
-mama_status oz::session::destroy()
+mama_status oz::session::stop()
 {
+   CALL_MAMA_FUNC(status_ = mamaQueue_stopDispatch(queue_));
    CALL_MAMA_FUNC(status_ = mamaDispatcher_destroy(dispatcher_));
    CALL_MAMA_FUNC(status_ = mamaQueue_destroyTimedWait(queue_, 100));
+   return MAMA_STATUS_OK;
+}
+
+mama_status oz::session::destroy()
+{
+   CALL_MAMA_FUNC(status_ = stop());
    delete this;
    return MAMA_STATUS_OK;
 }
