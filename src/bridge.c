@@ -149,7 +149,8 @@ zmqBridge_close(mamaBridge bridgeImpl)
       /* The timer thread expects us to be responsible for terminating it */
       wthread_join(timerThread, NULL);
    }
-    mamaBridgeImpl_setClosure(bridgeImpl, NULL);
+   mamaBridgeImpl_setClosure(bridgeImpl, NULL);
+   free(closure);
 
    /* Destroy once queue has been emptied */
    mama_getDefaultEventQueue(bridgeImpl, &defaultEventQueue);
