@@ -6,21 +6,31 @@ It processes messages for the OZ "dataSub" and "namingPub" sockets, as these are
 
 ## Usage
 
-`pol.pl <logfile>`
+`pol.pl -g '<grep-string>' <logfile>`
 
-Note that the log file must contain naming messages (`log_level_naming` in mama.properties) to get the process's name and PID.
+Parameter | Meaning
+----------| -------
+-g | Specifies a "grep" string that is used to filter the output.  You can specify any valid Perl regex for grep-string (see example below).
+
+> Note that the log file must contain naming messages (`log_level_naming` in mama.properties) to get the process's name and PID.
 
 ## Example
-Below is an example of importing the tab-separated file into a spreadsheet program.
+
+```
+$ pol.pl -g 'tpsdaemon|tpsworker' abim3.log
+```
 
 Time | Event | Host  | Port | Prog | PID | fd
 ---- | ----- | ----- | ---- | ---- | --- | ---
-11/17 10:34:08.491951|CONNECTED|bt-brixu|40895|nsd|157751|30
-11/17 10:34:08.492716|HANDSHAKE_SUCCEEDED|bt-brixu|40895|nsd|157751|30
-11/17 10:34:08.495518|CONNECTED|bt-brixu|34161|tpsdaemon|157776|32
-11/17 10:34:08.496640|CONNECTED|bt-brixu|43813|svr_state_mon|157774|34
-11/17 10:34:08.496754|CONNECTED|bt-brixu|39039|check_status|157778|28
-11/17 10:34:08.496882|HANDSHAKE_SUCCEEDED|bt-brixu|34161|tpsdaemon|157776|32
-11/17 10:34:08.497212|HANDSHAKE_SUCCEEDED|bt-brixu|43813|svr_state_mon|157774|34
-11/17 10:34:08.497612|HANDSHAKE_SUCCEEDED|bt-brixu|39039|check_status|157778|28
-11/17 10:34:10.666831|DISCONNECTED|bt-brixu|39039|check_status|157778|28
+6/13 16:07:13.200262|WELCOME|csnsb12.qa.nyfix.net|40953|nsd|12773|0
+6/13 16:07:13.200646|CONNECTED|csnsb12.qa.nyfix.net|40953|nsd|12773|39
+6/13 16:07:13.201104|HANDSHAKE_SUCCEEDED|csnsb12.qa.nyfix.net|40953|nsd|12773|39
+6/13 16:07:13.206905|CONNECT REQ|csnsb11.qa.nyfix.net|36375|tpsdaemon|16384|0
+6/13 16:07:13.207090|CONNECT REQ|csnsb12.qa.nyfix.net|39195|tpsdaemon|18893|0
+6/13 16:07:13.207611|CONNECT REQ|csnsb12.qa.nyfix.net|43814|tpsdaemon|12334|0
+6/13 16:07:13.209573|CONNECTED|csnsb12.qa.nyfix.net|39195|tpsdaemon|18893|52
+6/13 16:07:13.209682|CONNECTED|csnsb11.qa.nyfix.net|36375|tpsdaemon|16384|51
+6/13 16:07:13.209904|CONNECTED|csnsb12.qa.nyfix.net|43814|tpsdaemon|12334|55
+6/13 16:07:13.210329|CONNECT REQ|csnsb13.qa.nyfix.net|38855|tpsworker|7412|0
+6/13 16:07:13.210723|CONNECT REQ|csnsb12.qa.nyfix.net|33745|tpsdaemon|7679|0
+6/13 16:07:13.210904|CONNECT REQ|csnsb13.qa.nyfix.net|44681|tpsworker|7576|0
