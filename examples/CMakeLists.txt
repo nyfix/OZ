@@ -42,3 +42,7 @@ install(TARGETS timer DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(timer2 timer2.cpp)
 target_link_libraries(timer2 ozimpl mama)
 install(TARGETS timer2 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(leak leak.cpp)
+target_link_libraries(leak ozimpl mama)
+install(TARGETS leak DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})

@@ -3,6 +3,14 @@
 # parse OZ logs
 #
 
+# get params
+use Getopt::Long qw(:config pass_through);
+
+# matching
+my $grep;
+GetOptions( 'g|grep=s' => \$grep );
+
+
 use Class::Struct;
 struct Peer => {
    prog => '$',
@@ -32,6 +40,12 @@ sub getPeer {
       
    return $peer, $exists;
 }   
+
+sub printg {
+   my $format = shift; 
+   my $line = sprintf $format, @_;
+   print $line if (!defined $grep || (($line =~ $grep) || ($line =~ "nsd")));
+}
 
 # take filename arg on cmd line, or read from stdin
 local *INFILE;
@@ -78,7 +92,22 @@ while (<INFILE>) {
    }
    next if $#fields eq 0;
    if ($msg eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg" ) {
+      my $sockType = "namingSub";
       if ( ($type =~ "Received endpoint msg") || ($type =~ "Published endpoint msg") ) {
+         my $msgtype = ((split('=', $fields[0]))[1]);
+         my $event;
+         if ($msgtype eq "W") {
+            $event = "WELCOME";
+         }
+         elsif ($msgtype eq "C") {
+            $event = "CONNECT REQ";
+         }
+         elsif ($msgtype eq "D") {
+            $event = "DISCONNECT REQ";
+         }
+         else {
+            $event = "UNKOWN";
+         }
          my $endpoint = ((split('=', $fields[6]))[1]);
          my ($peer, $exists) = getPeer($endpoint);
          $peer->prog((split('=', $fields[1]))[1]);
@@ -90,6 +119,9 @@ while (<INFILE>) {
          $peer->port((split('[:/]+', $peer->endpoint))[2]);
          if (!exists($hosts{$peer->addr()})) {
             $hosts{$peer->addr()} = $peer->host();
+         }
+         if (($msgtype ne "C") || !$exists) {
+            printg("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
          }
       }
    }
@@ -110,7 +142,7 @@ while (<INFILE>) {
          my ($peer, $exists) = getPeer($endpoint);
          my $fd = (split(':', $fields[3]))[1];
          $peer->fd($fd) if $fd != 0;
-         printf("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
+         printg("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
       }
    }
    elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent_v2" ) {
@@ -130,7 +162,7 @@ while (<INFILE>) {
          my ($peer, $exists) = getPeer($endpoint);
          my $fd = (split(':', $fields[2]))[1];
          $peer->fd($fd) if $fd != 0;
-         printf("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
+         printg("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
       }
    } 
 }

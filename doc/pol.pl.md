@@ -6,21 +6,36 @@ It processes messages for the OZ "dataSub" and "namingPub" sockets, as these are
 
 ## Usage
 
-`pol.pl <logfile>`
+`pol.pl -g '<grep-string>' <logfile>`
 
-Note that the log file must contain naming messages (`log_level_naming` in mama.properties) to get the process's name and PID.
+Parameter | Meaning
+----------| -------
+-g | Specifies a "grep" string that is used to filter the output.  You can specify any valid Perl regex for grep-string (see example below).
+
+The output of the command is in tab-separated format, and can easily be imported into most spreadsheet programs.
+
+### Notes
+
+1. The log file must contain naming messages (`log_level_naming` in mama.properties) to get the process's name and PID.  
+2. Only the first CONNECT REQ from a particular endpoint is displayed -- subsequent CONNECT REQ messages are discarded.
 
 ## Example
-Below is an example of importing the tab-separated file into a spreadsheet program.
+
+```
+$ pol.pl -g 'tpsdaemon|tpsworker' abim3.log
+```
 
 Time | Event | Host  | Port | Prog | PID | fd
 ---- | ----- | ----- | ---- | ---- | --- | ---
-11/17 10:34:08.491951|CONNECTED|bt-brixu|40895|nsd|157751|30
-11/17 10:34:08.492716|HANDSHAKE_SUCCEEDED|bt-brixu|40895|nsd|157751|30
-11/17 10:34:08.495518|CONNECTED|bt-brixu|34161|tpsdaemon|157776|32
-11/17 10:34:08.496640|CONNECTED|bt-brixu|43813|svr_state_mon|157774|34
-11/17 10:34:08.496754|CONNECTED|bt-brixu|39039|check_status|157778|28
-11/17 10:34:08.496882|HANDSHAKE_SUCCEEDED|bt-brixu|34161|tpsdaemon|157776|32
-11/17 10:34:08.497212|HANDSHAKE_SUCCEEDED|bt-brixu|43813|svr_state_mon|157774|34
-11/17 10:34:08.497612|HANDSHAKE_SUCCEEDED|bt-brixu|39039|check_status|157778|28
-11/17 10:34:10.666831|DISCONNECTED|bt-brixu|39039|check_status|157778|28
+6/13 16:07:13.200262|WELCOME|nsb12|40953|nsd|12773|0
+6/13 16:07:13.200646|CONNECTED|nsb12|40953|nsd|12773|39
+6/13 16:07:13.201104|HANDSHAKE_SUCCEEDED|nsb12|40953|nsd|12773|39
+6/13 16:07:13.206905|CONNECT REQ|nsb11|36375|tpsdaemon|16384|0
+6/13 16:07:13.207090|CONNECT REQ|nsb12|39195|tpsdaemon|18893|0
+6/13 16:07:13.207611|CONNECT REQ|nsb12|43814|tpsdaemon|12334|0
+6/13 16:07:13.209573|CONNECTED|nsb12|39195|tpsdaemon|18893|52
+6/13 16:07:13.209682|CONNECTED|nsb11|36375|tpsdaemon|16384|51
+6/13 16:07:13.232949|HANDSHAKE_SUCCEEDED|nsb11|43735|tpsworker|16623|81
+6/13 16:07:13.233025|HANDSHAKE_SUCCEEDED|nsb11|42554|tpsworker|16884|97
+6/13 16:07:13.233087|HANDSHAKE_SUCCEEDED|nsb11|37988|tpsworker|20351|93
+6/13 16:07:13.236395|HANDSHAKE_SUCCEEDED|nsb11|36375|tpsdaemon|16384|51
