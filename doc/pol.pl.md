@@ -12,7 +12,12 @@ Parameter | Meaning
 ----------| -------
 -g | Specifies a "grep" string that is used to filter the output.  You can specify any valid Perl regex for grep-string (see example below).
 
-> Note that the log file must contain naming messages (`log_level_naming` in mama.properties) to get the process's name and PID.
+The output of the command is in tab-separated format, and can easily be imported into most spreadsheet programs.
+
+### Notes
+
+1. The log file must contain naming messages (`log_level_naming` in mama.properties) to get the process's name and PID.  
+2. Only the first CONNECT REQ from a particular endpoint is displayed -- subsequent CONNECT REQ messages are discarded.
 
 ## Example
 
@@ -30,7 +35,7 @@ Time | Event | Host  | Port | Prog | PID | fd
 6/13 16:07:13.207611|CONNECT REQ|nsb12|43814|tpsdaemon|12334|0
 6/13 16:07:13.209573|CONNECTED|nsb12|39195|tpsdaemon|18893|52
 6/13 16:07:13.209682|CONNECTED|nsb11|36375|tpsdaemon|16384|51
-6/13 16:07:13.209904|CONNECTED|nsb12|43814|tpsdaemon|12334|55
-6/13 16:07:13.210329|CONNECT REQ|nsb13|38855|tpsworker|7412|0
-6/13 16:07:13.210723|CONNECT REQ|nsb12|33745|tpsdaemon|7679|0
-6/13 16:07:13.210904|CONNECT REQ|nsb13|44681|tpsworker|7576|0
+6/13 16:07:13.232949|HANDSHAKE_SUCCEEDED|nsb11|43735|tpsworker|16623|81
+6/13 16:07:13.233025|HANDSHAKE_SUCCEEDED|nsb11|42554|tpsworker|16884|97
+6/13 16:07:13.233087|HANDSHAKE_SUCCEEDED|nsb11|37988|tpsworker|20351|93
+6/13 16:07:13.236395|HANDSHAKE_SUCCEEDED|nsb11|36375|tpsdaemon|16384|51
