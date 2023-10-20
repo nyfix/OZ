@@ -702,7 +702,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       wlock_unlock(impl->mZmqDataPub.mLock);
       #endif
 
-      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnecting data sockets from publisher:%s", pMsg->mEndPointAddr);
+      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnected data sockets from publisher:%s", pMsg->mEndPointAddr);
    }
    else if (pMsg->mType == 'W') {
       // welcome msg - naming subscriber is connected
@@ -1005,7 +1005,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_wcCallback(mamaQueue queue, void* 
    findClosure.mSubscription = NULL;
    list_for_each(tmsg->mTransport->mWcEndpoints, (wListCallback) zmqBridgeMamaTransportImpl_findWildcard, &findClosure);
    if (findClosure.mSubscription == NULL) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "No endpoint found for topic %s with id %s", subject, tmsg->mEndpointIdentifier);
       goto exit;
    }
 
@@ -1205,7 +1205,7 @@ mama_status zmqBridgeMamaTransportImpl_disconnectSocket(zmqSocket* socket, const
 
    int rc = zmq_disconnect(socket->mSocket, uri);
    if (0 != rc) {
-      MAMA_LOG(MAMA_LOG_LEVEL_ERROR, "zmq_disconnect(%p, %s) failed: %d(%s)", socket->mSocket, uri, zmq_errno(), zmq_strerror(errno));
+      MAMA_LOG(MAMA_LOG_LEVEL_WARN, "zmq_disconnect(%p, %s) failed: %d(%s)", socket->mSocket, uri, zmq_errno(), zmq_strerror(errno));
       status = MAMA_STATUS_PLATFORM;
    }
 
