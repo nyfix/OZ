@@ -12,8 +12,8 @@ source ${SCRIPT_DIR}/setenv.sh
 export MAMA_MW=zmq
 export MAMA_TPORT_PUB=oz
 export MAMA_TPORT_SUB=oz
-export MAMA_NSD_ADDR=127.0.0.1
-export MAMA_NSD_PORT=5756
+[[ -z ${MAMA_NSD_ADDR} ]] && export MAMA_NSD_ADDR=127.0.0.1
+[[ -z ${MAMA_NSD_PORT} ]] && export MAMA_NSD_PORT=5756
 
 # set default log level
 #export MAMA_STDERR_LOGGING=4     # 2 logs only errors, higher values for more, lower for less
