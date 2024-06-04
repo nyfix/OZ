@@ -12,9 +12,9 @@
 
 #define PARAM_NAME_MAX_LENGTH 1024
 
-extern int log_level_beacon;
-extern int log_level_naming;
-extern int log_level_inbox;
+int log_level_beacon =0;
+int log_level_naming =0;
+int log_level_inbox  =0;
 
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(char* defaultVal, char* paramName, const char* format, va_list arguments)
 {

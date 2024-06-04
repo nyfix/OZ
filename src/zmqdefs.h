@@ -29,9 +29,9 @@
 
 ///////////////////////////////////////////////////////////////////////
 // external (global) definitions
-int log_level_beacon;
-int log_level_naming;
-int log_level_inbox;
+extern int log_level_beacon;
+extern int log_level_naming;
+extern int log_level_inbox;
 
 ///////////////////////////////////////////////////////////////////////
 // the following definitions control how the library is built
@@ -40,7 +40,6 @@ int log_level_inbox;
 // (to reduce collisions), and that there is no limit to # of entries
 // So a table of size 1024 will use 8MB (1024*10*sizeof(void*))
 #define     INBOX_TABLE_SIZE                 1024
-
 #define     PEER_TABLE_SIZE                  1024
 
 
@@ -57,10 +56,9 @@ int log_level_inbox;
 
 #define     MAX_SUBJECT_LENGTH               256         // topic size
 #define     ZMQ_MAX_NAMING_URIS              8           // proxy processes for naming messages
-// TODO: is 256 enough? what happens if exceeded?
-#define     ZMQ_MAX_INCOMING_URIS            256         // incoming connections from other processes
-#define     ZMQ_MAX_OUTGOING_URIS            256         // outgoing connections to other processes
-//#define     ZMQ_MAX_ENDPOINT_LENGTH          sizeof("tcp://255.255.255.255:65536")
+// ZMQ_MAX_...URIS are only used for direct (non-naming connections)
+#define     ZMQ_MAX_INCOMING_URIS            512         // incoming connections from other processes
+#define     ZMQ_MAX_OUTGOING_URIS            512         // outgoing connections to other processes
 #define     ZMQ_MAX_ENDPOINT_LENGTH          256
 ///////////////////////////////////////////////////////////////////////
 
