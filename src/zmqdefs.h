@@ -32,6 +32,7 @@
 extern int log_level_beacon;
 extern int log_level_naming;
 extern int log_level_inbox;
+extern int log_level_proto;
 
 ///////////////////////////////////////////////////////////////////////
 // the following definitions control how the library is built

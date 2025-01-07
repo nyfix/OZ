@@ -702,7 +702,7 @@ mama_status zmqBridgeMamaTransportImpl_dispatchNamingMsg(zmqTransportBridge* imp
       wlock_unlock(impl->mZmqDataPub.mLock);
       #endif
 
-      MAMA_LOG(MAMA_LOG_LEVEL_NORMAL, "Disconnected data sockets from publisher:%s", pMsg->mEndPointAddr);
+      MAMA_LOG(log_level_proto, "Disconnected data sockets from publisher:%s", pMsg->mEndPointAddr);
    }
    else if (pMsg->mType == 'W') {
       // welcome msg - naming subscriber is connected

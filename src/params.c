@@ -15,6 +15,7 @@
 int log_level_beacon =0;
 int log_level_naming =0;
 int log_level_inbox  =0;
+int log_level_proto  =0;
 
 const char* zmqBridgeMamaTransportImpl_getParameterWithVaList(char* defaultVal, char* paramName, const char* format, va_list arguments)
 {
@@ -139,6 +140,7 @@ void MAMACALLTYPE  zmqBridgeMamaTransportImpl_parseCommonParams(zmqTransportBrid
    log_level_beacon = getInt(name, "log_level_beacon", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
    log_level_naming = getInt(name, "log_level_naming", MAMA_LOG_LEVEL_NORMAL, MAMA_LOG_LEVEL_OFF);
    log_level_inbox = getInt(name, "log_level_inbox", MAMA_LOG_LEVEL_FINER, MAMA_LOG_LEVEL_OFF);
+   log_level_proto = getInt(name, "log_level_proto", MAMA_LOG_LEVEL_NORMAL, MAMA_LOG_LEVEL_OFF);
 
 }
 
