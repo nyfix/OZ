@@ -5,11 +5,18 @@
 
 # get params
 use Getopt::Long qw(:config pass_through);
-
-# matching
 my $grep;
 GetOptions( 'g|grep=s' => \$grep );
-
+my $hosts=0;
+GetOptions( 'h|hosts!' => \$hosts );
+my $peers=0;
+GetOptions( 'p|peers!' => \$peers );
+my $events=0;
+GetOptions( 'e|events!' => \$events );
+# default to listing events
+if (($hosts == 0) && ($peers == 0) && ($events == 0) ) {
+   $events = 1;
+}
 
 use Class::Struct;
 struct Peer => {
@@ -17,154 +24,218 @@ struct Peer => {
    host => '$',
    pid => '$',
    endpoint => '$',
-   proto => '$', 
-   addr => '$', 
+   proto => '$',
+   addr => '$',
    port => '$',
    fd => '$',
+   firstSeen => '$',
 };
+
+struct Event => {
+   name => '$',
+   sockType => '$',
+   local => '$',
+   remote => '$',
+};
+
 
 my %peers;
 my %hosts;
+my %events;
 
-sub getPeer {
+sub parseProto {
    my $endpoint = shift;
-      my $exists = exists($peers{$endpoint});
-      my $peer;
-      if (!$exists) {
-         $peer = Peer->new();
-         $peers{$endpoint} = $peer;   
-      }
-      else  {
-         $peer = $peers{$endpoint};
-      }
-      
-   return $peer, $exists;
-}   
+   return (split('[:/]+', $endpoint))[0];
+}
+
+sub parseAddr {
+   my $endpoint = shift;
+   return (split('[:/]+', $endpoint))[1];
+}
+
+sub parsePort {
+   my $endpoint = shift;
+   return (split('[:/]+', $endpoint))[2];
+}
+
+sub shortName {
+   my $temp = shift;
+   # strip off domain, if any
+   $temp = (split('\.', $temp))[0];
+   # strip off suffix, if any
+   $temp = (split('\-', $temp))[0];
+   return $temp;
+}
+
+sub parseEndpoint {
+   my $endpoint = shift;
+   my $proto = parseProto($endpoint);
+   my $addr = parseAddr($endpoint);
+   my $port = parsePort($endpoint);
+
+   return ($proto, $addr, $port);
+}
+
+sub getField {
+   my $name = shift;
+   my $string = shift;
+
+   my $index = index($string, $name);
+   return '' if ($index < 0);
+
+   my $temp = substr($string, $index+length($name));
+   my (@value) = split(' ', $temp);
+   return $value[0];
+}
+
+sub findPeer {
+   my $endpoint = shift;
+   if (!exists($peers{$endpoint})) {
+      return (Peer->new(), 0);
+   }
+   else {
+      return ($peers{$endpoint}, 1);
+   }
+}
+
+
+sub findHost {
+   my $endpoint = shift;
+   my ($proto, $addr, $port) = parseEndpoint($endpoint);
+   if (substr($addr, 0, 1) =~ /[0-9]/ ) {
+      return $hosts{$addr};
+   }
+   else {
+      return shortName($addr);
+   }
+}
 
 sub printg {
-   my $format = shift; 
+   my $format = shift;
    my $line = sprintf $format, @_;
-   print $line if (!defined $grep || (($line =~ $grep) || ($line =~ "nsd")));
+   print $line if (!defined $grep || ($line =~ $grep));
 }
 
-# take filename arg on cmd line, or read from stdin
-local *INFILE;
-if ( defined( $ARGV[0] ) ) {
-   open( INFILE, "<:crlf", "$ARGV[0]" ) or die "Cant open $ARGV[0]\n";
-}
-else {
-   *INFILE = *STDIN;
-}
 
-print "Time\tEvent\tHost\tPort\tProg\tPID\tfd\n";
-
-while (<INFILE>) {
+while (<>) {
    chomp;
    my (@parts) = split /\|/;
+
    my $timestamp = $parts[0];
-   my $msg; my $type; my @fields;
-   if ($#parts == 1) {
-      # old format
-      my (@tokens) = split(':', $parts[1], 3);
-      $msg = $tokens[0];
-      $type = $tokens[1];
-      (@fields) = split(' ', $tokens[2]);
+   # hack for date
+   my ($date, $time) = split(' ', $timestamp);
+   if (length($date) < 5) {
+      $timestamp = "0$timestamp"
    }
-   elsif ($#parts == 4) {
+
+   # get msgType, subType
+   my $msgType; my $subType; my $msgString; my $sockType;
+   if ($#parts == 4) {
       # new format
-      $msg = $parts[1];
-      next if (! $msg =~ "zmqBridge");
+      $msgType = $parts[1];
+      next if (! $msgType =~ "zmqBridge");
       my (@tokens) = split(' ', $parts[3], 2);
-      $type = (split(':', $tokens[1]))[0]; 
-      if ($msg eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg") {
-         (@fields) = split(' ', (split(':', $tokens[1], 2))[1]);
+      $subType = (split(':', $tokens[1]))[0];
+      if ( ($msgType eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg") || ($msgType eq "zmqBridgeMamaTransportImpl_sendEndpointsMsg") ) {
+        $msgString = (split(':', $tokens[1], 2))[1];
       }
-      elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent") {
-         (@fields) = split(' ', $tokens[1]);
+      elsif ($msgType eq "zmqBridgeMamaTransportImpl_monitorEvent_v2") {
+         $msgString = $tokens[1];
       }
-      elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent_v2") {
-         (@fields) = split(' ', $tokens[1]);
-      }
+      $sockType = getField("name:", $msgString);
    }
    else {
       # unknown format
       next;
    }
-   next if $#fields eq 0;
-   if ($msg eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg" ) {
-      my $sockType = "namingSub";
-      if ( ($type =~ "Received endpoint msg") || ($type =~ "Published endpoint msg") ) {
-         my $msgtype = ((split('=', $fields[0]))[1]);
+
+   # "naming" msg: save info about the endpoint
+   if ( ($msgType eq "zmqBridgeMamaTransportImpl_dispatchNamingMsg") || ($msgType eq "zmqBridgeMamaTransportImpl_sendEndpointsMsg") ) {
+      if ( ($subType =~ "Received endpoint msg") || ($subType =~ "Published endpoint msg") ) {
          my $event;
-         if ($msgtype eq "W") {
-            $event = "WELCOME";
+         my $endpoint = getField("pub=", $msgString);
+         my ($peer, $exists) = findPeer($endpoint);
+         my ($proto, $temp, $port) = parseEndpoint($endpoint);
+         $peer->proto($proto);
+         $peer->port($port);
+         $peer->host(shortName(getField("host=", $msgString)));
+         # endpoint usually specifies tcp addr, but sometimes host name
+         if (substr($temp, 0, 1) =~ /[0-9]/ ) {
+            $peer->addr($temp);
          }
-         elsif ($msgtype eq "C") {
-            $event = "CONNECT REQ";
-         }
-         elsif ($msgtype eq "D") {
-            $event = "DISCONNECT REQ";
-         }
-         else {
-            $event = "UNKOWN";
-         }
-         my $endpoint = ((split('=', $fields[6]))[1]);
-         my ($peer, $exists) = getPeer($endpoint);
-         $peer->prog((split('=', $fields[1]))[1]);
-         $peer->host((split('=', $fields[2]))[1]);
-         $peer->pid((split('=', $fields[4]))[1]);
+         $peer->prog(getField("prog=", $msgString));
+         $peer->pid(getField("pid=", $msgString));
          $peer->endpoint($endpoint);
-         $peer->proto((split('[:/]+', $peer->endpoint))[0]);
-         $peer->addr((split('[:/]+', $peer->endpoint))[1]);
-         $peer->port((split('[:/]+', $peer->endpoint))[2]);
-         if (!exists($hosts{$peer->addr()})) {
+         if (!$exists) {
+            $peer->firstSeen($timestamp);
+            $peers{$peer->endpoint()} = $peer;
+         }
+         if (!exists($hosts{$peer->addr()}) && defined $peer->addr()) {
             $hosts{$peer->addr()} = $peer->host();
          }
-         if (($msgtype ne "C") || !$exists) {
-            printg("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
+         if (!exists($hosts{$peer->host()}) && defined $peer->host()) {
+            $hosts{$peer->host()} = $peer->addr();
          }
       }
    }
-   elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent" ) {
-      my $sockType = (split(':', $fields[1]))[1];
-      next if (($sockType eq "dataPub") || ($sockType eq "namingSub"));
-      my $event = (split(':', $fields[4]))[1];
-      if ($event =~ "LISTENING") {
-         my $endpoint = (split(':', $fields[5], 2))[1];
-         my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $fields[2]))[1];
-         $peer->fd($fd) if $fd != 0;
-      }
-      elsif ( ($event =~ "CONNECTED") || 
-              ($event =~ "HANDSHAKE_SUCCEEDED") ||  
-              ($event =~ "DISCONNECTED") ) {  
-         my $endpoint = (split(':', $fields[5], 2))[1];
-         my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $fields[3]))[1];
-         $peer->fd($fd) if $fd != 0;
-         printg("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
-      }
+
+   # monitor event
+   elsif ($msgType eq "zmqBridgeMamaTransportImpl_monitorEvent_v2" ) {
+      my $event = Event->new();
+      $event->name(getField("event:", $msgString));
+      $event->sockType($sockType);
+      $event->local(getField("local:", $msgString));
+      $event->remote(getField("remote:", $msgString));
+      # may be mult. events per timestamp
+      push @{$events{$timestamp}}, $event;
    }
-   elsif ($msg eq "zmqBridgeMamaTransportImpl_monitorEvent_v2" ) {
-      my $sockType = (split(':', $fields[0]))[1];
-      next if (($sockType eq "dataPub") || ($sockType eq "namingSub"));
-      my $event = (split(':', $fields[1]))[1];
-      if ($event =~ "LISTENING") {
-         my $endpoint = (split(':', $fields[3], 2))[1];
-         my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $fields[2]))[1];
-         $peer->fd($fd) if $fd != 0;
-      }
-      elsif ( ($event =~ "CONNECTED") || 
-              ($event =~ "HANDSHAKE_SUCCEEDED") ||  
-              ($event =~ "DISCONNECTED") ) {  
-         my $endpoint = (split(':', $fields[4], 2))[1];
-         my ($peer, $exists) = getPeer($endpoint);
-         my $fd = (split(':', $fields[2]))[1];
-         $peer->fd($fd) if $fd != 0;
-         printg("%s\t%s\t%s\t%d\t%s\t%d\t%d\n", $timestamp, $event, $peer->host(), $peer->port(), $peer->prog(), $peer->pid(), $peer->fd());     
-      }
-   } 
 }
 
-close INFILE;
+
+if ($hosts) {
+	printf("Addr\tHost\n");
+	for my $h (sort (keys %hosts)) {
+	   printg("%s\t%s\n", $h, $hosts{$h});
+	}
+}
+
+if ($peers) {
+	printf("Endpoint\tHost\tPort\tProg\tPID\tFirst Seen\n");
+	for my $p (sort (keys %peers)) {
+	   printg("%s\t%s\t%d\t%s\t%d\t%s\n", $p, $peers{$p}->host(), $peers{$p}->port(), $peers{$p}->prog(), $peers{$p}->pid(), $peers{$p}->firstSeen());
+	}
+}
+
+if ($events) {
+   printf("Timestamp\tEvent\tSocket\tLocalPort\tRemoteHost\tRemoteProg\tRemotePID\tRemotePort\n");
+   for my $timestamp (sort (keys %events)) {
+       for my $e ( @{ $events{$timestamp} } ) {
+         # get local info
+         my ($local, $localExists) = findPeer($e->local());
+         my $localHost; my $localProg; my $localPort;
+         if (!$localExists) {
+            $localHost = findHost($e->local());
+            $localPort = parsePort($e->local());
+         }
+         else {
+            $localHost = $local->host();
+            $localProg = $local->prog();
+            $localPort = $local->port();
+         }
+         # get remote info
+         my ($remote, $remoteExists) = findPeer($e->remote());
+         my $remoteHost; my $remoteProg; my $remotePort;
+         if (!$remoteExists) {
+            $remoteHost = findHost($e->remote());
+            $remotePort = parsePort($e->remote());
+         }
+         else {
+            $remoteHost = $remote->host();
+            $remoteProg = $remote->prog();
+            $remotePort = $remote->port();
+         }
+
+         printg("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $timestamp, $e->name(), $e->sockType(), $localPort, $remoteHost, $remoteProg, $remote->pid(), $remotePort);
+       }
+   }
+}
