@@ -3,6 +3,8 @@
 # parse OZ logs
 #
 
+use strict;
+
 # get params
 use Getopt::Long qw(:config pass_through);
 my $grep;
@@ -211,16 +213,18 @@ if ($events) {
    for my $timestamp (sort (keys %events)) {
        for my $e ( @{ $events{$timestamp} } ) {
          # get local info
-         my ($local, $localExists) = findPeer($e->local());
          my $localHost; my $localProg; my $localPort;
-         if (!$localExists) {
-            $localHost = findHost($e->local());
-            $localPort = parsePort($e->local());
-         }
-         else {
-            $localHost = $local->host();
-            $localProg = $local->prog();
-            $localPort = $local->port();
+         if ($e->name() ne "CLOSED") {
+            my ($local, $localExists) = findPeer($e->local());
+            if (!$localExists) {
+               $localHost = findHost($e->local());
+               $localPort = parsePort($e->local());
+            }
+            else {
+               $localHost = $local->host();
+               $localProg = $local->prog();
+               $localPort = $local->port();
+            }
          }
          # get remote info
          my ($remote, $remoteExists) = findPeer($e->remote());
